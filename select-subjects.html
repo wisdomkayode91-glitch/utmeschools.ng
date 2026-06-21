@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Select Subjects — UTMESchools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .page-actions{
+    display:flex; gap:8px; padding:12px 14px;
+    border-bottom:1px solid var(--line); background:var(--white);
+  }
+  .pick-subjects-btn{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+    background:var(--navy); color:#fff; border:none; border-radius:99px;
+    padding:10px 14px; font-weight:700; font-size:13px;
+  }
+  .start-btn{
+    flex:0 0 auto; display:flex; align-items:center; gap:6px;
+    background:var(--green); color:#fff; border:none; border-radius:99px;
+    padding:10px 18px; font-weight:700; font-size:13px;
+  }
+  .start-btn:disabled{background:#C9D3DE; color:#fff;}
+
+  .subject-config-list{padding:12px 14px; display:flex; flex-direction:column; gap:10px;}
+  .config-card{background:#fff; border:1px solid var(--line); border-radius:var(--radius-md); padding:14px;}
+  .config-head{display:flex; align-items:center; gap:9px; margin-bottom:10px;}
+  .config-icon{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;}
+  .config-name{font-weight:700; font-size:13.5px; flex:1; min-width:0;}
+  .config-remove{width:26px; height:26px; border-radius:50%; background:var(--paper-dim); border:none; color:var(--ink-soft); font-size:14px; flex-shrink:0;}
+  .config-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 0; border-top:1px solid #F2F0E8; font-size:12.5px;
+  }
+  .config-row:first-of-type{border-top:none;}
+  .config-row .cr-label{display:flex; align-items:center; gap:6px; color:var(--ink-soft);}
+  .config-row .cr-val{font-weight:600; display:flex; align-items:center; gap:5px;}
+  .cr-select{
+    border:1px solid var(--line); border-radius:7px; padding:5px 8px;
+    font-size:12px; font-family:inherit; background:var(--paper); color:var(--ink);
+  }
+
+  .empty-state{padding:50px 24px; text-align:center;}
+  .empty-state .es-icon{font-size:32px; margin-bottom:10px;}
+  .empty-state h3{font-size:15px;}
+  .empty-state p{font-size:12.5px; color:var(--ink-soft); margin-top:6px; line-height:1.5;}
+
+  .options-card{margin:0 14px 14px; background:#fff; border:1px solid var(--line); border-radius:var(--radius-md); padding:14px;}
+  .options-card .oc-title{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft); margin-bottom:10px;}
+  .mode-toggle{display:flex; gap:6px; margin-bottom:10px;}
+  .mode-toggle button{
+    flex:1; padding:9px; border-radius:9px; border:1.5px solid var(--line); background:#fff;
+    font-weight:700; font-size:12px; color:var(--ink-soft);
+  }
+  .mode-toggle button.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .timer-row{display:flex; align-items:center; justify-content:space-between; padding:8px 0; font-size:12.5px;}
+  .timer-inputs{display:flex; gap:5px; align-items:center;}
+  .timer-inputs input{
+    width:42px; text-align:center; border:1px solid var(--line); border-radius:7px;
+    padding:5px 0; font-size:12.5px; font-family:var(--font-mono);
+  }
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:7px 0; font-size:12.5px;}
+  .switch{width:36px; height:20px; border-radius:99px; background:var(--line); position:relative; flex-shrink:0;}
+  .switch.on{background:var(--green);}
+  .switch::after{content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left 0.15s ease;}
+  .switch.on::after{left:18px;}
+
+  /* ---- Subject picker modal (bottom sheet) ---- */
+  .sheet-overlay{
+    position:fixed; inset:0; z-index:250; background:rgba(11,37,69,0.45);
+    opacity:0; pointer-events:none; transition:opacity 0.2s ease;
+    display:flex; align-items:flex-end;
+  }
+  .sheet-overlay.open{opacity:1; pointer-events:auto;}
+  .sheet{
+    background:#fff; width:100%; max-height:82vh; border-radius:18px 18px 0 0;
+    display:flex; flex-direction:column;
+    transform:translateY(100%); transition:transform 0.22s ease;
+  }
+  .sheet-overlay.open .sheet{transform:translateY(0);}
+  .sheet-head{padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between;}
+  .sheet-head h3{font-size:15px;}
+  .sheet-head button{background:none; border:none; font-size:20px; color:var(--ink-soft);}
+  .sheet-selectall{
+    padding:10px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line);
+    font-size:13px; font-weight:600;
+  }
+  .sheet-list{overflow-y:auto; flex:1; padding:6px 8px;}
+  .sheet-item{
+    display:flex; align-items:center; gap:11px; padding:11px 8px; border-radius:9px;
+  }
+  .sheet-item:active{background:var(--paper-dim);}
+  .sheet-checkbox{
+    width:20px; height:20px; border-radius:5px; border:1.5px solid #C9D3DE; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff;
+  }
+  .sheet-checkbox.checked{background:var(--navy); border-color:var(--navy);}
+  .sheet-item-name{font-size:13.5px; font-weight:500;}
+  .sheet-item.disabled{opacity:0.4; pointer-events:none;}
+  .sheet-foot{padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:8px;}
+  .sheet-limit-note{font-size:11px; color:var(--ink-soft); padding:0 16px 10px;}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <button class="appbar-back" onclick="window.location.href='index.html'" aria-label="Back">←</button>
+  <span class="appbar-title">Select Subjects</span>
+  <button class="appbar-burger" id="menuOpenBtn" aria-label="Open menu">☰</button>
+</header>
+
+<div class="page-actions">
+  <button class="pick-subjects-btn" id="pickSubjectsBtn">📚 Select Subject (<span id="pickedCount">0</span>/4)</button>
+  <button class="start-btn" id="startBtn" disabled>Start ▶</button>
+</div>
+
+<main>
+  <div id="emptyState" class="empty-state">
+    <div class="es-icon">📚</div>
+    <h3>No subjects selected yet</h3>
+    <p>Tap "Select Subject" above to choose up to 4 subjects you want to practice or study.</p>
+  </div>
+
+  <div id="configList" class="subject-config-list" style="display:none;"></div>
+
+  <div class="options-card" id="optionsCard" style="display:none;">
+    <div class="oc-title">Mode</div>
+    <div class="mode-toggle">
+      <button class="active" data-mode="practice">Practice</button>
+      <button data-mode="mock">Mock Exam</button>
+      <button data-mode="study">Study</button>
+    </div>
+    <div id="timerSection">
+      <div class="timer-row">
+        <span>⏱ Set your own timer</span>
+        <div class="timer-inputs">
+          <input type="number" id="timerH" value="2" min="0" max="5"><span>h</span>
+          <input type="number" id="timerM" value="0" min="0" max="59"><span>m</span>
+        </div>
+      </div>
+    </div>
+    <div class="toggle-row">
+      <span>Shuffle questions</span>
+      <div class="switch on" data-toggle="shuffleQ"></div>
+    </div>
+    <div class="toggle-row">
+      <span>Shuffle options</span>
+      <div class="switch on" data-toggle="shuffleO"></div>
+    </div>
+  </div>
+</main>
+
+<!-- ============ Subject picker bottom sheet ============ -->
+<div class="sheet-overlay" id="sheetOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3>Select Subjects</h3>
+      <button id="sheetCloseBtn" aria-label="Close">×</button>
+    </div>
+    <div class="sheet-limit-note">Choose up to 4 subjects at a time.</div>
+    <div class="sheet-list" id="sheetList"></div>
+    <div class="sheet-foot">
+      <button class="btn btn-ghost btn-block" id="sheetCancelBtn">Cancel</button>
+      <button class="btn btn-primary btn-block" id="sheetOkBtn">Okay</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Hamburger menu ============ -->
+<div class="menu-overlay" id="menuOverlay">
+  <div class="menu-panel">
+    <button class="menu-close" id="menuCloseBtn" aria-label="Close menu">×</button>
+    <div class="menu-head">
+      <div class="appbar-mark">U</div>
+      <div>
+        <div class="menu-head-name">UTMESchools</div>
+        <div class="menu-head-sub">JAMB · UTME Practice</div>
+      </div>
+    </div>
+    <nav class="menu-list">
+      <a href="index.html"><span class="menu-icon">🏠</span> Home</a>
+      <a href="select-subjects.html" class="active"><span class="menu-icon">📚</span> Practice for UTME</a>
+      <a href="dashboard.html"><span class="menu-icon">📊</span> Result History</a>
+      <a href="bookmarks.html"><span class="menu-icon">🔖</span> Bookmarks</a>
+      <a href="discussion.html"><span class="menu-icon">💬</span> Discussion</a>
+      <div class="menu-divider"></div>
+      <a href="#"><span class="menu-icon">👤</span> My account</a>
+      <a href="index.html#pricing"><span class="menu-icon">🔓</span> Unlock full access</a>
+      <div class="menu-divider"></div>
+      <a href="https://wa.me/2347065732365" target="_blank" rel="noopener"><span class="menu-icon">💬</span> WhatsApp support</a>
+    </nav>
+    <div class="menu-foot">
+      <a href="#" class="btn btn-ghost btn-block btn-sm">Log out</a>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script src="select-subjects.js"></script>
+</body>
+    </html>
+  
