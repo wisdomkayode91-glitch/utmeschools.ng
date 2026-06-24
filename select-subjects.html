@@ -11,6 +11,7 @@
   .page-actions{
     display:flex; gap:8px; padding:12px 14px;
     border-bottom:1px solid var(--line); background:var(--white);
+    position:sticky; top:52px; z-index:50;
   }
   .pick-subjects-btn{
     flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
@@ -21,25 +22,31 @@
     flex:0 0 auto; display:flex; align-items:center; gap:6px;
     background:var(--green); color:#fff; border:none; border-radius:99px;
     padding:10px 18px; font-weight:700; font-size:13px;
+    transition:background 0.12s ease;
   }
-  .start-btn:disabled{background:#C9D3DE; color:#fff;}
+  .start-btn:disabled{background:#C9D3DE; color:#fff; cursor:not-allowed;}
 
   .subject-config-list{padding:12px 14px; display:flex; flex-direction:column; gap:10px;}
   .config-card{background:#fff; border:1px solid var(--line); border-radius:var(--radius-md); padding:14px;}
   .config-head{display:flex; align-items:center; gap:9px; margin-bottom:10px;}
   .config-icon{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;}
   .config-name{font-weight:700; font-size:13.5px; flex:1; min-width:0;}
-  .config-remove{width:26px; height:26px; border-radius:50%; background:var(--paper-dim); border:none; color:var(--ink-soft); font-size:14px; flex-shrink:0;}
+  .config-remove{width:26px; height:26px; border-radius:50%; background:var(--paper-dim); border:none; color:var(--ink-soft); font-size:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center;}
   .config-row{
     display:flex; align-items:center; justify-content:space-between;
     padding:8px 0; border-top:1px solid #F2F0E8; font-size:12.5px;
   }
-  .config-row:first-of-type{border-top:none;}
   .config-row .cr-label{display:flex; align-items:center; gap:6px; color:var(--ink-soft);}
   .config-row .cr-val{font-weight:600; display:flex; align-items:center; gap:5px;}
   .cr-select{
     border:1px solid var(--line); border-radius:7px; padding:5px 8px;
     font-size:12px; font-family:inherit; background:var(--paper); color:var(--ink);
+  }
+  .topic-btn{
+    background:none; border:none; padding:0;
+    font-size:12.5px; font-weight:600; color:var(--navy);
+    display:flex; align-items:center; gap:4px; cursor:pointer;
+    font-family:inherit;
   }
 
   .empty-state{padding:50px 24px; text-align:center;}
@@ -52,22 +59,23 @@
   .mode-toggle{display:flex; gap:6px; margin-bottom:10px;}
   .mode-toggle button{
     flex:1; padding:9px; border-radius:9px; border:1.5px solid var(--line); background:#fff;
-    font-weight:700; font-size:12px; color:var(--ink-soft);
+    font-weight:700; font-size:12px; color:var(--ink-soft); font-family:inherit;
   }
   .mode-toggle button.active{background:var(--navy); color:#fff; border-color:var(--navy);}
-  .timer-row{display:flex; align-items:center; justify-content:space-between; padding:8px 0; font-size:12.5px;}
-  .timer-inputs{display:flex; gap:5px; align-items:center;}
+  .timer-row{display:flex; align-items:center; justify-content:space-between; padding:8px 0; font-size:12.5px; border-top:1px solid #F2F0E8;}
+  .timer-inputs{display:flex; gap:4px; align-items:center; font-size:12px; color:var(--ink-soft);}
   .timer-inputs input{
     width:42px; text-align:center; border:1px solid var(--line); border-radius:7px;
-    padding:5px 0; font-size:12.5px; font-family:var(--font-mono);
+    padding:5px 0; font-size:12.5px; font-family:var(--font-mono); color:var(--ink);
+    background:var(--paper);
   }
-  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:7px 0; font-size:12.5px;}
-  .switch{width:36px; height:20px; border-radius:99px; background:var(--line); position:relative; flex-shrink:0;}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:7px 0; font-size:12.5px; border-top:1px solid #F2F0E8;}
+  .switch{width:36px; height:20px; border-radius:99px; background:var(--line); position:relative; flex-shrink:0; cursor:pointer;}
   .switch.on{background:var(--green);}
   .switch::after{content:""; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left 0.15s ease;}
   .switch.on::after{left:18px;}
 
-  /* ---- Subject picker modal (bottom sheet) ---- */
+  /* ---- Bottom sheets (shared style) ---- */
   .sheet-overlay{
     position:fixed; inset:0; z-index:250; background:rgba(11,37,69,0.45);
     opacity:0; pointer-events:none; transition:opacity 0.2s ease;
@@ -80,16 +88,23 @@
     transform:translateY(100%); transition:transform 0.22s ease;
   }
   .sheet-overlay.open .sheet{transform:translateY(0);}
-  .sheet-head{padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between;}
+  .sheet-head{padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; flex-shrink:0;}
   .sheet-head h3{font-size:15px;}
-  .sheet-head button{background:none; border:none; font-size:20px; color:var(--ink-soft);}
+  .sheet-head button{background:none; border:none; font-size:20px; color:var(--ink-soft); cursor:pointer;}
+  .sheet-search{padding:10px 14px; border-bottom:1px solid var(--line); flex-shrink:0;}
+  .sheet-search input{
+    width:100%; border:1px solid var(--line); border-radius:9px;
+    padding:8px 12px; font-size:13px; font-family:inherit; background:var(--paper);
+    color:var(--ink);
+  }
   .sheet-selectall{
     padding:10px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line);
-    font-size:13px; font-weight:600;
+    font-size:13px; font-weight:600; flex-shrink:0; cursor:pointer;
   }
   .sheet-list{overflow-y:auto; flex:1; padding:6px 8px;}
   .sheet-item{
     display:flex; align-items:center; gap:11px; padding:11px 8px; border-radius:9px;
+    cursor:pointer;
   }
   .sheet-item:active{background:var(--paper-dim);}
   .sheet-checkbox{
@@ -97,10 +112,12 @@
     display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff;
   }
   .sheet-checkbox.checked{background:var(--navy); border-color:var(--navy);}
+  .sheet-item-icon{width:28px; height:28px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0;}
   .sheet-item-name{font-size:13.5px; font-weight:500;}
-  .sheet-item.disabled{opacity:0.4; pointer-events:none;}
-  .sheet-foot{padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:8px;}
-  .sheet-limit-note{font-size:11px; color:var(--ink-soft); padding:0 16px 10px;}
+  .sheet-foot{padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:8px; flex-shrink:0;}
+
+  /* ---- Topic picker specific ---- */
+  .topic-sheet-note{font-size:11.5px; color:var(--ink-soft); padding:8px 16px 0; flex-shrink:0;}
 </style>
 </head>
 <body>
@@ -112,20 +129,20 @@
 </header>
 
 <div class="page-actions">
-  <button class="pick-subjects-btn" id="pickSubjectsBtn">📚 Select Subject (<span id="pickedCount">0</span>/4)</button>
-  <button class="start-btn" id="startBtn" disabled>Start ▶</button>
+  <button class="pick-subjects-btn" id="pickSubjectsBtn">📚 Select Subject (<span id="pickedCount">1</span> selected)</button>
+  <button class="start-btn" id="startBtn">Start ▶</button>
 </div>
 
 <main>
-  <div id="emptyState" class="empty-state">
+  <div id="emptyState" class="empty-state" style="display:none;">
     <div class="es-icon">📚</div>
     <h3>No subjects selected yet</h3>
-    <p>Tap "Select Subject" above to choose up to 4 subjects you want to practice or study.</p>
+    <p>Tap "Select Subject" above to choose the subjects you want to practice or study.</p>
   </div>
 
-  <div id="configList" class="subject-config-list" style="display:none;"></div>
+  <div id="configList" class="subject-config-list"></div>
 
-  <div class="options-card" id="optionsCard" style="display:none;">
+  <div class="options-card" id="optionsCard">
     <div class="oc-title">Mode</div>
     <div class="mode-toggle">
       <button class="active" data-mode="practice">Practice</button>
@@ -134,10 +151,14 @@
     </div>
     <div id="timerSection">
       <div class="timer-row">
-        <span>⏱ Set your own timer</span>
+        <span style="color:var(--ink-soft);">⏱ Your timer</span>
         <div class="timer-inputs">
-          <input type="number" id="timerH" value="2" min="0" max="5"><span>h</span>
-          <input type="number" id="timerM" value="0" min="0" max="59"><span>m</span>
+          <input type="number" id="timerH" value="2" min="0" max="9">
+          <span>h</span>
+          <input type="number" id="timerM" value="0" min="0" max="59">
+          <span>m</span>
+          <input type="number" id="timerS" value="0" min="0" max="59">
+          <span>s</span>
         </div>
       </div>
     </div>
@@ -153,17 +174,43 @@
 </main>
 
 <!-- ============ Subject picker bottom sheet ============ -->
-<div class="sheet-overlay" id="sheetOverlay">
+<div class="sheet-overlay" id="subjectSheetOverlay">
   <div class="sheet">
     <div class="sheet-head">
       <h3>Select Subjects</h3>
-      <button id="sheetCloseBtn" aria-label="Close">×</button>
+      <button id="subjectSheetCloseBtn" aria-label="Close">×</button>
     </div>
-    <div class="sheet-limit-note">Choose up to 4 subjects at a time.</div>
-    <div class="sheet-list" id="sheetList"></div>
+    <div class="sheet-search">
+      <input type="text" id="subjectSearchInput" placeholder="Search subjects…">
+    </div>
+    <div class="sheet-selectall" id="subjectSelectAll">
+      <div class="sheet-checkbox" id="selectAllCheckbox"></div>
+      <span>Select all</span>
+    </div>
+    <div class="sheet-list" id="subjectSheetList"></div>
     <div class="sheet-foot">
-      <button class="btn btn-ghost btn-block" id="sheetCancelBtn">Cancel</button>
-      <button class="btn btn-primary btn-block" id="sheetOkBtn">Okay</button>
+      <button class="btn btn-ghost btn-block" id="subjectSheetCancelBtn">Cancel</button>
+      <button class="btn btn-primary btn-block" id="subjectSheetOkBtn">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Topic/subtopic picker bottom sheet ============ -->
+<div class="sheet-overlay" id="topicSheetOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h3 id="topicSheetTitle">Topics</h3>
+      <button id="topicSheetCloseBtn" aria-label="Close">×</button>
+    </div>
+    <p class="topic-sheet-note">Choose specific topics or leave all selected to cover everything.</p>
+    <div class="sheet-selectall" id="topicSelectAll">
+      <div class="sheet-checkbox" id="topicSelectAllCheckbox"></div>
+      <span>All topics</span>
+    </div>
+    <div class="sheet-list" id="topicSheetList"></div>
+    <div class="sheet-foot">
+      <button class="btn btn-ghost btn-block" id="topicSheetCancelBtn">Cancel</button>
+      <button class="btn btn-primary btn-block" id="topicSheetOkBtn">Done</button>
     </div>
   </div>
 </div>
@@ -200,5 +247,5 @@
 <script src="shared.js"></script>
 <script src="select-subjects.js"></script>
 </body>
-    </html>
+  </html>
   
