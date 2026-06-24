@@ -32,12 +32,13 @@
   /* ---- Auto-moving carousel ---- */
   .carousel{
     margin:16px 0 4px; overflow:hidden; position:relative;
+    cursor:grab;
   }
   .carousel-track{
     display:flex; width:max-content;
     animation:carouselScroll 22s linear infinite;
   }
-  .carousel:hover .carousel-track{animation-play-state:paused;}
+  /* NOTE: hover pause intentionally removed — pause/resume handled by JS drag/touch logic */
   .carousel-card{
     width:200px; flex-shrink:0; margin-right:10px;
     background:#fff; border:1px solid var(--line); border-radius:var(--radius-md);
@@ -158,7 +159,7 @@
   <!-- ============ Hero ============ -->
   <section class="home-hero">
     <h1>Practice like it's<br><span class="accent">exam day.</span></h1>
-    <p>Real JAMB past questions, 1978 to date. Instant scoring, full explanations, your own pace.</p>
+    <p>Real JAMB past questions, 1992 to date. Instant scoring, full explanations, your own pace.</p>
     <div class="home-hero-cta">
       <a href="select-subjects.html" class="btn btn-primary">Start practicing free</a>
     </div>
@@ -173,8 +174,8 @@
 
   <!-- ============ Stats ============ -->
   <div class="stat-row">
-    <div class="stat"><div class="stat-num">14</div><div class="stat-label">JAMB subjects</div></div>
-    <div class="stat"><div class="stat-num">1978+</div><div class="stat-label">Years covered</div></div>
+    <div class="stat"><div class="stat-num">27</div><div class="stat-label">JAMB subjects</div></div>
+    <div class="stat"><div class="stat-num">1992+</div><div class="stat-label">Years covered</div></div>
     <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Explained</div></div>
     <div class="stat"><div class="stat-num">₦2,500</div><div class="stat-label">Full access</div></div>
   </div>
@@ -183,13 +184,13 @@
   <section class="sec">
     <div class="sec-head">
       <h2>Three ways to practice</h2>
-      <p>Pick subjects, set your own timer, or skip the clock entirely.</p>
+      <p>Pick your subjects, set your own timer, or skip the clock entirely.</p>
     </div>
     <div class="mode-grid">
       <div class="mode-card">
         <span class="mode-tag" style="background:#E8F1FF;color:#1F5FBF;">PRACTICE</span>
         <h3>Your subjects, your pace</h3>
-        <p>Pick up to 4 subjects, any year from 1978 to date, your own question count and timer.</p>
+        <p>Pick any subjects, any year from 1992 to date, your own question count and timer.</p>
       </div>
       <div class="mode-card">
         <span class="mode-tag" style="background:#FFEFE6;color:#E2531F;">RANDOM</span>
@@ -207,12 +208,12 @@
   <!-- ============ Subjects ============ -->
   <section class="sec" style="background:var(--paper-dim);">
     <div class="sec-head">
-      <h2>All JAMB subjects</h2>
-      <p>Tap any subject to start, or select up to 4 at once.</p>
+      <h2>All 27 JAMB subjects</h2>
+      <p>Tap any subject to start, or combine as many as you want.</p>
     </div>
     <div class="subject-strip" id="subjectStrip"></div>
     <div style="margin-top:14px; text-align:center;">
-      <a href="select-subjects.html" class="btn btn-ghost btn-sm">See all subjects</a>
+      <a href="select-subjects.html" class="btn btn-ghost btn-sm">See all subjects →</a>
     </div>
   </section>
 
@@ -226,7 +227,7 @@
         <h3>Free preview</h3>
         <div class="price-amount">₦0</div>
         <ul class="price-list">
-          <li><span class="ok">✓</span> 10 questions per subject, per year</li>
+          <li><span class="ok">✓</span> 5 questions per subject, per year</li>
           <li><span class="ok">✓</span> Practice &amp; Study mode</li>
           <li><span class="ok">✓</span> Instant scoring &amp; history</li>
         </ul>
@@ -236,7 +237,7 @@
         <span class="price-badge">Most students choose this</span>
         <h3>Full access</h3>
         <div class="price-amount">₦2,500</div>
-        <div class="price-sub">Full access through the 2027 admission season</div>
+        <div class="price-sub">Full access through the 2026 admission season</div>
         <ul class="price-list">
           <li><span class="ok">✓</span> Every question, every year, every subject</li>
           <li><span class="ok">✓</span> Custom-timed mock exams</li>
@@ -253,7 +254,7 @@
     <div class="reviews-empty">
       <div class="reviews-empty-icon">★</div>
       <h3>Reviews open at launch</h3>
-      <p>Be one of the first to practice — your review shows up here first, alongside real Google reviews as they come in.</p>
+      <p>Be one of the first to practice — your review shows up here first, alongside real reviews as they come in.</p>
       <a href="select-subjects.html" class="btn btn-primary btn-sm">Start practicing free</a>
     </div>
   </section>
@@ -261,7 +262,7 @@
 
 <footer class="footer">
   <div class="footer-name"><span class="appbar-mark">U</span> UTME<em>Schools</em></div>
-  <p>Real JAMB past questions, 1978 to date. Built for Nigerian candidates.</p>
+  <p>Real JAMB past questions, 1992 to date. Built for Nigerian candidates.</p>
   <div class="footer-links">
     <a href="https://wa.me/2347065732365" target="_blank" rel="noopener">WhatsApp: 0706 573 2365</a>
     <a href="mailto:wisdomkayode91@gmail.com">wisdomkayode91@gmail.com</a>
@@ -305,5 +306,5 @@
 <script src="shared.js"></script>
 <script src="script.js"></script>
 </body>
-    </html>
+      </html>
       
