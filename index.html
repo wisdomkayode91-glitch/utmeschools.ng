@@ -29,20 +29,18 @@
   }
   .home-hero-cta{margin-top:16px; display:flex; gap:8px; justify-content:center; position:relative; z-index:1;}
 
-  /* ---- Auto-moving carousel ---- */
+  /* ---- Touch-draggable auto-carousel ---- */
   .carousel{
     margin:16px 0 4px; overflow:hidden; position:relative;
-    cursor:grab;
+    cursor:grab; user-select:none;
   }
   .carousel-track{
-    display:flex; width:max-content;
-    animation:carouselScroll 22s linear infinite;
+    display:flex; width:max-content; will-change:transform;
   }
-  /* NOTE: hover pause intentionally removed — pause/resume handled by JS drag/touch logic */
   .carousel-card{
     width:200px; flex-shrink:0; margin-right:10px;
     background:#fff; border:1px solid var(--line); border-radius:var(--radius-md);
-    padding:14px;
+    padding:14px; pointer-events:none;
   }
   .carousel-card .cc-tag{
     display:inline-block; font-family:var(--font-mono); font-size:10px; font-weight:700;
@@ -50,10 +48,6 @@
   }
   .carousel-card h4{font-size:13.5px; margin-bottom:4px;}
   .carousel-card p{font-size:11.5px; color:var(--ink-soft); line-height:1.45;}
-  @keyframes carouselScroll{
-    from{transform:translateX(0);}
-    to{transform:translateX(-50%);}
-  }
 
   /* ---- Sections ---- */
   .sec{padding:26px 16px;}
@@ -184,7 +178,7 @@
   <section class="sec">
     <div class="sec-head">
       <h2>Three ways to practice</h2>
-      <p>Pick your subjects, set your own timer, or skip the clock entirely.</p>
+      <p>Pick subjects, set your own timer, or skip the clock entirely.</p>
     </div>
     <div class="mode-grid">
       <div class="mode-card">
@@ -208,12 +202,12 @@
   <!-- ============ Subjects ============ -->
   <section class="sec" style="background:var(--paper-dim);">
     <div class="sec-head">
-      <h2>All 27 JAMB subjects</h2>
-      <p>Tap any subject to start, or combine as many as you want.</p>
+      <h2>All JAMB subjects</h2>
+      <p>Tap any subject to start, or select up to 4 at once.</p>
     </div>
     <div class="subject-strip" id="subjectStrip"></div>
     <div style="margin-top:14px; text-align:center;">
-      <a href="select-subjects.html" class="btn btn-ghost btn-sm">See all subjects →</a>
+      <a href="select-subjects.html" class="btn btn-ghost btn-sm">See all subjects</a>
     </div>
   </section>
 
@@ -237,13 +231,17 @@
         <span class="price-badge">Most students choose this</span>
         <h3>Full access</h3>
         <div class="price-amount">₦2,500</div>
-        <div class="price-sub">Full access through the 2026 admission season</div>
+        <div class="price-sub">Full access through the 2027 admission season</div>
         <ul class="price-list">
           <li><span class="ok">✓</span> Every question, every year, every subject</li>
           <li><span class="ok">✓</span> Custom-timed mock exams</li>
           <li><span class="ok">✓</span> Random mode, full analysis</li>
+          <li><span class="ok">✓</span> Unlimited bookmarks &amp; history</li>
         </ul>
-        <a href="#" class="btn btn-primary btn-block btn-sm">Unlock full access</a>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <a href="payment.html?method=paystack" class="btn btn-primary btn-block btn-sm">⚡ Pay instantly (Paystack)</a>
+          <a href="payment.html?method=manual" class="btn btn-block btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border:1.5px solid rgba(255,255,255,0.3);">🏦 Bank transfer + WhatsApp</a>
+        </div>
       </div>
     </div>
   </section>
@@ -254,7 +252,7 @@
     <div class="reviews-empty">
       <div class="reviews-empty-icon">★</div>
       <h3>Reviews open at launch</h3>
-      <p>Be one of the first to practice — your review shows up here first, alongside real reviews as they come in.</p>
+      <p>Be one of the first to practice — your review shows up here first, alongside real Google reviews as they come in.</p>
       <a href="select-subjects.html" class="btn btn-primary btn-sm">Start practicing free</a>
     </div>
   </section>
@@ -306,5 +304,4 @@
 <script src="shared.js"></script>
 <script src="script.js"></script>
 </body>
-      </html>
-      
+</html>
