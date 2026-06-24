@@ -475,15 +475,4 @@ startBtn.addEventListener('click', () => {
     shuffleO: document.querySelector('[data-toggle="shuffleO"]').classList.contains('on'),
     subjects: selectedIds.map(id => ({
       id,
-      ...subjectConfig[i})),
-  };
-
-  // Store in sessionStorage for practice.html to pick up
-  sessionStorage.setItem('utmeSession', JSON.stringify(session));
-  window.location.href = 'practice.html';
-});
-
-/* ======================================================
-   INIT — render English pre-selected on load
-   ====================================================== */
-renderConfigList();
+      ...subjectConfig[i
