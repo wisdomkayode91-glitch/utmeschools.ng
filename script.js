@@ -23,6 +23,7 @@ const SUBJECTS = [
   { name: 'Fine Art',                  icon: '🎨', bg: '#FCE4E4', fg: '#C0392B' },
   { name: 'Music',                     icon: '🎵', bg: '#F1EAFB', fg: '#6C3FBF' },
   { name: 'French',                    icon: '🇫🇷', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { name: 'Arabic',                    icon: '🌙', bg: '#E7F8EF', fg: '#0C8C58' },
   { name: 'Hausa',                     icon: '🗣️', bg: '#FFF4DC', fg: '#A6760A' },
   { name: 'Igbo',                      icon: '🗣️', bg: '#FCE4E4', fg: '#C0392B' },
   { name: 'Yoruba',                    icon: '🗣️', bg: '#F1EAFB', fg: '#6C3FBF' },
@@ -139,6 +140,5 @@ if (track) {
 
 /* ---- Footer year ---- */
 const yearEl = document.getElementById('year');
-if (yearEl) yearEl.textContent = new Date().getFullYear();.
-
-                      
+if (yearEl) yearEl.textContent = new Date().getFullYear();
+   
