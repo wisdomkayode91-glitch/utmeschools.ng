@@ -1,0 +1,72 @@
+[
+  {
+    "id": 1,
+    "subject": "English Language",
+    "year": 2025,
+    "topic": "Comprehension",
+    "question": "What is the primary focus of the passage?",
+    "options": [
+      "The history of political systems",
+      "The role of social media in modern politics",
+      "The complexities and challenges of contemporary politics",
+      "The benefits of authoritarian governance"
+    ],
+    "answer": 2
+  },
+  {
+    "id": 2,
+    "subject": "English Language",
+    "year": 2025,
+    "topic": "Comprehension",
+    "question": "What is the tone of the passage?",
+    "options": [
+      "Optimistic and celebratory",
+      "Critical yet balanced",
+      "Sarcastic and dismissive",
+      "Neutral and detached"
+    ],
+    "answer": 1
+  },
+  {
+    "id": 3,
+    "subject": "English Language",
+    "year": 2025,
+    "topic": "Comprehension",
+    "question": "The word 'optics' in the passage most closely means:",
+    "options": [
+      "Public perception",
+      "Policy substance",
+      "Economic strategy",
+      "Technological innovation"
+    ],
+    "answer": 0
+  },
+  {
+    "id": 4,
+    "subject": "English Language",
+    "year": 2025,
+    "topic": "Comprehension",
+    "question": "What stylistic device is evident in the phrase 'delicate dance of trust'?",
+    "options": [
+      "Metaphor",
+      "Hyperbole",
+      "Irony",
+      "Euphemism"
+    ],
+    "answer": 0
+  },
+  {
+    "id": 5,
+    "subject": "English Language",
+    "year": 2025,
+    "topic": "Comprehension",
+    "question": "How does the passage's style contribute to its message?",
+    "options": [
+      "It uses informal language to engage a casual audience",
+      "It employs descriptive and analytical language to explore complex ideas",
+      "It relies on technical jargon to appeal to experts",
+      "It uses emotional appeals to persuade readers"
+    ],
+    "answer": 1
+  }
+]
