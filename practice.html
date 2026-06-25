@@ -1,205 +1,404 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Practice — UTMESchools</title><link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="shared.css"><style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Practice - UTMESchools</title>
 
-.practice-top{
+<link rel="stylesheet" href="shared.css">
+
+<style>
+
+.practice-header{
   background:#fff;
-  border-bottom:1px solid var(--line);
-  padding:12px 14px;
+  border-bottom:1px solid #e5e7eb;
+  padding:12px;
 }
 
-.question-meta{
+.top-row{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin-bottom:10px;
 }
 
-.q-number{
-  font-size:13px;
+.subject-tab{
+  color:#1F5FBF;
   font-weight:700;
-  color:var(--navy);
+  border-bottom:3px solid #1F5FBF;
+  padding-bottom:6px;
+}
+
+.header-icons{
+  display:flex;
+  gap:10px;
+}
+
+.icon-btn{
+  width:38px;
+  height:38px;
+  border:none;
+  border-radius:10px;
+  background:#f3f4f6;
+  cursor:pointer;
+}
+
+.question-info{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:10px;
+}
+
+.question-counter{
+  font-weight:700;
 }
 
 .timer{
-  font-family:var(--font-mono);
-  font-size:13px;
+  color:#c0392b;
   font-weight:700;
-  color:#C0392B;
 }
 
 .progress{
   height:8px;
-  background:#E8E8E8;
+  background:#e5e7eb;
   border-radius:999px;
   overflow:hidden;
+  margin-top:12px;
 }
 
 .progress-fill{
   height:100%;
   width:0%;
-  background:var(--green);
-  transition:width .2s ease;
+  background:#16a34a;
 }
 
-.question-wrap{
-  padding:14px;
+.question-container{
+  padding:16px;
 }
 
 .question-card{
   background:#fff;
-  border:1px solid var(--line);
   border-radius:14px;
-  padding:18px;
-}
-
-.question-subject{
-  display:inline-block;
-  background:#E8F1FF;
-  color:var(--navy);
-  padding:4px 8px;
-  border-radius:999px;
-  font-size:11px;
-  font-weight:700;
-  margin-bottom:12px;
+  border:1px solid #e5e7eb;
+  padding:16px;
 }
 
 .question-text{
   font-size:15px;
   line-height:1.7;
-  font-weight:500;
 }
 
 .options{
-  margin-top:18px;
+  margin-top:16px;
   display:flex;
   flex-direction:column;
   gap:10px;
 }
 
 .option{
-  display:flex;
-  gap:12px;
-  align-items:flex-start;
-  background:#fff;
-  border:1.5px solid var(--line);
+  border:1px solid #d1d5db;
   border-radius:12px;
   padding:12px;
   cursor:pointer;
+  display:flex;
+  gap:12px;
 }
 
 .option.active{
-  border-color:var(--navy);
-  background:#F5F8FF;
+  border-color:#1F5FBF;
+  background:#eef4ff;
+}
+
+.option.correct{
+  border-color:#16a34a;
+  background:#ecfdf5;
+}
+
+.option.wrong{
+  border-color:#dc2626;
+  background:#fef2f2;
 }
 
 .option-letter{
-  width:28px;
-  height:28px;
-  border-radius:50%;
-  background:#F0F3F7;
-  display:flex;
-  align-items:center;
-  justify-content:center;
   font-weight:700;
-  flex-shrink:0;
 }
 
-.option.active .option-letter{
-  background:var(--navy);
-  color:#fff;
+.answer-box{
+  display:none;
+  margin-top:16px;
+  background:#f8fafc;
+  border-radius:12px;
+  padding:14px;
+  border:1px solid #e5e7eb;
 }
 
-.option-text{
-  flex:1;
-  font-size:14px;
-  line-height:1.5;
+.answer-box.show{
+  display:block;
+}
+
+.answer-topic{
+  font-weight:700;
+  margin-bottom:8px;
 }
 
 .bottom-bar{
   position:sticky;
   bottom:0;
   background:#fff;
-  border-top:1px solid var(--line);
+  border-top:1px solid #e5e7eb;
   padding:12px;
+}
+
+.bottom-top{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+.score-display{
+  font-weight:700;
+}
+
+.bottom-buttons{
   display:flex;
   gap:8px;
 }
 
-.bottom-bar button{
+.bottom-buttons button{
   flex:1;
 }
 
-.submit-btn{
-  background:var(--green);
-  color:#fff;
+.jump-btn{
+  background:#f3f4f6;
 }
 
-</style></head>
-<body><header class="appbar">
-  <button class="appbar-back" onclick="history.back()">←</button>
-  <span class="appbar-title">Practice</span>
-  <button class="appbar-burger" id="menuOpenBtn">☰</button>
-</header><section class="practice-top">  <div class="question-meta"><div class="q-number" id="questionNumber">
-  Question 1 of 40
+.show-btn{
+  background:#f59e0b;
+  color:white;
+}
+
+.submit-btn{
+  background:#16a34a;
+  color:white;
+}
+
+.nav-overlay,
+.calc-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.5);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+}
+
+.nav-overlay.open,
+.calc-overlay.open{
+  display:flex;
+}
+
+.nav-box,
+.calc-box{
+  background:white;
+  width:90%;
+  max-width:400px;
+  border-radius:16px;
+  padding:16px;
+}
+
+.nav-grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px;
+  margin-top:12px;
+}
+
+.nav-grid button{
+  height:40px;
+}
+
+.calc-display{
+  border:1px solid #e5e7eb;
+  padding:12px;
+  margin-bottom:12px;
+  text-align:right;
+  font-size:22px;
+}
+
+.calc-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+}
+
+.calc-grid button{
+  height:50px;
+}
+
+</style>
+</head>
+
+<body>
+
+<header class="practice-header">
+
+<div class="top-row">
+
+<div class="subject-tab" id="questionSubject">
+English
+</div>
+
+<div class="header-icons">
+
+<button class="icon-btn">🔖</button>
+
+<button class="icon-btn">🤖</button>
+
+<button class="icon-btn">🚩</button>
+
+<button class="icon-btn" id="openCalcBtn">🧮</button>
+
+</div>
+
+</div>
+
+<div class="question-info">
+
+<div class="question-counter" id="questionNumber">
+Question 1/60
 </div>
 
 <div class="timer" id="timer">
-  02:00:00
+02:00:00
 </div>
 
-  </div>  <div class="progress">
-    <div class="progress-fill" id="progressFill"></div>
-  </div></section><main class="question-wrap">  <div class="question-card"><div class="question-subject" id="questionSubject">
-  English Language
 </div>
+
+<div class="progress">
+<div class="progress-fill" id="progressFill"></div>
+</div>
+
+</header>
+
+<main class="question-container">
+
+<div class="question-card">
 
 <div class="question-text" id="questionText">
-  Loading question...
+Loading question...
 </div>
 
 <div class="options" id="optionsContainer">
 </div>
 
-  </div></main><div class="bottom-bar"><button
-class="btn btn-ghost"
-id="prevBtn">
+<div class="answer-box" id="answerBox">
+
+<div class="answer-topic" id="answerTopic">
+Topic
+</div>
+
+<div id="answerExplanation">
+Explanation
+</div>
+
+</div>
+
+</div>
+
+</main>
+
+<div class="bottom-bar">
+
+<div class="bottom-top">
+
+<div class="score-display" id="scoreDisplay">
+0/0
+</div>
+
+<button class="jump-btn" id="openNavBtn">
+Jump To Question
+</button>
+
+</div>
+
+<div class="bottom-buttons">
+
+<button id="prevBtn">
 ← Previous
 </button>
 
-<button
-class="btn btn-primary"
-id="nextBtn">
+<button id="nextBtn">
 Next →
 </button>
 
-<button
-class="btn submit-btn"
-id="submitBtn">
+<button id="showBtn" class="show-btn">
+Show
+</button>
+
+<button id="submitBtn" class="submit-btn">
 Submit
 </button>
 
-</div><!-- Hamburger Menu --><div class="menu-overlay" id="menuOverlay">
-  <div class="menu-panel"><button class="menu-close" id="menuCloseBtn">×</button>
-
-<div class="menu-head">
-  <div class="appbar-mark">U</div>
-  <div>
-    <div class="menu-head-name">UTMESchools</div>
-    <div class="menu-head-sub">JAMB · UTME Practice</div>
-  </div>
 </div>
 
-<nav class="menu-list">
-  <a href="index.html">🏠 Home</a>
-  <a href="dashboard.html">📊 Results</a>
-  <a href="bookmarks.html">🔖 Bookmarks</a>
-  <a href="discussion.html">💬 Discussion</a>
-</nav>
+</div>
 
-  </div>
-</div><script src="shared.js"></script><script src="practice.js"></script></body>
-                                                                             </html>
+<!-- Navigation Modal -->
+
+<div class="nav-overlay" id="navOverlay">
+
+<div class="nav-box">
+
+<h3>Select Question</h3>
+
+<div class="nav-grid" id="navGrid">
+</div>
+
+</div>
+
+</div>
+
+<!-- Calculator -->
+
+<div class="calc-overlay" id="calcOverlay">
+
+<div class="calc-box">
+
+<div class="calc-display" id="calcDisplay">
+0
+</div>
+
+<div class="calc-grid">
+
+<button>7</button>
+<button>8</button>
+<button>9</button>
+<button>/</button>
+
+<button>4</button>
+<button>5</button>
+<button>6</button>
+<button>*</button>
+
+<button>1</button>
+<button>2</button>
+<button>3</button>
+<button>-</button>
+
+<button>0</button>
+<button>.</button>
+<button>=</button>
+<button>+</button>
+
+</div>
+
+</div>
+
+</div>
+
+<script src="shared.js"></script>
+<script src="practice.js"></script>
+
+</body>
+</html>
