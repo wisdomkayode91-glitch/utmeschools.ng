@@ -1,9 +1,10 @@
 [
   {
     "id": 1,
-    "subject": "English Language",
+    "subject": "English",
     "year": 2025,
-    "question": "What is the primary focus of the passage on politics?",
+    "passage": "Politics, the art of governance and power allocation, shapes societies through intricate webs of influence, ideology, and decision-making. In today's world, politics is both a unifying force and a battleground of competing interests. Governments, elected or otherwise, wield authority to enact policies that affect millions. Modern politics is increasingly polarized, with ideological divides deepening over issues like climate change, immigration, and wealth inequality. Social media amplifies these tensions. Globalization adds another layer of complexity as nations balance domestic priorities and international pressures. Despite its flaws, politics remains essential for resolving conflicts and shaping the future.",
+    "question": "What is the primary focus of the passage?",
     "options": [
       "The history of political systems",
       "The role of social media in modern politics",
@@ -11,12 +12,14 @@
       "The benefits of authoritarian governance"
     ],
     "answer": 2,
-    "explanation": "The passage discusses various aspects of modern politics including polarization, globalization, social media, and governance challenges."
+    "explanation": "The passage discusses modern politics, polarization, globalization and governance challenges."
   },
+
   {
     "id": 2,
-    "subject": "English Language",
+    "subject": "English",
     "year": 2025,
+    "passage": "Politics, the art of governance and power allocation, shapes societies through intricate webs of influence, ideology, and decision-making. In today's world, politics is both a unifying force and a battleground of competing interests. Governments, elected or otherwise, wield authority to enact policies that affect millions. Modern politics is increasingly polarized, with ideological divides deepening over issues like climate change, immigration, and wealth inequality. Social media amplifies these tensions. Globalization adds another layer of complexity as nations balance domestic priorities and international pressures. Despite its flaws, politics remains essential for resolving conflicts and shaping the future.",
     "question": "What is the tone of the passage?",
     "options": [
       "Optimistic and celebratory",
@@ -25,13 +28,15 @@
       "Neutral and detached"
     ],
     "answer": 1,
-    "explanation": "The passage criticizes some aspects of politics while acknowledging its importance."
+    "explanation": "The writer criticizes some aspects of politics but still acknowledges its importance."
   },
+
   {
     "id": 3,
-    "subject": "English Language",
+    "subject": "English",
     "year": 2025,
-    "question": "The word 'optics' in the passage most closely means:",
+    "passage": "Politics, the art of governance and power allocation, shapes societies through intricate webs of influence, ideology, and decision-making.",
+    "question": "The word 'optics' most closely means:",
     "options": [
       "Public perception",
       "Policy substance",
@@ -39,12 +44,14 @@
       "Technological innovation"
     ],
     "answer": 0,
-    "explanation": "Optics refers to public image or public perception."
+    "explanation": "Optics refers to appearance or public perception."
   },
+
   {
     "id": 4,
-    "subject": "English Language",
+    "subject": "English",
     "year": 2025,
+    "passage": "Politics, the art of governance and power allocation, shapes societies through intricate webs of influence, ideology, and decision-making.",
     "question": "What stylistic device is evident in the phrase 'delicate dance of trust'?",
     "options": [
       "Metaphor",
@@ -53,20 +60,172 @@
       "Euphemism"
     ],
     "answer": 0,
-    "explanation": "The phrase compares trust to a dance."
+    "explanation": "The phrase compares trust to a dance, making it a metaphor."
   },
+
   {
     "id": 5,
-    "subject": "English Language",
+    "subject": "English",
     "year": 2025,
+    "passage": "Politics, the art of governance and power allocation, shapes societies through intricate webs of influence, ideology, and decision-making.",
     "question": "How does the passage's style contribute to its message?",
     "options": [
-      "It uses informal language to engage a casual audience",
-      "It employs descriptive and analytical language to explore complex ideas",
-      "It relies on technical jargon to appeal to experts",
-      "It uses emotional appeals to persuade readers"
+      "It uses informal language",
+      "It employs descriptive and analytical language",
+      "It relies on technical jargon",
+      "It uses emotional appeals"
     ],
     "answer": 1,
-    "explanation": "The passage uses descriptive and analytical language."
+    "explanation": "The writer uses descriptive and analytical language to discuss complex political ideas."
+  },
+
+  {
+    "id": 6,
+    "subject": "English",
+    "year": 2025,
+    "question": "What is the primary dilemma faced by Mr. Bepo Adewale in The Lekki Headmaster?",
+    "options": [
+      "Choosing between teaching and starting a business",
+      "Balancing his passion for education with family pressures to relocate to the UK",
+      "Resolving conflicts between students and parents",
+      "Addressing corruption within the school's board"
+    ],
+    "answer": 1,
+    "explanation": "Bepo struggles between his teaching career and relocation pressure."
+  },
+
+  {
+    "id": 7,
+    "subject": "English",
+    "year": 2025,
+    "question": "What is the significance of the nickname 'The Lekki Headmaster'?",
+    "options": [
+      "It reflects strict discipline",
+      "It highlights his conflict-resolution skills",
+      "It refers to academic qualifications",
+      "It mocks his leadership"
+    ],
+    "answer": 1,
+    "explanation": "The nickname became a symbol of his leadership and conflict-resolution ability."
+  },
+
+  {
+    "id": 8,
+    "subject": "English",
+    "year": 2025,
+    "question": "What event in Chapter 1 sets the tone for the novel?",
+    "options": [
+      "A student wins a competition",
+      "Mr. Bepo's emotional breakdown",
+      "A staff meeting",
+      "New teaching methods"
+    ],
+    "answer": 1,
+    "explanation": "His emotional breakdown establishes the novel's reflective tone."
+  },
+
+  {
+    "id": 9,
+    "subject": "English",
+    "year": 2025,
+    "question": "What is the tone of The Lekki Headmaster?",
+    "options": [
+      "Satirical and humorous",
+      "Optimistic and inspirational",
+      "Somber and reflective",
+      "Cynical and critical"
+    ],
+    "answer": 2,
+    "explanation": "The novel reflects deeply on educational and societal issues."
+  },
+
+  {
+    "id": 10,
+    "subject": "English",
+    "year": 2025,
+    "question": "Which literary device is prominently used in the novel?",
+    "options": [
+      "Metaphor",
+      "Satire",
+      "Personification",
+      "Alliteration"
+    ],
+    "answer": 1,
+    "explanation": "Satire is used to criticize social problems."
+  },
+
+  {
+    "id": 11,
+    "subject": "English",
+    "year": 2025,
+    "question": "Why did Stardom Schools lower its boarding fees?",
+    "options": [
+      "To compete with rivals",
+      "To address lateness caused by Lagos traffic",
+      "To attract foreign students",
+      "To fund new facilities"
+    ],
+    "answer": 1,
+    "explanation": "The reduction encouraged boarding and reduced lateness."
+  },
+
+  {
+    "id": 12,
+    "subject": "English",
+    "year": 2025,
+    "question": "How is migration (Japa) portrayed in the novel?",
+    "options": [
+      "As an easy solution",
+      "As a source of conflict for Bepo",
+      "As a minor subplot",
+      "As universally positive"
+    ],
+    "answer": 1,
+    "explanation": "Migration creates personal and professional conflict."
+  },
+
+  {
+    "id": 13,
+    "subject": "English",
+    "year": 2025,
+    "question": "What role does Mrs. Ibidun Gloss play?",
+    "options": [
+      "Vice Principal",
+      "Managing Director",
+      "Concerned Parent",
+      "Teacher"
+    ],
+    "answer": 1,
+    "explanation": "She is the Managing Director of Stardom Schools."
+  },
+
+  {
+    "id": 14,
+    "subject": "English",
+    "year": 2025,
+    "question": "According to Ikenna Egbu, what is one memorable attribute of Jos?",
+    "options": [
+      "Its mountains",
+      "Its people",
+      "Its location",
+      "Its weather"
+    ],
+    "answer": 3,
+    "explanation": "Jos is remembered for its pleasant weather."
+  },
+
+  {
+    "id": 15,
+    "subject": "English",
+    "year": 2025,
+    "question": "Teachers whose students had distinctions received how much each?",
+    "options": [
+      "20,000 naira",
+      "50,000 naira",
+      "40,000 naira",
+      "30,000 naira"
+    ],
+    "answer": 3,
+    "explanation": "Each teacher received 30,000 naira."
   }
 ]
