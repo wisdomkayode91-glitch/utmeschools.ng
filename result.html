@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Result — UTMESchools</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="shared.css">
+
+<style>
+
+.result-wrap{
+  padding:14px;
+}
+
+.result-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:24px;
+  text-align:center;
+}
+
+.score-circle{
+  width:130px;
+  height:130px;
+  border-radius:50%;
+  background:#E8F1FF;
+  border:8px solid var(--navy);
+  margin:0 auto 18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+}
+
+.score-percent{
+  font-size:34px;
+  font-weight:800;
+  color:var(--navy);
+}
+
+.score-label{
+  font-size:12px;
+  color:var(--ink-soft);
+}
+
+.result-title{
+  font-size:22px;
+  font-weight:800;
+  margin-bottom:8px;
+}
+
+.result-sub{
+  color:var(--ink-soft);
+  font-size:14px;
+}
+
+.stats{
+  margin-top:22px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.stat{
+  background:var(--paper-dim);
+  border-radius:12px;
+  padding:14px;
+}
+
+.stat-value{
+  font-size:22px;
+  font-weight:800;
+  color:var(--navy);
+}
+
+.stat-label{
+  font-size:12px;
+  color:var(--ink-soft);
+}
+
+.actions{
+  margin-top:20px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.review-section{
+  margin-top:18px;
+}
+
+.review-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:12px;
+}
+
+.review-question{
+  font-weight:600;
+  margin-bottom:12px;
+  line-height:1.6;
+}
+
+.correct{
+  color:#0C8C58;
+  font-weight:700;
+}
+
+.wrong{
+  color:#C0392B;
+  font-weight:700;
+}
+
+.review-answer{
+  font-size:14px;
+  margin-top:8px;
+}
+
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <button class="appbar-back" onclick="window.location.href='index.html'">←</button>
+  <span class="appbar-title">Result</span>
+  <button class="appbar-burger" id="menuOpenBtn">☰</button>
+</header>
+
+<main class="result-wrap">
+
+  <div class="result-card">
+
+    <div class="score-circle">
+      <div class="score-percent" id="percent">
+        0%
+      </div>
+      <div class="score-label">
+        Score
+      </div>
+    </div>
+
+    <h2 class="result-title">
+      Practice Complete
+    </h2>
+
+    <p class="result-sub">
+      Keep practicing to improve your UTME score.
+    </p>
+
+    <div class="stats">
+
+      <div class="stat">
+        <div class="stat-value" id="score">
+          0
+        </div>
+        <div class="stat-label">
+          Correct
+        </div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-value" id="total">
+          0
+        </div>
+        <div class="stat-label">
+          Total
+        </div>
+      </div>
+
+    </div>
+
+    <div class="actions">
+
+      <button
+        class="btn btn-primary btn-block"
+        onclick="location.href='select-subjects.html'">
+        Practice Again
+      </button>
+
+      <button
+        class="btn btn-ghost btn-block"
+        onclick="toggleReview()">
+        Review Answers
+      </button>
+
+    </div>
+
+  </div>
+
+  <div
+    class="review-section"
+    id="reviewSection"
+    style="display:none;">
+  </div>
+
+</main>
+
+<!-- MENU -->
+
+<div class="menu-overlay" id="menuOverlay">
+  <div class="menu-panel">
+
+    <button class="menu-close" id="menuCloseBtn">
+      ×
+    </button>
+
+    <div class="menu-head">
+      <div class="appbar-mark">U</div>
+      <div>
+        <div class="menu-head-name">
+          UTMESchools
+        </div>
+        <div class="menu-head-sub">
+          JAMB · UTME Practice
+        </div>
+      </div>
+    </div>
+
+    <nav class="menu-list">
+      <a href="index.html">🏠 Home</a>
+      <a href="dashboard.html">📊 Results</a>
+      <a href="bookmarks.html">🔖 Bookmarks</a>
+      <a href="discussion.html">💬 Discussion</a>
+    </nav>
+
+  </div>
+</div>
+
+<script src="shared.js"></script>
+
+<script>
+
+const result =
+JSON.parse(
+localStorage.getItem('utme_result')
+);
+
+if(result){
+
+  document.getElementById('percent')
+    .textContent =
+    result.percentage + '%';
+
+  document.getElementById('score')
+    .textContent =
+    result.score;
+
+  document.getElementById('total')
+    .textContent =
+    result.total;
+
+}
+
+function toggleReview(){
+
+  const section =
+  document.getElementById(
+    'reviewSection'
+  );
+
+  if(section.style.display === 'block'){
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+
+  if(section.innerHTML !== ''){
+    return;
+  }
+
+  result.questions.forEach(
+    (q,index)=>{
+
+      const user =
+      result.answers[index];
+
+      const correct =
+      q.answer;
+
+      const div =
+      document.createElement('div');
+
+      div.className =
+      'review-card';
+
+      div.innerHTML = `
+        <div class="review-question">
+          ${index + 1}.
+          ${q.question}
+        </div>
+
+        <div class="${
+          user === correct
+          ? 'correct'
+          : 'wrong'
+        }">
+
+          ${
+            user === correct
+            ? '✓ Correct'
+            : '✗ Wrong'
+          }
+
+        </div>
+
+        <div class="review-answer">
+          Your answer:
+          ${
+            user !== undefined
+            ? q.options[user]
+            : 'No answer'
+          }
+        </div>
+
+        <div class="review-answer correct">
+          Correct answer:
+          ${q.options[correct]}
+        </div>
+      `;
+
+      section.appendChild(div);
+
+    });
+
+}
+
+</script>
+
+</body>
+  </html>
