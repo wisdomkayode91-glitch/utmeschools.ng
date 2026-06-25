@@ -1,0 +1,205 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Practice — UTMESchools</title><link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="shared.css"><style>
+
+.practice-top{
+  background:#fff;
+  border-bottom:1px solid var(--line);
+  padding:12px 14px;
+}
+
+.question-meta{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+.q-number{
+  font-size:13px;
+  font-weight:700;
+  color:var(--navy);
+}
+
+.timer{
+  font-family:var(--font-mono);
+  font-size:13px;
+  font-weight:700;
+  color:#C0392B;
+}
+
+.progress{
+  height:8px;
+  background:#E8E8E8;
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.progress-fill{
+  height:100%;
+  width:0%;
+  background:var(--green);
+  transition:width .2s ease;
+}
+
+.question-wrap{
+  padding:14px;
+}
+
+.question-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:18px;
+}
+
+.question-subject{
+  display:inline-block;
+  background:#E8F1FF;
+  color:var(--navy);
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  margin-bottom:12px;
+}
+
+.question-text{
+  font-size:15px;
+  line-height:1.7;
+  font-weight:500;
+}
+
+.options{
+  margin-top:18px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.option{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  background:#fff;
+  border:1.5px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+  cursor:pointer;
+}
+
+.option.active{
+  border-color:var(--navy);
+  background:#F5F8FF;
+}
+
+.option-letter{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  background:#F0F3F7;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  flex-shrink:0;
+}
+
+.option.active .option-letter{
+  background:var(--navy);
+  color:#fff;
+}
+
+.option-text{
+  flex:1;
+  font-size:14px;
+  line-height:1.5;
+}
+
+.bottom-bar{
+  position:sticky;
+  bottom:0;
+  background:#fff;
+  border-top:1px solid var(--line);
+  padding:12px;
+  display:flex;
+  gap:8px;
+}
+
+.bottom-bar button{
+  flex:1;
+}
+
+.submit-btn{
+  background:var(--green);
+  color:#fff;
+}
+
+</style></head>
+<body><header class="appbar">
+  <button class="appbar-back" onclick="history.back()">←</button>
+  <span class="appbar-title">Practice</span>
+  <button class="appbar-burger" id="menuOpenBtn">☰</button>
+</header><section class="practice-top">  <div class="question-meta"><div class="q-number" id="questionNumber">
+  Question 1 of 40
+</div>
+
+<div class="timer" id="timer">
+  02:00:00
+</div>
+
+  </div>  <div class="progress">
+    <div class="progress-fill" id="progressFill"></div>
+  </div></section><main class="question-wrap">  <div class="question-card"><div class="question-subject" id="questionSubject">
+  English Language
+</div>
+
+<div class="question-text" id="questionText">
+  Loading question...
+</div>
+
+<div class="options" id="optionsContainer">
+</div>
+
+  </div></main><div class="bottom-bar"><button
+class="btn btn-ghost"
+id="prevBtn">
+← Previous
+</button>
+
+<button
+class="btn btn-primary"
+id="nextBtn">
+Next →
+</button>
+
+<button
+class="btn submit-btn"
+id="submitBtn">
+Submit
+</button>
+
+</div><!-- Hamburger Menu --><div class="menu-overlay" id="menuOverlay">
+  <div class="menu-panel"><button class="menu-close" id="menuCloseBtn">×</button>
+
+<div class="menu-head">
+  <div class="appbar-mark">U</div>
+  <div>
+    <div class="menu-head-name">UTMESchools</div>
+    <div class="menu-head-sub">JAMB · UTME Practice</div>
+  </div>
+</div>
+
+<nav class="menu-list">
+  <a href="index.html">🏠 Home</a>
+  <a href="dashboard.html">📊 Results</a>
+  <a href="bookmarks.html">🔖 Bookmarks</a>
+  <a href="discussion.html">💬 Discussion</a>
+</nav>
+
+  </div>
+</div><script src="shared.js"></script><script src="practice.js"></script></body>
+                                                                             </html>
