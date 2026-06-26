@@ -1,440 +1,402 @@
-/* ============================================================
-   UTMESchools v2 — results.js
-   Reads result data from sessionStorage (set by practice.js).
-   Shows: score ring, per-subject bars, topic table, full corrections.
+
+# Build dashboard.js - Result History + Bookmarks logic
+
+dashboard_js = '''/* ============================================================
+   UTMESchools v2 — dashboard.js
+   Result History + Bookmarks tabs.
+   Uses localStorage as placeholder until Supabase is connected.
    ============================================================ */
 
-const SUBJECT_NAMES = {
-  english:'English Language', mathematics:'Mathematics',
-  physics:'Physics', chemistry:'Chemistry', biology:'Biology',
-  government:'Government', economics:'Economics', literature:'Literature',
-  crk:'CRK', irk:'IRK', geography:'Geography', commerce:'Commerce',
-  accounts:'Accounts', agriculture:'Agriculture', computer:'Computer Studies',
-  fineart:'Fine Art', french:'French', hausa:'Hausa', history:'History',
-  homeec:'Home Economics', igbo:'Igbo', music:'Music',
-  phe:'PHE', lekki:'The Lekki Headmaster', yoruba:'Yoruba', littext:'Lit Textbooks',
-};
+const ALL_SUBJECTS = [
+  { id: 'english',     name: 'English Language',       icon: '🔤', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'accounts',    name: 'Accounts',               icon: '🧾', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'agriculture', name: 'Agriculture',            icon: '🌾', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'biology',     name: 'Biology',                icon: '🧬', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'chemistry',   name: 'Chemistry',              icon: '⚗️', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'commerce',    name: 'Commerce',               icon: '🛒', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'computer',    name: 'Computer Studies',       icon: '💻', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'crk',         name: 'CRK',                    icon: '✝️', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'economics',   name: 'Economics',              icon: '📈', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'fineart',     name: 'Fine Art',               icon: '🎨', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'french',      name: 'French',                 icon: '🇫🇷', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'geography',   name: 'Geography',              icon: '🌍', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'government',  name: 'Government',             icon: '🏛️', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'hausa',       name: 'Hausa',                  icon: '📜', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'history',     name: 'History',                icon: '🏺', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'homeec',      name: 'Home Economics',         icon: '🏠', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'igbo',        name: 'Igbo',                   icon: '📖', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'irk',         name: 'IRK',                    icon: '☪️', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'literature',  name: 'Literature',             icon: '📚', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'littext',     name: 'Literature Textbooks',   icon: '📗', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'mathematics', name: 'Mathematics',              icon: '📐', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'music',       name: 'Music',                  icon: '🎵', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'phe',         name: 'PHE',                    icon: '🏃', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'physics',     name: 'Physics',                icon: '⚛️', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'lekki',       name: 'The Lekki Headmaster',   icon: '📕', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'yoruba',      name: 'Yoruba',                 icon: '🌺', bg: '#FFF4DC', fg: '#A6760A' },
+];
 
-let result = null;
-let correctionFilterSubject = 'all';
+function getSubject(id) { return ALL_SUBJECTS.find(s => s.id === id); }
 
-/* ================================================================
-   INIT
-   ================================================================ */
-document.addEventListener('DOMContentLoaded', () => {
-  result = loadResult();
-  if (!result) { showNoResult(); return; }
-
-  renderScoreHero();
-  renderBreakdown();
-  renderTopics();
-  renderCorrections();
-  renderShare();
-  bindTabs();
-  bindEvents();
-
-  // Animate ring after short delay
-  setTimeout(animateRing, 200);
-});
-
-/* ================================================================
-   LOAD DATA
-   ================================================================ */
-function loadResult() {
-  try {
-    const raw = sessionStorage.getItem('utme_result');
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch(e) {
-    return null;
-  }
+/* ---- localStorage helpers ---- */
+function getResults() {
+  try { return JSON.parse(localStorage.getItem('utme_results') || '[]'); }
+  catch(e) { return []; }
+}
+function saveResults(results) {
+  localStorage.setItem('utme_results', JSON.stringify(results));
+}
+function getBookmarks() {
+  try { return JSON.parse(localStorage.getItem('utme_bookmarks') || '[]'); }
+  catch(e) { return []; }
+}
+function saveBookmarks(bmarks) {
+  localStorage.setItem('utme_bookmarks', JSON.stringify(bmarks));
 }
 
-function showNoResult() {
-  document.getElementById('scoreHero').innerHTML =
-    '<div style="color:#9FB0CB;padding:40px 20px;text-align:center;">' +
-    '<div style="font-size:32px;margin-bottom:10px;">📋</div>' +
-    '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:8px;">No result found</div>' +
-    '<div style="font-size:13px;">Complete a practice session first.</div>' +
-    '<a href="select-subjects.html" style="display:inline-block;margin-top:16px;padding:10px 20px;background:var(--orange);color:#fff;border-radius:99px;font-weight:700;font-size:13px;">Start Practicing</a>' +
-    '</div>';
-}
-
-/* ================================================================
-   SCORE HERO
-   ================================================================ */
-function renderScoreHero() {
-  const pct = Math.round((result.totalCorrect / result.totalPossible) * 100) || 0;
-
-  document.getElementById('scorePct').textContent = pct + '%';
-  document.getElementById('scoreFraction').textContent =
-    result.totalCorrect + ' / ' + result.totalPossible;
-
-  // Badge
-  const badge = document.getElementById('scoreBadge');
-  if (pct >= 70) {
-    badge.textContent = '🏆 Excellent';
-    badge.className = 'score-badge excellent';
-  } else if (pct >= 50) {
-    badge.textContent = '✅ Good';
-    badge.className = 'score-badge good';
-  } else if (pct >= 40) {
-    badge.textContent = '⚠️ Average';
-    badge.className = 'score-badge average';
-  } else {
-    badge.textContent = '📚 Keep Studying';
-    badge.className = 'score-badge poor';
-  }
-
-  // Meta info
-  const date = new Date(result.date);
-  const dateStr = date.toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
-  const timeStr = date.toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' });
-  const modeLabel = result.mode === 'mock' ? 'Mock Exam' : result.mode === 'study' ? 'Study' : 'Practice';
-  const timeTaken = formatTime(result.timeTaken);
-  const subjectList = result.subjects.map(id => SUBJECT_NAMES[id] || id).join(', ');
-
-  document.getElementById('scoreMeta').innerHTML =
-    `${modeLabel} · ${dateStr} at ${timeStr}<br>` +
-    `Time used: ${timeTaken}<br>` +
-    `<span style="font-size:11px;opacity:0.7;">${subjectList}</span>`;
-
-  // Ring colour
-  const ringFill = document.getElementById('ringFill');
-  ringFill.setAttribute('stroke',
-    pct >= 70 ? '#FFD23F' :
-    pct >= 50 ? '#0FA968' :
-    pct >= 40 ? '#FF6B35' : '#C0392B'
-  );
-  ringFill._targetPct = pct;
-}
-
-function animateRing() {
-  const ring = document.getElementById('ringFill');
-  if (!ring) return;
-  const circumference = 364.4; // 2π × 58
-  const pct = ring._targetPct || 0;
-  const offset = circumference - (pct / 100) * circumference;
-  ring.style.strokeDashoffset = offset;
-}
-
-/* ================================================================
-   BREAKDOWN TAB
-   ================================================================ */
-function renderBreakdown() {
-  // Motivation box
-  const pct = Math.round((result.totalCorrect / result.totalPossible) * 100) || 0;
-  const motBox = document.getElementById('motivationBox');
-  const motText = document.getElementById('motivationText');
-  let msg = '';
-  if (pct >= 70) {
-    msg = `<strong>Outstanding!</strong> You scored ${pct}% — that's well above the average. Keep this up and JAMB will not catch you sleeping.`;
-  } else if (pct >= 50) {
-    msg = `<strong>Good effort!</strong> ${pct}% is a solid start. Look at the Topics tab to find where to focus your revision next.`;
-  } else if (pct >= 40) {
-    msg = `<strong>You're making progress.</strong> ${pct}% — every practice session builds you stronger. Check your corrections and try again.`;
-  } else {
-    msg = `<strong>Don't be discouraged.</strong> ${pct}% today means you've identified exactly what needs work. Open the Corrections tab — that's your study guide.`;
-  }
-  motText.innerHTML = msg;
-  motBox.style.display = 'block';
-
-  // Subject bars
-  const container = document.getElementById('subjectBreakdown');
-  container.innerHTML = '';
-
-  result.subjects.forEach(id => {
-    const s = result.subjectScores[id];
-    if (!s) return;
-    const subPct = Math.round((s.correct / s.total) * 100) || 0;
-    const barColor = subPct >= 60 ? 'var(--green)' : subPct >= 40 ? 'var(--orange)' : '#C0392B';
-    const scoreClass = subPct >= 60 ? 'good' : subPct >= 40 ? 'mid' : 'low';
-    const name = SUBJECT_NAMES[id] || id;
-
-    const row = document.createElement('div');
-    row.className = 'sb-row';
-    row.innerHTML = `
-      <div class="sb-head">
-        <div class="sb-name">${name}</div>
-        <div class="sb-score ${scoreClass}">${s.correct}/${s.total} · ${subPct}%</div>
-      </div>
-      <div class="sb-bar-track">
-        <div class="sb-bar-fill" style="width:0%; background:${barColor};" data-width="${subPct}%"></div>
-      </div>
-    `;
-    container.appendChild(row);
-  });
-
-  // Animate bars
-  setTimeout(() => {
-    document.querySelectorAll('.sb-bar-fill').forEach(bar => {
-      bar.style.width = bar.dataset.width;
-    });
-  }, 300);
-}
-
-/* ================================================================
-   TOPICS TAB
-   ================================================================ */
-function renderTopics() {
-  const container = document.getElementById('topicAnalysis');
-  container.innerHTML = '';
-
-  result.subjects.forEach(id => {
-    const s = result.subjectScores[id];
-    if (!s) return;
-
-    // Aggregate by topic
-    const topicMap = {};
-    (s.questions || []).forEach(q => {
-      const key = q.topic || 'General';
-      if (!topicMap[key]) topicMap[key] = { correct: 0, total: 0 };
-      topicMap[key].total++;
-      if (q.userAnswer === q.correct) topicMap[key].correct++;
-    });
-
-    const topics = Object.entries(topicMap)
-      .map(([topic, data]) => ({
-        topic,
-        correct: data.correct,
-        total: data.total,
-        pct: Math.round((data.correct / data.total) * 100),
-      }))
-      .sort((a, b) => b.pct - a.pct);
-
-    const section = document.createElement('div');
-    section.className = 'topic-section';
-
-    const subjectPct = Math.round((s.correct / s.total) * 100) || 0;
-    const sClass = subjectPct >= 60 ? 'good' : subjectPct >= 40 ? 'mid' : 'low';
-
-    section.innerHTML = `
-      <div class="topic-section-title">
-        ${SUBJECT_NAMES[id] || id}
-        <span class="topic-score-pill ${sClass}" style="float:right;">${s.correct}/${s.total}</span>
-      </div>
-      <table class="topic-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Topic</th>
-            <th>Score</th>
-            <th>Qs</th>
-          </tr>
-        </thead>
-        <tbody id="topicBody_${id}"></tbody>
-      </table>
-    `;
-    container.appendChild(section);
-
-    const tbody = section.querySelector('#topicBody_' + id);
-    topics.forEach((t, idx) => {
-      const pillClass = t.pct >= 60 ? 'good' : t.pct >= 40 ? 'mid' : 'low';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="rank">${idx + 1}</td>
-        <td>${t.topic}</td>
-        <td><span class="topic-score-pill ${pillClass}">${t.correct}/${t.total} · ${t.pct}%</span></td>
-        <td style="font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);">${t.total}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  });
-}
-
-/* ================================================================
-   CORRECTIONS TAB
-   ================================================================ */
-function renderCorrections(filterSubject) {
-  correctionFilterSubject = filterSubject || 'all';
-
-  // Build filter chips
-  const filterBar = document.getElementById('correctionFilter');
-  filterBar.innerHTML = '';
-  const allChip = document.createElement('button');
-  allChip.className = 'filter-chip' + (correctionFilterSubject === 'all' ? ' active' : '');
-  allChip.textContent = 'All';
-  allChip.addEventListener('click', () => renderCorrections('all'));
-  filterBar.appendChild(allChip);
-
-  result.subjects.forEach(id => {
-    const chip = document.createElement('button');
-    chip.className = 'filter-chip' + (correctionFilterSubject === id ? ' active' : '');
-    chip.textContent = SUBJECT_NAMES[id] || id;
-    chip.addEventListener('click', () => renderCorrections(id));
-    filterBar.appendChild(chip);
-  });
-
-  // Build correction cards
-  const list = document.getElementById('correctionList');
-  list.innerHTML = '';
-
-  let qNum = 0;
-
-  result.subjects.forEach(id => {
-    if (correctionFilterSubject !== 'all' && correctionFilterSubject !== id) return;
-    const s = result.subjectScores[id];
-    if (!s) return;
-
-    (s.questions || []).forEach(q => {
-      qNum++;
-      const isCorrect = q.userAnswer === q.correct;
-      const isSkipped = !q.userAnswer;
-
-      const card = document.createElement('div');
-      card.className = 'correction-card';
-
-      const statusText = isSkipped ? 'Skipped' : isCorrect ? '✓ Correct' : '✗ Wrong';
-      const statusClass = isSkipped ? 'skipped' : isCorrect ? 'correct' : 'wrong';
-
-      let optionsHtml = '';
-      ['A','B','C','D'].forEach(letter => {
-        const optText = q['opt' + letter];
-        const isCorrectOpt = letter === q.correct;
-        const isUserOpt = letter === q.userAnswer;
-        let cls = 'corr-opt';
-        let labelHtml = '';
-        if (isCorrectOpt) { cls += ' correct'; labelHtml = '<span class="corr-label ans">Answer</span>'; }
-        if (isUserOpt && !isCorrectOpt) { cls += ' selected-wrong'; labelHtml = '<span class="corr-label you">Your answer</span>'; }
-        optionsHtml += `<div class="${cls}">
-          <span class="corr-letter">${letter}</span>
-          <span style="flex:1;font-size:12.5px;">${optText}</span>
-          ${labelHtml}
-        </div>`;
-      });
-
-      const diagramHtml = q.hasSvg && q.svgCode
-        ? `<div class="corr-diagram">${q.svgCode}</div>` : '';
-
-      card.innerHTML = `
-        <div class="correction-card-head">
-          <span class="cc-qnum">Q${qNum}</span>
-          <span class="cc-status ${statusClass}">${statusText}</span>
-          <span class="cc-topic">${q.topic || ''}</span>
-        </div>
-        <div class="correction-body">
-          ${diagramHtml}
-          <div class="correction-qtext">${q.text}</div>
-          <div class="correction-options">${optionsHtml}</div>
-          <div class="correction-explanation">
-            <div class="corr-ex-label">💡 EXPLANATION</div>
-            ${escHtml(q.explanation || 'No explanation available.').replace(/\n/g, '<br>')}
-          </div>
-        </div>
-      `;
-      list.appendChild(card);
-    });
-  });
-
-  if (list.children.length === 0) {
-    list.innerHTML = '<p style="text-align:center;color:var(--ink-soft);padding:30px;font-size:13px;">No questions to show.</p>';
-  }
-}
-
-/* ================================================================
-   SHARE TAB
-   ================================================================ */
-function renderShare() {
-  const pct = Math.round((result.totalCorrect / result.totalPossible) * 100) || 0;
-  const date = new Date(result.date).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
-  const modeLabel = result.mode === 'mock' ? 'Mock Exam' : result.mode === 'study' ? 'Study' : 'Practice';
-
-  let lines = [
-    `📊 My UTMESchools Result`,
-    `Mode: ${modeLabel} · ${date}`,
-    `Total: ${result.totalCorrect}/${result.totalPossible} (${pct}%)`,
-    ``,
-  ];
-
-  result.subjects.forEach(id => {
-    const s = result.subjectScores[id];
-    if (!s) return;
-    const subPct = Math.round((s.correct / s.total) * 100) || 0;
-    lines.push(`${SUBJECT_NAMES[id] || id}: ${s.correct}/${s.total} (${subPct}%)`);
-  });
-
-  lines.push(``, `Practice at utmeschools.ng`);
-
-  const shareText = lines.join('\n');
-  document.getElementById('shareTextPreview').textContent = shareText;
-
-  // WhatsApp
-  document.getElementById('shareWhatsAppBtn').addEventListener('click', () => {
-    const encoded = encodeURIComponent(shareText);
-    window.open(`https://wa.me/?text=${encoded}`, '_blank');
-  });
-
-  // Copy
-  document.getElementById('copyTextBtn').addEventListener('click', () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareText).then(() => showToast('📋 Copied!'));
-    } else {
-      showToast('Copy not supported on this browser');
-    }
-  });
-}
-
-/* ================================================================
-   TABS
-   ================================================================ */
-function bindTabs() {
-  document.querySelectorAll('.result-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
-    });
-  });
-}
-
-/* ================================================================
-   EVENTS
-   ================================================================ */
-function bindEvents() {
-  document.getElementById('backBtn').addEventListener('click', () => {
-    window.location.href = 'select-subjects.html';
-  });
-
-  document.getElementById('viewCorrectionBtn').addEventListener('click', () => {
-    // Switch to corrections tab
-    document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    document.querySelector('[data-tab="corrections"]').classList.add('active');
-    document.getElementById('panel-corrections').classList.add('active');
-    // Scroll to tabs
-    document.querySelector('.result-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  });
-}
-
-/* ================================================================
-   UTILITIES
-   ================================================================ */
+/* ---- Format helpers ---- */
 function formatTime(seconds) {
-  if (!seconds) return '—';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
 }
-
-function escHtml(str) {
-  if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hrs < 24) return `${hrs}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return formatDate(iso);
 }
 
-let toastTimer = null;
+/* ============================================================
+   TABS
+   ============================================================ */
+let activeTab = 'history';
+
+document.querySelectorAll('.dash-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeTab = tab.dataset.tab;
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(activeTab + 'Tab').classList.add('active');
+  });
+});
+
+/* ============================================================
+   RESULT HISTORY
+   ============================================================ */
+let historySort = 'date'; // 'date' | 'score'
+let historyFilter = 'all';
+
+function populateSubjectFilters() {
+  const historySel = document.getElementById('historyFilter');
+  const bookmarkSel = document.getElementById('bookmarkFilter');
+  ALL_SUBJECTS.forEach(s => {
+    const opt1 = document.createElement('option');
+    opt1.value = s.id; opt1.textContent = s.name;
+    historySel.appendChild(opt1);
+    const opt2 = document.createElement('option');
+    opt2.value = s.id; opt2.textContent = s.name;
+    bookmarkSel.appendChild(opt2);
+  });
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  let results = getResults();
+
+  // Filter
+  if (historyFilter !== 'all') {
+    results = results.filter(r => r.subjects && r.subjects.includes(historyFilter));
+  }
+
+  // Sort
+  results.sort((a, b) => {
+    if (historySort === 'date') return new Date(b.date) - new Date(a.date);
+    const aPct = a.totalPossible > 0 ? a.totalScore / a.totalPossible : 0;
+    const bPct = b.totalPossible > 0 ? b.totalScore / b.totalPossible : 0;
+    return bPct - aPct;
+  });
+
+  if (results.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📭</div>
+        <h3>No results yet</h3>
+        <p>Your practice results will appear here after you complete a session.</p>
+        <a href="select-subjects.html" class="btn btn-primary btn-sm">Start practicing</a>
+      </div>
+    `;
+    document.getElementById('deleteAllHistory').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('deleteAllHistory').style.display = 'block';
+  list.innerHTML = '';
+
+  results.forEach((r, idx) => {
+    const pct = r.totalPossible > 0 ? Math.round((r.totalScore / r.totalPossible) * 100) : 0;
+    let badgeClass = 'green';
+    if (pct < 40) badgeClass = 'red';
+    else if (pct < 60) badgeClass = 'amber';
+
+    const subjNames = (r.subjects || []).map(sid => getSubject(sid)?.name || sid);
+    const modeLabel = r.mode === 'mock' ? 'Mock' : r.mode === 'study' ? 'Study' : 'Practice';
+
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="result-card-head">
+        <div class="result-card-num">${idx + 1}</div>
+        <div class="result-card-info">
+          <div class="result-card-title">${subjNames.join(', ')}</div>
+          <div class="result-card-meta">${formatDate(r.date)} · ${modeLabel} · ${formatTime(r.timeTaken || 0)}</div>
+        </div>
+        <div class="result-card-badge ${badgeClass}">${pct}%</div>
+      </div>
+      <div class="result-card-scores">
+        ${Object.entries(r.subjectScores || {}).map(([sid, sc]) => {
+          const s = getSubject(sid);
+          return `<span>${s?.icon || '📚'} ${s?.name || sid}: ${sc.score}/${sc.possible}</span>`;
+        }).join('')}
+      </div>
+      <div class="result-card-actions">
+        <button class="primary" data-view="${r.id || idx}">View Result</button>
+        <button data-correct="${r.id || idx}">Correction</button>
+        <button data-expand="${r.id || idx}">▾ More</button>
+      </div>
+      <div class="card-details" id="details-${r.id || idx}">
+        <button data-detail="${r.id || idx}">📋 View full details</button>
+        <button data-delete="${r.id || idx}">🗑 Delete this result</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  // Wire buttons
+  list.querySelectorAll('[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.view;
+      const results = getResults();
+      const r = results.find((x, i) => (x.id || String(i)) === id);
+      if (r) {
+        sessionStorage.setItem('utme_result', JSON.stringify(r));
+        window.location.href = 'results.html';
+      }
+    });
+  });
+
+  list.querySelectorAll('[data-correct]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.correct;
+      const results = getResults();
+      const r = results.find((x, i) => (x.id || String(i)) === id);
+      if (r) {
+        sessionStorage.setItem('utme_result', JSON.stringify(r));
+        window.location.href = 'results.html?view=correction';
+      }
+    });
+  });
+
+  list.querySelectorAll('[data-expand]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.expand;
+      const details = document.getElementById('details-' + id);
+      details.classList.toggle('open');
+      btn.textContent = details.classList.contains('open') ? '▴ Less' : '▾ More';
+    });
+  });
+
+  list.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.delete;
+      openConfirm('Delete Result', 'Are you sure you want to delete this result? This cannot be undone.', () => {
+        let results = getResults();
+        results = results.filter((x, i) => (x.id || String(i)) !== id);
+        saveResults(results);
+        renderHistory();
+        showToast('Result deleted');
+      });
+    });
+  });
+}
+
+/* ============================================================
+   BOOKMARKS
+   ============================================================ */
+let bookmarkFilter = 'all';
+
+function renderBookmarks() {
+  const list = document.getElementById('bookmarkList');
+  let bmarks = getBookmarks();
+
+  if (bookmarkFilter !== 'all') {
+    bmarks = bmarks.filter(b => b.subjectId === bookmarkFilter);
+  }
+
+  if (bmarks.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔖</div>
+        <h3>No bookmarks yet</h3>
+        <p>Bookmark questions during practice to revisit them here.</p>
+        <a href="select-subjects.html" class="btn btn-primary btn-sm">Start practicing</a>
+      </div>
+    `;
+    document.getElementById('deleteAllBookmarks').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('deleteAllBookmarks').style.display = 'block';
+  list.innerHTML = '';
+
+  bmarks.forEach((b, idx) => {
+    const s = getSubject(b.subjectId);
+    const card = document.createElement('div');
+    card.className = 'bookmark-card';
+    card.innerHTML = `
+      <div class="bookmark-card-head">
+        <div class="bookmark-card-icon" style="background:${s?.bg || '#eee'};color:${s?.fg || '#333'};">${s?.icon || '📚'}</div>
+        <div class="bookmark-card-info">
+          <div class="bookmark-card-subj">${s?.name || b.subjectId}</div>
+          <div class="bookmark-card-meta">${b.year || 'Random'} · ${timeAgo(b.date)}</div>
+        </div>
+      </div>
+      <div class="bookmark-card-text">${b.text || 'Question text unavailable'}</div>
+      <div class="bookmark-card-actions">
+        <button data-view="${idx}">View</button>
+        <button class="danger" data-remove="${idx}">Remove</button>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  list.querySelectorAll('[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.view);
+      const bmarks = getBookmarks();
+      const b = bmarks[idx];
+      if (b) {
+        // For now, show a simple alert with the question
+        alert(`${b.text || 'Question unavailable'}\\n\\nCorrect answer: ${b.correct || 'N/A'}\\n\\n${b.explanation || ''}`);
+      }
+    });
+  });
+
+  list.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.remove);
+      openConfirm('Remove Bookmark', 'Remove this bookmark?', () => {
+        let bmarks = getBookmarks();
+        bmarks.splice(idx, 1);
+        saveBookmarks(bmarks);
+        renderBookmarks();
+        showToast('Bookmark removed');
+      });
+    });
+  });
+}
+
+/* ============================================================
+   CONFIRM DIALOG
+   ============================================================ */
+let confirmCallback = null;
+
+function openConfirm(title, text, callback) {
+  confirmCallback = callback;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmText').textContent = text;
+  document.getElementById('confirmOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  confirmCallback = null;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
 function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
-                          }
-      
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+/* ============================================================
+   EVENT LISTENERS
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  populateSubjectFilters();
+  renderHistory();
+  renderBookmarks();
+
+  // History filter
+  document.getElementById('historyFilter').addEventListener('change', e => {
+    historyFilter = e.target.value;
+    renderHistory();
+  });
+
+  // History sort
+  document.getElementById('historySort').addEventListener('click', () => {
+    historySort = historySort === 'date' ? 'score' : 'date';
+    document.getElementById('historySort').textContent =
+      historySort === 'date' ? 'Sort: Date ▾' : 'Sort: Score ▾';
+    renderHistory();
+  });
+
+  // Bookmark filter
+  document.getElementById('bookmarkFilter').addEventListener('change', e => {
+    bookmarkFilter = e.target.value;
+    renderBookmarks();
+  });
+
+  // Delete all history
+  document.getElementById('deleteAllHistory').addEventListener('click', () => {
+    openConfirm('Delete All History', 'Are you sure you want to delete ALL your result history? This cannot be undone.', () => {
+      saveResults([]);
+      renderHistory();
+      showToast('All history deleted');
+    });
+  });
+
+  // Delete all bookmarks
+  document.getElementById('deleteAllBookmarks').addEventListener('click', () => {
+    openConfirm('Delete All Bookmarks', 'Are you sure you want to remove ALL bookmarks?', () => {
+      saveBookmarks([]);
+      renderBookmarks();
+      showToast('All bookmarks removed');
+    });
+  });
+
+  // Confirm dialog
+  document.getElementById('confirmCancel').addEventListener('click', closeConfirm);
+  document.getElementById('confirmOk').addEventListener('click', () => {
+    if (confirmCallback) confirmCallback();
+    closeConfirm();
+  });
+  document.getElementById('confirmOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('confirmOverlay')) closeConfirm();
+  });
+});
+'''
+
+with open('/mnt/agents/output/dashboard.js', 'w') as f:
+    f.write(dashboard_js)
+
+print(f"dashboard.js written: {len(dashboard_js)} chars")
