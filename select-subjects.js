@@ -1,7 +1,7 @@
 /* ============================================================
    UTMESchools v2 — select-subjects.js (FIXED)
-   - Select All / Deselect All topics now toggles properly
-   - Click once = select all, click again = deselect all
+   All event listeners now inside DOMContentLoaded.
+   Select All / Deselect All topics toggles properly.
    ============================================================ */
 
 const ALL_SUBJECTS = [
@@ -48,155 +48,8 @@ let subjectConfig = {
   english: { year: 'Random', count: 40, topic: 'All' }
 };
 
-/* ---- Bottom sheet ---- */
-const sheetList    = document.getElementById('sheetList');
-const sheetOverlay = document.getElementById('sheetOverlay');
-
-function renderSheet(){
-  sheetList.innerHTML = '';
-  ALL_SUBJECTS.forEach(s => {
-    const checked = pendingIds.includes(s.id);
-    const item = document.createElement('div');
-    item.className = 'sheet-item';
-    item.innerHTML = `
-      <div class="sheet-checkbox ${checked ? 'checked' : ''}">${checked ? '✓' : ''}</div>
-      <div class="sheet-item-name">${s.name}</div>
-    `;
-    item.addEventListener('click', () => {
-      if (checked){
-        pendingIds = pendingIds.filter(id => id !== s.id);
-      } else {
-        pendingIds.push(s.id);
-      }
-      renderSheet();
-    });
-    sheetList.appendChild(item);
-  });
-}
-
-document.getElementById('pickSubjectsBtn').addEventListener('click', () => {
-  pendingIds = [...selectedIds];
-  renderSheet();
-  sheetOverlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
-});
-
-function closeSheet(){
-  sheetOverlay.classList.remove('open');
-  document.body.style.overflow = '';
-}
-document.getElementById('sheetCloseBtn').addEventListener('click', closeSheet);
-document.getElementById('sheetCancelBtn').addEventListener('click', closeSheet);
-sheetOverlay.addEventListener('click', e => { if (e.target === sheetOverlay) closeSheet(); });
-
-document.getElementById('sheetOkBtn').addEventListener('click', () => {
-  selectedIds = [...pendingIds];
-  selectedIds.forEach(id => {
-    if (!subjectConfig[id]){
-      const s = ALL_SUBJECTS.find(x => x.id === id);
-      subjectConfig[id] = { year: 'Random', count: Math.min(40, s.max), topic: 'All' };
-    }
-  });
-  Object.keys(subjectConfig).forEach(id => {
-    if (!selectedIds.includes(id)) delete subjectConfig[id];
-  });
-  closeSheet();
-  renderConfigList();
-});
-
-/* ---- Config cards ---- */
-const configList  = document.getElementById('configList');
-const emptyState  = document.getElementById('emptyState');
-const optionsCard = document.getElementById('optionsCard');
-const startBtn    = document.getElementById('startBtn');
-const pickedCount = document.getElementById('pickedCount');
-
-function questionCountOptions(max){
-  const opts = [];
-  for (let n = 10; n <= max; n += 10) opts.push(n);
-  if (opts[opts.length - 1] !== max) opts.push(max);
-  return opts;
-}
-
-function renderConfigList(){
-  pickedCount.textContent = selectedIds.length;
-  startBtn.disabled = selectedIds.length === 0;
-
-  if (selectedIds.length === 0){
-    emptyState.style.display = 'block';
-    configList.style.display = 'none';
-    optionsCard.style.display = 'none';
-    return;
-  }
-  emptyState.style.display = 'none';
-  configList.style.display = 'flex';
-  optionsCard.style.display = 'block';
-  configList.innerHTML = '';
-
-  selectedIds.forEach(id => {
-    const s   = ALL_SUBJECTS.find(x => x.id === id);
-    const cfg = subjectConfig[id];
-    const card = document.createElement('div');
-    card.className = 'config-card';
-    card.innerHTML = `
-      <div class="config-head">
-        <div class="config-icon" style="background:${s.bg};color:${s.fg};">${s.icon}</div>
-        <div class="config-name">${s.name}</div>
-        <button class="config-remove" data-remove="${id}" aria-label="Remove">×</button>
-      </div>
-      <div class="config-row">
-        <span class="cr-label">📅 Year</span>
-        <select class="cr-select" data-field="year" data-subject="${id}"></select>
-      </div>
-      <div class="config-row">
-        <span class="cr-label"># Questions</span>
-        <select class="cr-select" data-field="count" data-subject="${id}"></select>
-      </div>
-      <div class="config-row">
-        <span class="cr-label">🏷️ Topic</span>
-        <span class="cr-val topic-edit" data-topic-id="${id}" style="color:var(--navy);cursor:pointer;">${topicLabel(id)} ✎</span>
-      </div>
-    `;
-    configList.appendChild(card);
-
-    // populate year dropdown
-    const yearSel = card.querySelector('[data-field="year"]');
-    yearOptions().forEach(y => {
-      const opt = document.createElement('option');
-      opt.value = y;
-      opt.textContent = y === 'Random' ? '🔀 Random (all years)' : y;
-      if (y === cfg.year) opt.selected = true;
-      yearSel.appendChild(opt);
-    });
-    yearSel.addEventListener('change', e => { subjectConfig[id].year = e.target.value; });
-
-    // populate count dropdown
-    const countSel = card.querySelector('[data-field="count"]');
-    questionCountOptions(s.max).forEach(n => {
-      const opt = document.createElement('option');
-      opt.value = n;
-      opt.textContent = n + ' questions';
-      if (n === cfg.count) opt.selected = true;
-      countSel.appendChild(opt);
-    });
-    countSel.addEventListener('change', e => { subjectConfig[id].count = parseInt(e.target.value, 10); });
-  });
-
-  // remove buttons
-  configList.querySelectorAll('[data-remove]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.remove;
-      selectedIds = selectedIds.filter(x => x !== id);
-      delete subjectConfig[id];
-      renderConfigList();
-    });
-  });
-
-  // topic edit buttons
-  configList.querySelectorAll('.topic-edit').forEach(el => {
-    el.addEventListener('click', () => openTopicSheet(el.dataset.topicId));
-  });
-}
+/* ---- DOM refs (set after DOM ready) ---- */
+let sheetList, sheetOverlay, configList, emptyState, optionsCard, startBtn, pickedCount;
 
 /* ---- Topics/subtopics per subject ---- */
 const SUBJECT_TOPICS = {
@@ -289,29 +142,274 @@ const SUBJECT_TOPICS = {
     'AGRO-ALLIED INDUSTRIES',
   ],
 };
-// For subjects not listed above, fall back to empty (All Topics only)
 
-/* ---- Topic picker sheet (FIXED: Select All / Deselect All toggle) ---- */
+let currentMode = 'practice';
 let topicSheetSubjectId = null;
 
+/* ============================================================
+   INIT — ALL EVENT LISTENERS INSIDE DOMContentLoaded
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Cache DOM refs
+  sheetList    = document.getElementById('sheetList');
+  sheetOverlay = document.getElementById('sheetOverlay');
+  configList   = document.getElementById('configList');
+  emptyState   = document.getElementById('emptyState');
+  optionsCard  = document.getElementById('optionsCard');
+  startBtn     = document.getElementById('startBtn');
+  pickedCount  = document.getElementById('pickedCount');
+
+  // Wire subject picker
+  const pickSubjectsBtn = document.getElementById('pickSubjectsBtn');
+  if (pickSubjectsBtn){
+    pickSubjectsBtn.addEventListener('click', () => {
+      pendingIds = [...selectedIds];
+      renderSheet();
+      sheetOverlay.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    });
+  }
+
+  // Wire sheet close
+  const sheetCloseBtn = document.getElementById('sheetCloseBtn');
+  if (sheetCloseBtn) sheetCloseBtn.addEventListener('click', closeSheet);
+  
+  const sheetCancelBtn = document.getElementById('sheetCancelBtn');
+  if (sheetCancelBtn) sheetCancelBtn.addEventListener('click', closeSheet);
+  
+  if (sheetOverlay){
+    sheetOverlay.addEventListener('click', e => { 
+      if (e.target === sheetOverlay) closeSheet(); 
+    });
+  }
+
+  // Wire sheet OK
+  const sheetOkBtn = document.getElementById('sheetOkBtn');
+  if (sheetOkBtn){
+    sheetOkBtn.addEventListener('click', () => {
+      selectedIds = [...pendingIds];
+      selectedIds.forEach(id => {
+        if (!subjectConfig[id]){
+          const s = ALL_SUBJECTS.find(x => x.id === id);
+          subjectConfig[id] = { year: 'Random', count: Math.min(40, s.max), topic: 'All' };
+        }
+      });
+      Object.keys(subjectConfig).forEach(id => {
+        if (!selectedIds.includes(id)) delete subjectConfig[id];
+      });
+      closeSheet();
+      renderConfigList();
+    });
+  }
+
+  // Wire mode toggle
+  document.querySelectorAll('.mode-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMode = btn.dataset.mode;
+      const timerSection = document.getElementById('timerSection');
+      if (timerSection) timerSection.style.display = currentMode === 'study' ? 'none' : 'block';
+    });
+  });
+
+  // Wire toggle switches
+  document.querySelectorAll('.switch').forEach(sw => {
+    sw.addEventListener('click', () => sw.classList.toggle('on'));
+  });
+
+  // Wire calculator
+  document.querySelectorAll('.calc-btn').forEach(btn => {
+    btn.addEventListener('click', () => calcPress(btn.dataset.val));
+  });
+  
+  const calcCloseBtn = document.getElementById('calcCloseBtn');
+  if (calcCloseBtn) calcCloseBtn.addEventListener('click', closeCalc);
+  
+  const calcOpenBtn = document.getElementById('calcOpenBtn');
+  if (calcOpenBtn) calcOpenBtn.addEventListener('click', openCalc);
+
+  // Wire topic sheet
+  const topicSheetCloseBtn = document.getElementById('topicSheetCloseBtn');
+  if (topicSheetCloseBtn) topicSheetCloseBtn.addEventListener('click', closeTopicSheet);
+  
+  const topicSheetCancelBtn = document.getElementById('topicSheetCancelBtn');
+  if (topicSheetCancelBtn) topicSheetCancelBtn.addEventListener('click', closeTopicSheet);
+  
+  const topicSheetOkBtn = document.getElementById('topicSheetOkBtn');
+  if (topicSheetOkBtn) topicSheetOkBtn.addEventListener('click', closeTopicSheet);
+  
+  const topicSheetOverlay = document.getElementById('topicSheetOverlay');
+  if (topicSheetOverlay){
+    topicSheetOverlay.addEventListener('click', e => {
+      if (e.target === topicSheetOverlay) closeTopicSheet();
+    });
+  }
+
+  // Wire start button
+  if (startBtn){
+    startBtn.addEventListener('click', () => {
+      if (selectedIds.length === 0) return;
+      const p = new URLSearchParams({
+        subjects: selectedIds.join(','),
+        mode: currentMode,
+        h: document.getElementById('timerH')?.value || 2,
+        m: document.getElementById('timerM')?.value || 0,
+      });
+      selectedIds.forEach(id => {
+        p.set(`year_${id}`, subjectConfig[id].year);
+        p.set(`count_${id}`, subjectConfig[id].count);
+      });
+      window.location.href = `practice.html?${p.toString()}`;
+    });
+  }
+
+  // Initial render
+  renderConfigList();
+});
+
+/* ============================================================
+   SHEET
+   ============================================================ */
+function renderSheet(){
+  if (!sheetList) return;
+  sheetList.innerHTML = '';
+  ALL_SUBJECTS.forEach(s => {
+    const checked = pendingIds.includes(s.id);
+    const item = document.createElement('div');
+    item.className = 'sheet-item';
+    item.innerHTML = `
+      <div class="sheet-checkbox ${checked ? 'checked' : ''}">${checked ? '✓' : ''}</div>
+      <div class="sheet-item-name">${s.name}</div>
+    `;
+    item.addEventListener('click', () => {
+      if (checked){
+        pendingIds = pendingIds.filter(id => id !== s.id);
+      } else {
+        pendingIds.push(s.id);
+      }
+      renderSheet();
+    });
+    sheetList.appendChild(item);
+  });
+}
+
+function closeSheet(){
+  if (sheetOverlay) sheetOverlay.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ============================================================
+   CONFIG CARDS
+   ============================================================ */
+function questionCountOptions(max){
+  const opts = [];
+  for (let n = 10; n <= max; n += 10) opts.push(n);
+  if (opts[opts.length - 1] !== max) opts.push(max);
+  return opts;
+}
+
+function renderConfigList(){
+  if (!pickedCount || !startBtn || !configList || !emptyState || !optionsCard) return;
+
+  pickedCount.textContent = selectedIds.length;
+  startBtn.disabled = selectedIds.length === 0;
+
+  if (selectedIds.length === 0){
+    emptyState.style.display = 'block';
+    configList.style.display = 'none';
+    optionsCard.style.display = 'none';
+    return;
+  }
+  emptyState.style.display = 'none';
+  configList.style.display = 'flex';
+  optionsCard.style.display = 'block';
+  configList.innerHTML = '';
+
+  selectedIds.forEach(id => {
+    const s   = ALL_SUBJECTS.find(x => x.id === id);
+    const cfg = subjectConfig[id];
+    const card = document.createElement('div');
+    card.className = 'config-card';
+    card.innerHTML = `
+      <div class="config-head">
+        <div class="config-icon" style="background:${s.bg};color:${s.fg};">${s.icon}</div>
+        <div class="config-name">${s.name}</div>
+        <button class="config-remove" data-remove="${id}" aria-label="Remove">×</button>
+      </div>
+      <div class="config-row">
+        <span class="cr-label">📅 Year</span>
+        <select class="cr-select" data-field="year" data-subject="${id}"></select>
+      </div>
+      <div class="config-row">
+        <span class="cr-label"># Questions</span>
+        <select class="cr-select" data-field="count" data-subject="${id}"></select>
+      </div>
+      <div class="config-row">
+        <span class="cr-label">🏷️ Topic</span>
+        <span class="cr-val topic-edit" data-topic-id="${id}" style="color:var(--navy);cursor:pointer;">${topicLabel(id)} ✎</span>
+      </div>
+    `;
+    configList.appendChild(card);
+
+    // populate year dropdown
+    const yearSel = card.querySelector('[data-field="year"]');
+    yearOptions().forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y === 'Random' ? '🔀 Random (all years)' : y;
+      if (y === cfg.year) opt.selected = true;
+      yearSel.appendChild(opt);
+    });
+    yearSel.addEventListener('change', e => { subjectConfig[id].year = e.target.value; });
+
+    // populate count dropdown
+    const countSel = card.querySelector('[data-field="count"]');
+    questionCountOptions(s.max).forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n + ' questions';
+      if (n === cfg.count) opt.selected = true;
+      countSel.appendChild(opt);
+    });
+    countSel.addEventListener('change', e => { subjectConfig[id].count = parseInt(e.target.value, 10); });
+  });
+
+  // remove buttons
+  configList.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.remove;
+      selectedIds = selectedIds.filter(x => x !== id);
+      delete subjectConfig[id];
+      renderConfigList();
+    });
+  });
+
+  // topic edit buttons
+  configList.querySelectorAll('.topic-edit').forEach(el => {
+    el.addEventListener('click', () => openTopicSheet(el.dataset.topicId));
+  });
+}
+
+/* ============================================================
+   TOPIC PICKER (FIXED: Select All / Deselect All toggle)
+   ============================================================ */
 function openTopicSheet(subjectId){
   topicSheetSubjectId = subjectId;
   const s      = ALL_SUBJECTS.find(x => x.id === subjectId);
   const topics = SUBJECT_TOPICS[subjectId] || [];
   const cfg    = subjectConfig[subjectId];
   
-  // Get current selected topics
   let selectedTopics = cfg.selectedTopics || [];
-  
-  // If no topics selected yet, treat as "All" (everything selected)
   const isAllSelected = selectedTopics.length === 0 || selectedTopics.length === topics.length;
 
   const overlay = document.getElementById('topicSheetOverlay');
   const list    = document.getElementById('topicSheetList');
-  document.getElementById('topicSheetTitle').textContent = s.name + ' — Select Topics';
-  list.innerHTML = '';
+  const title   = document.getElementById('topicSheetTitle');
+  if (title) title.textContent = s.name + ' — Select Topics';
+  if (list) list.innerHTML = '';
 
-  // Select All checkbox — toggles between ALL and NONE
+  // Select All / Deselect All row
   const allRow = document.createElement('div');
   allRow.className = 'sheet-item';
   allRow.innerHTML = `
@@ -320,23 +418,20 @@ function openTopicSheet(subjectId){
   `;
   allRow.addEventListener('click', () => {
     if (isAllSelected){
-      // Deselect all — store empty array (meaning none selected)
       subjectConfig[subjectId].selectedTopics = [];
     } else {
-      // Select all — store all topics
       subjectConfig[subjectId].selectedTopics = [...topics];
     }
-    openTopicSheet(subjectId); // Re-render
+    openTopicSheet(subjectId);
   });
-  list.appendChild(allRow);
+  if (list) list.appendChild(allRow);
 
   const divider = document.createElement('div');
   divider.style.cssText = 'height:1px;background:var(--line);margin:6px 0;';
-  list.appendChild(divider);
+  if (list) list.appendChild(divider);
 
-  // Individual topic checkboxes
+  // Individual topics
   topics.forEach(topic => {
-    // A topic is "checked" if it's in selectedTopics OR if selectedTopics is empty (All mode)
     const checked = selectedTopics.length === 0 || selectedTopics.includes(topic);
     const row = document.createElement('div');
     row.className = 'sheet-item';
@@ -346,52 +441,35 @@ function openTopicSheet(subjectId){
     `;
     row.addEventListener('click', () => {
       let sel = [...(subjectConfig[subjectId].selectedTopics || [])];
-      
-      // If we were in "All" mode (empty array), convert to explicit list of all topics
       if (sel.length === 0) sel = [...topics];
-      
-      if (checked){
-        // Uncheck this topic
-        sel = sel.filter(t => t !== topic);
-      } else {
-        // Check this topic
-        sel.push(topic);
-      }
-      
-      // If all topics selected, revert to "All" (empty array)
-      if (sel.length === topics.length){
-        sel = [];
-      }
-      
+      if (checked) sel = sel.filter(t => t !== topic);
+      else sel.push(topic);
+      if (sel.length === topics.length) sel = [];
       subjectConfig[subjectId].selectedTopics = sel;
-      openTopicSheet(subjectId); // Re-render
+      openTopicSheet(subjectId);
     });
-    list.appendChild(row);
+    if (list) list.appendChild(row);
   });
 
-  if (topics.length === 0){
+  if (topics.length === 0 && list){
     const msg = document.createElement('p');
     msg.style.cssText = 'padding:20px;text-align:center;color:var(--ink-soft);font-size:13px;';
     msg.textContent = 'Topics will appear here once questions are loaded.';
     list.appendChild(msg);
   }
 
-  overlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
+  if (overlay){
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
 }
 
 function closeTopicSheet(){
-  document.getElementById('topicSheetOverlay').classList.remove('open');
+  const overlay = document.getElementById('topicSheetOverlay');
+  if (overlay) overlay.classList.remove('open');
   document.body.style.overflow = '';
-  renderConfigList(); // refresh to show updated topic label
+  renderConfigList();
 }
-
-document.getElementById('topicSheetCloseBtn').addEventListener('click', closeTopicSheet);
-document.getElementById('topicSheetCancelBtn').addEventListener('click', closeTopicSheet);
-document.getElementById('topicSheetOkBtn').addEventListener('click', closeTopicSheet);
-document.getElementById('topicSheetOverlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('topicSheetOverlay')) closeTopicSheet();
-});
 
 function topicLabel(id){
   const sel = subjectConfig[id]?.selectedTopics;
@@ -400,94 +478,18 @@ function topicLabel(id){
   return `${sel.length} topics`;
 }
 
-let currentMode = 'practice';
-document.querySelectorAll('.mode-toggle button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentMode = btn.dataset.mode;
-    document.getElementById('timerSection').style.display =
-      currentMode === 'study' ? 'none' : 'block';
-  });
-});
-
-/* ---- Toggle switches ---- */
-document.querySelectorAll('.switch').forEach(sw => {
-  sw.addEventListener('click', () => sw.classList.toggle('on'));
-});
-
-/* ---- Calculator ---- */
+/* ============================================================
+   CALCULATOR
+   ============================================================ */
 let calcDisplay = '0';
 let calcExpr    = '';
 let calcJustEvaled = false;
 
 function openCalc(){
-  document.getElementById('calcOverlay').classList.add('open');
+  const overlay = document.getElementById('calcOverlay');
+  if (overlay) overlay.classList.add('open');
   updateCalcDisplay();
 }
+
 function closeCalc(){
-  document.getElementById('calcOverlay').classList.remove('open');
-}
-
-function updateCalcDisplay(){
-  document.getElementById('calcDisplay').textContent = calcDisplay;
-}
-
-function calcPress(val){
-  if (val === 'C'){
-    calcDisplay = '0'; calcExpr = ''; calcJustEvaled = false;
-  } else if (val === 'DEL'){
-    calcDisplay = calcDisplay.length > 1 ? calcDisplay.slice(0, -1) : '0';
-    calcExpr = calcExpr.length > 1 ? calcExpr.slice(0, -1) : '';
-  } else if (val === '='){
-    try {
-      const safe = calcExpr.replace(/[^0-9+\-*/.()%√]/g, '').replace(/√(\d+(\.\d+)?)/g, 'Math.sqrt($1)');
-      const result = Function('"use strict"; return (' + safe + ')')();
-      calcDisplay = isFinite(result) ? String(parseFloat(result.toFixed(8))) : 'Error';
-      calcExpr = calcDisplay;
-      calcJustEvaled = true;
-    } catch(e){
-      calcDisplay = 'Error'; calcExpr = '';
-    }
-  } else if (val === '√'){
-    calcExpr += '√';
-    calcDisplay = calcExpr;
-    calcJustEvaled = false;
-  } else if (['+','-','×','÷','%'].includes(val)){
-    const opMap = {'×':'*','÷':'/'};
-    const op = opMap[val] || val;
-    calcExpr += op;
-    calcDisplay = calcExpr;
-    calcJustEvaled = false;
-  } else {
-    if (calcJustEvaled){ calcExpr = val; calcJustEvaled = false; }
-    else { calcExpr = (calcExpr === '0' || calcExpr === '') ? val : calcExpr + val; }
-    calcDisplay = calcExpr;
-  }
-  updateCalcDisplay();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  // wire calc buttons
-  document.querySelectorAll('.calc-btn').forEach(btn => {
-    btn.addEventListener('click', () => calcPress(btn.dataset.val));
-  });
-  document.getElementById('calcCloseBtn').addEventListener('click', closeCalc);
-  // open calc from toolbar
-  const calcOpenBtn = document.getElementById('calcOpenBtn');
-  if (calcOpenBtn) calcOpenBtn.addEventListener('click', openCalc);
-});
-
-/* ---- Start button ---- */
-startBtn.addEventListener('click', () => {
-  if (selectedIds.length === 0) return;
-  const params = new URLSearchParams({
-    subjects: selectedIds.join(','),
-    mode: currentMode,
-    h: document.getElementById('timerH')?.value || 2,
-    m: document.getElementById('timerM')?.value || 0,
-  });
-  selectedIds.forEach(id => {
-    params.set(`year_${id}`, subjectConfig[id].year);
-    params.set(`count_${id}`, subjectConfig[id].count);
-       }
+  const overlay = docum
