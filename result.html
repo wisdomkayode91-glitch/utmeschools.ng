@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,507 +9,176 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared.css">
 <style>
-
-/* ============ Score hero ============ */
-.score-hero {
-  background: var(--navy);
-  padding: 28px 16px 24px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-.score-hero::before {
-  content: '';
-  position: absolute;
-  top: -80px; right: -80px;
-  width: 240px; height: 240px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,210,63,0.18), transparent 65%);
-  pointer-events: none;
-}
-.score-ring-wrap {
-  position: relative;
-  width: 140px;
-  height: 140px;
-  margin: 0 auto 16px;
-}
-.score-ring-svg {
-  transform: rotate(-90deg);
-}
-.ring-bg {
-  fill: none;
-  stroke: rgba(255,255,255,0.12);
-  stroke-width: 10;
-}
-.ring-fill {
-  fill: none;
-  stroke-width: 10;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1);
-}
-.score-center {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-.score-pct {
-  font-family: var(--font-mono);
-  font-size: 28px;
-  font-weight: 700;
-  color: #fff;
-  line-height: 1;
-}
-.score-pct-label {
-  font-size: 10px;
-  color: #9FB0CB;
-  margin-top: 2px;
-  font-family: var(--font-mono);
-}
-.score-badge {
-  display: inline-block;
-  padding: 4px 14px;
-  border-radius: 99px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  margin-bottom: 10px;
-  letter-spacing: 0.05em;
-}
-.score-badge.excellent  { background: #FFD23F; color: #6B4A00; }
-.score-badge.good       { background: var(--green); color: #fff; }
-.score-badge.average    { background: var(--orange); color: #fff; }
-.score-badge.poor       { background: #C0392B; color: #fff; }
-.score-fraction {
-  font-family: var(--font-mono);
-  font-size: 22px;
-  font-weight: 700;
-  color: #fff;
-}
-.score-meta {
-  font-size: 12px;
-  color: #9FB0CB;
-  margin-top: 8px;
-  line-height: 1.6;
-}
-
-/* ============ Action buttons ============ */
-.result-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 16px 14px;
-  background: var(--white);
-  border-bottom: 1px solid var(--line);
-}
-.result-actions .btn {
-  justify-content: center;
-}
-
-/* ============ Section tabs ============ */
-.result-tabs {
-  display: flex;
-  background: var(--white);
-  border-bottom: 1px solid var(--line);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.result-tabs::-webkit-scrollbar { display: none; }
-.result-tab {
-  flex-shrink: 0;
-  padding: 11px 16px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--ink-soft);
-  border-bottom: 2.5px solid transparent;
-  cursor: pointer;
-  background: none;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  white-space: nowrap;
-}
-.result-tab.active {
-  color: var(--navy);
-  border-bottom-color: var(--orange);
-}
-
-/* ============ Tab panels ============ */
-.tab-panel { display: none; padding: 14px; }
-.tab-panel.active { display: block; }
-
-/* ============ Per-subject breakdown bars ============ */
-.subject-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.sb-row {
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 13px 14px;
-}
-.sb-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-.sb-name { font-size: 13.5px; font-weight: 700; color: var(--navy); }
-.sb-score {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 700;
-}
-.sb-score.good  { color: var(--green); }
-.sb-score.mid   { color: var(--orange); }
-.sb-score.low   { color: #C0392B; }
-.sb-bar-track {
-  height: 8px;
-  background: var(--paper-dim);
-  border-radius: 99px;
-  overflow: hidden;
-}
-.sb-bar-fill {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
-}
-
-/* ============ Topic performance table ============ */
-.topic-section {
-  margin-bottom: 18px;
-}
-.topic-section-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-soft);
-  padding: 10px 0 6px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 8px;
-}
-.topic-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12.5px;
-}
-.topic-table th {
-  text-align: left;
-  padding: 7px 6px;
-  font-size: 10.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-soft);
-  border-bottom: 1.5px solid var(--line);
-}
-.topic-table td {
-  padding: 9px 6px;
-  border-bottom: 1px solid var(--paper-dim);
-  vertical-align: middle;
-  line-height: 1.4;
-}
-.topic-table tr:last-child td { border-bottom: none; }
-.topic-table .rank {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink-soft);
-  width: 26px;
-}
-.topic-score-pill {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
-  white-space: nowrap;
-}
-.topic-score-pill.good  { background: #E7F8EF; color: #0C8C58; }
-.topic-score-pill.mid   { background: #FFF4DC; color: #A6760A; }
-.topic-score-pill.low   { background: #FCE4E4; color: #C0392B; }
-
-/* ============ View Correction (corrections tab) ============ */
-.correction-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.correction-card {
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-.correction-card-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 13px;
-  background: var(--paper-dim);
-  border-bottom: 1px solid var(--line);
-}
-.cc-qnum {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ink-soft);
-}
-.cc-status {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
-}
-.cc-status.correct { background: #E7F8EF; color: #0C8C58; }
-.cc-status.wrong   { background: #FCE4E4; color: #C0392B; }
-.cc-status.skipped { background: var(--paper-dim); color: var(--ink-soft); border: 1px solid var(--line); }
-.cc-topic {
-  font-size: 11px;
-  color: var(--ink-soft);
-  margin-left: auto;
-}
-.correction-body {
-  padding: 12px 13px;
-}
-.correction-qtext {
-  font-size: 13.5px;
-  font-weight: 500;
-  line-height: 1.6;
-  margin-bottom: 11px;
-  color: var(--ink);
-}
-.correction-options {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-.corr-opt {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 12.5px;
-  border: 1.5px solid var(--line);
-  background: var(--white);
-}
-.corr-opt.correct { border-color: var(--green); background: #E7F8EF; }
-.corr-opt.wrong   { border-color: #C0392B; background: #FCE4E4; opacity: 0.75; }
-.corr-opt.selected-wrong { border-color: #C0392B; background: #FCE4E4; }
-.corr-letter {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--ink-soft);
-  flex-shrink: 0;
-  min-width: 16px;
-}
-.corr-opt.correct .corr-letter { color: var(--green); }
-.corr-opt.wrong   .corr-letter { color: #C0392B; }
-.corr-label {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 99px;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-.corr-label.you   { background: #FCE4E4; color: #C0392B; }
-.corr-label.ans   { background: #E7F8EF; color: #0C8C58; }
-.correction-explanation {
-  background: #FFFBEF;
-  border: 1px solid #FFD23F;
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  font-size: 12.5px;
-  line-height: 1.65;
-  color: var(--ink);
-}
-.corr-ex-label {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  font-weight: 700;
-  color: #A6760A;
-  letter-spacing: 0.05em;
-  margin-bottom: 5px;
-}
-
-/* SVG in corrections */
-.corr-diagram {
-  background: var(--paper-dim);
-  border-radius: var(--radius-sm);
-  padding: 10px;
-  text-align: center;
-  margin-bottom: 10px;
-  overflow-x: auto;
-}
-
-/* Subject filter for corrections */
-.filter-bar {
-  display: flex;
-  gap: 7px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  padding-bottom: 2px;
-  margin-bottom: 14px;
-}
-.filter-bar::-webkit-scrollbar { display: none; }
-.filter-chip {
-  flex-shrink: 0;
-  padding: 5px 12px;
-  border-radius: 99px;
-  border: 1.5px solid var(--line);
-  background: var(--white);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--ink-soft);
-  cursor: pointer;
-}
-.filter-chip.active {
-  background: var(--navy);
-  color: #fff;
-  border-color: var(--navy);
-}
-
-/* Share result */
-.share-section {
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  text-align: center;
-  margin-bottom: 14px;
-}
-.share-section h3 { font-size: 14px; margin-bottom: 6px; }
-.share-section p  { font-size: 12px; color: var(--ink-soft); margin-bottom: 14px; line-height: 1.5; }
-
-/* Motivational message */
-.motivation-box {
-  background: linear-gradient(135deg, var(--navy), #163461);
-  border-radius: var(--radius-md);
-  padding: 14px;
-  color: #fff;
-  margin-bottom: 14px;
-  position: relative;
-  overflow: hidden;
-}
-.motivation-box::before {
-  content: '💪';
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 34px;
-  opacity: 0.25;
-}
-.motivation-box p {
-  font-size: 13px;
-  line-height: 1.6;
-  color: #C7D2E3;
-  position: relative;
-  z-index: 1;
-}
-.motivation-box strong { color: #fff; }
-
-@media (min-width: 640px) {
-  .result-actions { flex-direction: row; }
-  .score-ring-wrap { width: 160px; height: 160px; }
-  .score-pct { font-size: 34px; }
-}
-@media (min-width: 980px) {
-  .score-hero, .result-actions, .result-tabs, .tab-panel {
-    max-width: 680px;
-    margin-left: auto;
-    margin-right: auto;
+  /* ---- Score hero ---- */
+  .result-hero{
+    background:var(--navy); padding:24px 16px; text-align:center; color:#fff;
   }
-}
+  .score-ring-wrap{
+    display:flex; justify-content:center; margin-bottom:14px;
+  }
+  .score-ring{position:relative; width:130px; height:130px;}
+  .score-ring svg{width:130px; height:130px; transform:rotate(-90deg);}
+  .score-ring-track{fill:none; stroke:rgba(255,255,255,0.12); stroke-width:10;}
+  .score-ring-fill{fill:none; stroke:var(--gold); stroke-width:10; stroke-linecap:round;
+    stroke-dasharray:0 345; transition:stroke-dasharray 1s ease;}
+  .score-ring-inner{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .score-pct{
+    font-family:var(--font-mono); font-size:24px; font-weight:700; color:#fff;
+  }
+  .score-pct-label{font-size:10px; color:#9FB0CB; margin-top:1px; letter-spacing:0.06em;}
+  .result-total{
+    font-family:var(--font-mono); font-size:19px; font-weight:700; color:#fff; margin-bottom:4px;
+  }
+  .result-meta{font-size:11.5px; color:#9FB0CB; line-height:1.7;}
+  .result-meta span{margin:0 5px;}
+
+  /* ---- Sections ---- */
+  .sec{padding:20px 14px;}
+  .sec h2{font-size:16px; margin-bottom:12px;}
+
+  /* ---- Per-subject bars ---- */
+  .subject-bar-card{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:14px; margin-bottom:10px;
+  }
+  .sb-head{display:flex; align-items:center; gap:9px; margin-bottom:10px;}
+  .sb-icon{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:13px;}
+  .sb-name{font-weight:700; font-size:13px; flex:1;}
+  .sb-score{font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--navy);}
+  .sb-pct-badge{
+    font-family:var(--font-mono); font-size:10px; font-weight:700;
+    padding:3px 9px; border-radius:99px;
+  }
+  .sb-bar-track{
+    height:8px; background:var(--paper-dim); border-radius:99px; overflow:hidden;
+  }
+  .sb-bar-fill{height:100%; border-radius:99px; transition:width 0.8s ease; width:0%;}
+
+  /* ---- Topic table ---- */
+  .topic-table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  .topic-table th{
+    text-align:left; padding:8px 10px; background:var(--paper-dim);
+    font-size:10px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .topic-table td{padding:9px 10px; border-top:1px solid var(--line);}
+  .topic-table tr:hover td{background:var(--paper-dim);}
+  .topic-rank{
+    font-family:var(--font-mono); font-size:11px; font-weight:700;
+    width:26px; height:26px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--paper-dim); color:var(--ink-soft);
+  }
+  .topic-score-cell{font-family:var(--font-mono); font-weight:700; color:var(--navy);}
+  .topic-mini-bar{width:60px; height:6px; background:var(--paper-dim); border-radius:99px; overflow:hidden;}
+  .topic-mini-fill{height:100%; border-radius:99px;}
+
+  /* ---- Action buttons ---- */
+  .action-row{
+    display:flex; flex-direction:column; gap:8px; padding:20px 14px;
+    border-top:1px solid var(--line);
+  }
+
+  /* ---- Corrections view ---- */
+  .corrections-section{display:none; padding:14px 14px 80px;}
+  .correction-card{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius-md);
+    margin-bottom:12px; overflow:hidden;
+  }
+  .cc-header{
+    padding:10px 14px; display:flex; align-items:center; gap:8px;
+    border-bottom:1px solid var(--line);
+  }
+  .cc-num{
+    font-family:var(--font-mono); font-size:10px; font-weight:700;
+    background:var(--paper-dim); padding:3px 9px; border-radius:99px; color:var(--ink-soft);
+  }
+  .cc-subject{font-size:10px; color:var(--ink-soft); flex:1;}
+  .cc-result-icon{font-size:14px;}
+  .cc-question{padding:12px 14px; font-size:13.5px; line-height:1.6; border-bottom:1px solid var(--line);}
+  .cc-options{padding:8px 14px;}
+  .cc-option{
+    display:flex; align-items:flex-start; gap:8px; padding:7px 0;
+    border-top:1px solid #F4F2EC; font-size:12.5px;
+  }
+  .cc-opt-letter{
+    font-family:var(--font-mono); font-size:11px; font-weight:700; min-width:18px;
+    color:var(--ink-soft);
+  }
+  .cc-opt-text{flex:1; line-height:1.5;}
+  .cc-option.correct{ color:var(--green); }
+  .cc-option.correct .cc-opt-letter{ color:var(--green); }
+  .cc-option.wrong{ color:#C0392B; }
+  .cc-option.wrong .cc-opt-letter{ color:#C0392B; }
+  .cc-option.chosen-wrong{ background:#FEF0F0; border-radius:6px; padding:7px 8px; margin:0 -8px; }
+  .cc-explanation{
+    padding:12px 14px; background:#E7F8EF; border-top:1px solid #A8DCC0;
+    font-size:12.5px; line-height:1.65; color:var(--ink);
+  }
+  .cc-exp-label{font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--green); margin-bottom:6px;}
 </style>
 </head>
 <body>
 
 <header class="appbar">
-  <button class="appbar-back" id="backBtn" aria-label="Back">←</button>
+  <button class="appbar-back" onclick="window.location.href='select-subjects.html'" aria-label="Back">←</button>
   <span class="appbar-title">Your Result</span>
-  <button class="appbar-burger" id="menuOpenBtn" aria-label="Open menu">☰</button>
+  <button class="appbar-burger" id="menuOpenBtn" aria-label="Menu">☰</button>
 </header>
 
-<!-- ============ Score hero ============ -->
-<div class="score-hero" id="scoreHero">
-  <div class="score-ring-wrap">
-    <svg class="score-ring-svg" width="140" height="140" viewBox="0 0 140 140">
-      <circle class="ring-bg" cx="70" cy="70" r="58"/>
-      <circle class="ring-fill" id="ringFill" cx="70" cy="70" r="58"
-              stroke-dasharray="364.4" stroke-dashoffset="364.4"/>
-    </svg>
-    <div class="score-center">
-      <div class="score-pct" id="scorePct">0%</div>
-      <div class="score-pct-label">score</div>
+<main>
+  <!-- ============ Score hero ============ -->
+  <div class="result-hero">
+    <div class="score-ring-wrap">
+      <div class="score-ring">
+        <svg viewBox="0 0 130 130">
+          <circle class="score-ring-track" cx="65" cy="65" r="55"/>
+          <circle class="score-ring-fill" id="ringFill" cx="65" cy="65" r="55"/>
+        </svg>
+        <div class="score-ring-inner">
+          <div class="score-pct" id="scorePct">0%</div>
+          <div class="score-pct-label">SCORE</div>
+        </div>
+      </div>
+    </div>
+    <div class="result-total" id="resultTotal">0 / 0</div>
+    <div class="result-meta" id="resultMeta"></div>
+  </div>
+
+  <!-- ============ Results view ============ -->
+  <div id="resultsView">
+    <!-- Per-subject breakdown -->
+    <div class="sec">
+      <h2>Subject breakdown</h2>
+      <div id="subjectBars"></div>
+    </div>
+
+    <!-- Topic analysis -->
+    <div class="sec" style="background:var(--paper-dim); padding-top:16px; padding-bottom:16px;">
+      <h2>Topic performance</h2>
+      <div id="topicTables"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-row">
+      <button class="btn btn-primary btn-block" id="viewCorrectionBtn">📋 View Corrections</button>
+      <a href="select-subjects.html" class="btn btn-ghost btn-block">🔄 Try Again</a>
+      <button class="btn btn-ghost btn-block" id="shareBtn">📤 Share Result</button>
     </div>
   </div>
-  <div class="score-badge" id="scoreBadge">—</div>
-  <div class="score-fraction" id="scoreFraction">0 / 0</div>
-  <div class="score-meta" id="scoreMeta"></div>
-</div>
 
-<!-- ============ Quick actions ============ -->
-<div class="result-actions">
-  <button class="btn btn-primary" id="viewCorrectionBtn" style="flex:1;">📋 View Corrections</button>
-  <a href="select-subjects.html" class="btn btn-ghost" style="flex:1;">🔁 Try Again</a>
-</div>
-
-<!-- ============ Tabs ============ -->
-<div class="result-tabs">
-  <button class="result-tab active" data-tab="breakdown">Breakdown</button>
-  <button class="result-tab" data-tab="topics">Topics</button>
-  <button class="result-tab" data-tab="corrections">Corrections</button>
-  <button class="result-tab" data-tab="share">Share</button>
-</div>
-
-<!-- ============ Tab: Breakdown ============ -->
-<div class="tab-panel active" id="panel-breakdown">
-  <div id="motivationBox" class="motivation-box" style="display:none;">
-    <p id="motivationText"></p>
+  <!-- ============ Corrections view ============ -->
+  <div class="corrections-section" id="correctionsView">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h2 style="font-size:16px;margin:0;">Corrections</h2>
+      <button class="btn btn-ghost btn-sm" id="backToResultBtn">← Back to result</button>
+    </div>
+    <div id="correctionsList"></div>
   </div>
-  <div class="subject-breakdown" id="subjectBreakdown"></div>
-</div>
-
-<!-- ============ Tab: Topics ============ -->
-<div class="tab-panel" id="panel-topics">
-  <div id="topicAnalysis"></div>
-</div>
-
-<!-- ============ Tab: Corrections ============ -->
-<div class="tab-panel" id="panel-corrections">
-  <div class="filter-bar" id="correctionFilter"></div>
-  <div class="correction-list" id="correctionList"></div>
-</div>
-
-<!-- ============ Tab: Share ============ -->
-<div class="tab-panel" id="panel-share">
-  <div class="share-section">
-    <h3>Share your result</h3>
-    <p>Copy your score summary and share it with friends or your study group via WhatsApp.</p>
-    <button class="btn btn-primary btn-block" id="shareWhatsAppBtn">📱 Share on WhatsApp</button>
-  </div>
-  <div class="share-section" style="margin-top:0;">
-    <h3>Share text</h3>
-    <p id="shareTextPreview" style="text-align:left; font-family:var(--font-mono); font-size:11.5px; background:var(--paper-dim); border-radius:8px; padding:10px; line-height:1.7;"></p>
-    <button class="btn btn-ghost btn-block" id="copyTextBtn">📋 Copy text</button>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+</main>
 
 <!-- Hamburger menu -->
 <div class="menu-overlay" id="menuOverlay">
@@ -523,19 +193,12 @@
       <a href="select-subjects.html"><span class="menu-icon">📚</span> Practice for UTME</a>
       <a href="dashboard.html"><span class="menu-icon">📊</span> Result History</a>
       <a href="bookmarks.html"><span class="menu-icon">🔖</span> Bookmarks</a>
-      <a href="discussion.html"><span class="menu-icon">💬</span> Discussion</a>
-      <div class="menu-divider"></div>
-      <a href="#"><span class="menu-icon">👤</span> My account</a>
-      <a href="index.html#pricing"><span class="menu-icon">🔓</span> Unlock full access</a>
-      <div class="menu-divider"></div>
-      <a href="https://wa.me/2347065732365" target="_blank"><span class="menu-icon">💬</span> WhatsApp support</a>
     </nav>
-    <div class="menu-foot"><a href="#" class="btn btn-ghost btn-block btn-sm">Log out</a></div>
   </div>
 </div>
 
 <script src="shared.js"></script>
 <script src="results.js"></script>
 </body>
-  </html>
-        
+      </html>
+      
