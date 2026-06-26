@@ -2,403 +2,841 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Practice - UTMESchools</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Practice — UTMESchools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared.css">
-
 <style>
+/* ============ Practice page styles ============ */
 
-.practice-header{
-  background:#fff;
-  border-bottom:1px solid #e5e7eb;
-  padding:12px;
+/* Top toolbar (below appbar) */
+.practice-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.toolbar-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.tool-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+}
+.tool-btn.bookmarked {
+  background: #FFF4DC;
+  border-color: var(--gold);
+}
+.tool-btn.flagged {
+  background: #FCE4E4;
+  border-color: #C0392B;
 }
 
-.top-row{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+/* Timer pill */
+.timer-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--navy);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 99px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.timer-pill.warning {
+  background: var(--orange);
+  animation: pulse-warn 1s ease infinite;
+}
+.timer-pill.danger {
+  background: #C0392B;
+  animation: pulse-warn 0.5s ease infinite;
+}
+@keyframes pulse-warn {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
 }
 
-.subject-tab{
-  color:#1F5FBF;
-  font-weight:700;
-  border-bottom:3px solid #1F5FBF;
-  padding-bottom:6px;
+/* Subject tabs */
+.subject-tabs {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+}
+.subject-tabs::-webkit-scrollbar { display: none; }
+.subject-tab {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  border-bottom: 2.5px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  border: none;
+  background: none;
+  border-bottom: 2.5px solid transparent;
+}
+.subject-tab.active {
+  color: var(--navy);
+  border-bottom-color: var(--orange);
+}
+.subject-tab .tab-score {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--paper-dim);
+  border-radius: 99px;
+  padding: 1px 6px;
+  margin-left: 5px;
+}
+.subject-tab.active .tab-score {
+  background: #FFE8D6;
+  color: var(--orange-dark);
 }
 
-.header-icons{
-  display:flex;
-  gap:10px;
+/* Question navigator */
+.q-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.q-nav-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  background: var(--white);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.q-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.q-nav-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.q-counter {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--navy);
+  white-space: nowrap;
+}
+.q-audio-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--white);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
 }
 
-.icon-btn{
-  width:38px;
-  height:38px;
-  border:none;
-  border-radius:10px;
-  background:#f3f4f6;
-  cursor:pointer;
+/* Question body */
+.question-area {
+  padding: 14px;
+  flex: 1;
 }
 
-.question-info{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-top:10px;
+/* Passage / comprehension block */
+.passage-block {
+  background: #EFF7FF;
+  border-left: 3px solid #1F5FBF;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.passage-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #1F5FBF;
+  margin-bottom: 6px;
 }
 
-.question-counter{
-  font-weight:700;
+/* SVG diagram */
+.question-diagram {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 14px;
+  text-align: center;
+  overflow-x: auto;
 }
 
-.timer{
-  color:#c0392b;
-  font-weight:700;
+/* Question text */
+.question-text {
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.65;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.question-text sub { font-size: 10px; }
+.question-text sup { font-size: 10px; }
+.question-year-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: var(--paper-dim);
+  padding: 2px 8px;
+  border-radius: 99px;
+  margin-bottom: 8px;
 }
 
-.progress{
-  height:8px;
-  background:#e5e7eb;
-  border-radius:999px;
-  overflow:hidden;
-  margin-top:12px;
+/* Answer options */
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.option-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 13px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: var(--white);
+  transition: border-color 0.12s ease, background 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.option-row:active { transform: scale(0.985); }
+.option-letter {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all 0.12s ease;
+}
+.option-text {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink);
+  flex: 1;
+}
+.option-text sub { font-size: 10px; }
+.option-text sup { font-size: 10px; }
+
+/* Selected state (practice/mock) */
+.option-row.selected {
+  border-color: var(--navy);
+  background: #EEF3F9;
+}
+.option-row.selected .option-letter {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
 }
 
-.progress-fill{
-  height:100%;
-  width:0%;
-  background:#16a34a;
+/* Correct/wrong (study + post-submit) */
+.option-row.correct {
+  border-color: var(--green);
+  background: #E7F8EF;
+}
+.option-row.correct .option-letter {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.option-row.wrong {
+  border-color: #C0392B;
+  background: #FCE4E4;
+  opacity: 0.7;
+}
+.option-row.wrong .option-letter {
+  background: #C0392B;
+  border-color: #C0392B;
+  color: #fff;
+}
+.option-row.dimmed {
+  opacity: 0.45;
+  cursor: default;
 }
 
-.question-container{
-  padding:16px;
+/* Explanation box */
+.explanation-box {
+  margin-top: 14px;
+  border-radius: var(--radius-md);
+  background: var(--white);
+  border: 1.5px solid var(--line);
+  overflow: hidden;
+}
+.explanation-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--paper-dim);
+  border-bottom: 1px solid var(--line);
+}
+.explanation-header .ex-icon {
+  font-size: 14px;
+}
+.explanation-header h4 {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--navy);
+  flex: 1;
+}
+.explanation-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 14px 6px;
+}
+.ex-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--paper-dim);
+  color: var(--ink-soft);
+}
+.ex-tag.topic { background: #E8F1FF; color: #1F5FBF; }
+.ex-tag.difficulty-basic { background: #E7F8EF; color: #0C8C58; }
+.ex-tag.difficulty-intermediate { background: #FFF4DC; color: #A6760A; }
+.ex-tag.difficulty-advanced { background: #FCE4E4; color: #C0392B; }
+.explanation-text {
+  padding: 10px 14px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
 }
 
-.question-card{
-  background:#fff;
-  border-radius:14px;
-  border:1px solid #e5e7eb;
-  padding:16px;
+/* Study mode show/hide button */
+.show-answer-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 13px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--orange);
+  background: var(--orange);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font-display);
+}
+.show-answer-btn.hide-mode {
+  background: var(--white);
+  color: #C0392B;
+  border-color: #C0392B;
 }
 
-.question-text{
-  font-size:15px;
-  line-height:1.7;
+/* Bottom bar */
+.practice-bottom {
+  position: sticky;
+  bottom: 0;
+  background: var(--white);
+  border-top: 1px solid var(--line);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  z-index: 50;
+}
+.answered-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--paper-dim);
+  border-radius: 99px;
+  padding: 7px 12px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--navy);
+  cursor: pointer;
+  border: 1.5px solid var(--line);
+}
+.answered-pill .grid-arrow {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.submit-btn {
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: 99px;
+  padding: 10px 22px;
+  font-size: 13.5px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.nav-btns {
+  display: flex;
+  gap: 8px;
+}
+.nav-prev-btn {
+  background: var(--navy);
+  color: #fff;
+  border: none;
+  border-radius: 99px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nav-next-btn {
+  background: var(--orange);
+  color: #fff;
+  border: none;
+  border-radius: 99px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.nav-prev-btn:disabled,
+.nav-next-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
-.options{
-  margin-top:16px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
+/* Question grid panel */
+.grid-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: rgba(11,37,69,0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: flex-end;
+}
+.grid-panel-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.grid-panel {
+  background: var(--white);
+  width: 100%;
+  max-height: 72vh;
+  border-radius: 18px 18px 0 0;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.22s ease;
+}
+.grid-panel-overlay.open .grid-panel {
+  transform: translateY(0);
+}
+.grid-panel-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.grid-panel-head h3 { font-size: 14px; }
+.grid-panel-head button {
+  background: none; border: none; font-size: 20px;
+  color: var(--ink-soft); cursor: pointer;
+}
+.grid-legend {
+  display: flex;
+  gap: 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.grid-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.grid-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.grid-dot.current { background: var(--orange); }
+.grid-dot.answered { background: var(--navy); }
+.grid-dot.unanswered { background: var(--paper-dim); border: 1px solid var(--line); }
+.grid-scroll {
+  overflow-y: auto;
+  padding: 14px 16px;
+  flex: 1;
+}
+.q-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 7px;
+}
+.q-tile {
+  aspect-ratio: 1;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  background: var(--paper-dim);
+  color: var(--ink-soft);
+}
+.q-tile.current {
+  background: var(--orange);
+  color: #fff;
+  border-color: var(--orange-dark);
+}
+.q-tile.answered {
+  background: var(--navy);
+  color: #fff;
+}
+.q-tile:active { transform: scale(0.9); }
+
+/* Submit dialog */
+.submit-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(11,37,69,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.submit-dialog-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.submit-dialog {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+  transform: scale(0.92);
+  transition: transform 0.22s ease;
+}
+.submit-dialog-overlay.open .submit-dialog {
+  transform: scale(1);
+}
+.submit-dialog-icon { font-size: 32px; margin-bottom: 10px; }
+.submit-dialog h3 { font-size: 16px; margin-bottom: 8px; }
+.submit-dialog p { font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 18px; }
+.submit-dialog-btns { display: flex; gap: 10px; }
+.dialog-cancel {
+  flex: 1; padding: 11px; border-radius: 99px;
+  border: 1.5px solid var(--line); background: var(--white);
+  font-size: 13.5px; font-weight: 700; cursor: pointer; color: var(--ink-soft);
+}
+.dialog-submit {
+  flex: 1; padding: 11px; border-radius: 99px;
+  border: none; background: var(--green);
+  font-size: 13.5px; font-weight: 700; cursor: pointer; color: #fff;
+  font-family: var(--font-display);
 }
 
-.option{
-  border:1px solid #d1d5db;
-  border-radius:12px;
-  padding:12px;
-  cursor:pointer;
-  display:flex;
-  gap:12px;
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--navy);
+  color: #fff;
+  padding: 9px 18px;
+  border-radius: 99px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transition: all 0.22s ease;
+  z-index: 400;
+  pointer-events: none;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
-.option.active{
-  border-color:#1F5FBF;
-  background:#eef4ff;
+/* Calculator overlay */
+.calc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(11,37,69,0.55);
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.calc-overlay.open { opacity: 1; pointer-events: auto; }
+.calc-panel {
+  background: var(--white);
+  width: 100%;
+  border-radius: 18px 18px 0 0;
+  padding: 14px;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.calc-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+}
+.calc-head h4 { font-size: 14px; }
+.calc-head button { background: none; border: none; font-size: 20px; color: var(--ink-soft); cursor: pointer; }
+.calc-display {
+  background: var(--navy);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+  min-height: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calc-expr {
+  font-size: 12px;
+  color: #9FB0CB;
+  min-height: 18px;
+  margin-bottom: 3px;
+}
+.calc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.calc-btn {
+  padding: 15px 8px;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  cursor: pointer;
+  background: var(--paper-dim);
+  color: var(--ink);
+  transition: transform 0.1s ease;
+}
+.calc-btn:active { transform: scale(0.9); }
+.calc-btn.op { background: #E8F1FF; color: var(--navy); }
+.calc-btn.eq { background: var(--orange); color: #fff; }
+.calc-btn.clear { background: #FCE4E4; color: #C0392B; }
+.calc-btn.fn { background: #E7F8EF; color: #0C8C58; font-size: 14px; }
+
+/* Scrollable question area */
+.question-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 16px;
 }
 
-.option.correct{
-  border-color:#16a34a;
-  background:#ecfdf5;
+/* ======= Toast bookmark ======= */
+.bookmark-toast {
+  background: #FFF4DC;
+  color: #7A5500;
+  border: 1px solid var(--gold);
 }
 
-.option.wrong{
-  border-color:#dc2626;
-  background:#fef2f2;
+/* Responsive */
+@media (min-width: 640px) {
+  .q-grid { grid-template-columns: repeat(10, 1fr); }
+  .question-area { padding: 20px; }
 }
-
-.option-letter{
-  font-weight:700;
+@media (min-width: 980px) {
+  .practice-toolbar,
+  .q-nav,
+  .question-area,
+  .practice-bottom,
+  .subject-tabs {
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .practice-bottom { border-radius: 0; }
 }
-
-.answer-box{
-  display:none;
-  margin-top:16px;
-  background:#f8fafc;
-  border-radius:12px;
-  padding:14px;
-  border:1px solid #e5e7eb;
-}
-
-.answer-box.show{
-  display:block;
-}
-
-.answer-topic{
-  font-weight:700;
-  margin-bottom:8px;
-}
-
-.bottom-bar{
-  position:sticky;
-  bottom:0;
-  background:#fff;
-  border-top:1px solid #e5e7eb;
-  padding:12px;
-}
-
-.bottom-top{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:10px;
-}
-
-.score-display{
-  font-weight:700;
-}
-
-.bottom-buttons{
-  display:flex;
-  gap:8px;
-}
-
-.bottom-buttons button{
-  flex:1;
-}
-
-.jump-btn{
-  background:#f3f4f6;
-}
-
-.show-btn{
-  background:#f59e0b;
-  color:white;
-}
-
-.submit-btn{
-  background:#16a34a;
-  color:white;
-}
-
-.nav-overlay,
-.calc-overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.5);
-  display:none;
-  justify-content:center;
-  align-items:center;
-  z-index:999;
-}
-
-.nav-overlay.open,
-.calc-overlay.open{
-  display:flex;
-}
-
-.nav-box,
-.calc-box{
-  background:white;
-  width:90%;
-  max-width:400px;
-  border-radius:16px;
-  padding:16px;
-}
-
-.nav-grid{
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:8px;
-  margin-top:12px;
-}
-
-.nav-grid button{
-  height:40px;
-}
-
-.calc-display{
-  border:1px solid #e5e7eb;
-  padding:12px;
-  margin-bottom:12px;
-  text-align:right;
-  font-size:22px;
-}
-
-.calc-grid{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:8px;
-}
-
-.calc-grid button{
-  height:50px;
-}
-
 </style>
 </head>
-
 <body>
 
-<header class="practice-header">
-
-<div class="top-row">
-
-<div class="subject-tab" id="questionSubject">
-English
-</div>
-
-<div class="header-icons">
-
-<button class="icon-btn">🔖</button>
-
-<button class="icon-btn">🤖</button>
-
-<button class="icon-btn">🚩</button>
-
-<button class="icon-btn" id="openCalcBtn">🧮</button>
-
-</div>
-
-</div>
-
-<div class="question-info">
-
-<div class="question-counter" id="questionNumber">
-Question 1/60
-</div>
-
-<div class="timer" id="timer">
-02:00:00
-</div>
-
-</div>
-
-<div class="progress">
-<div class="progress-fill" id="progressFill"></div>
-</div>
-
+<!-- ============ App bar ============ -->
+<header class="appbar">
+  <button class="appbar-back" id="backBtn" aria-label="Back">←</button>
+  <span class="appbar-title" id="appbarTitle">Practice</span>
+  <button class="appbar-burger" id="menuOpenBtn" aria-label="Open menu">☰</button>
 </header>
 
-<main class="question-container">
-
-<div class="question-card">
-
-<div class="question-text" id="questionText">
-Loading question...
+<!-- ============ Toolbar (timer + action icons) ============ -->
+<div class="practice-toolbar">
+  <div class="toolbar-actions">
+    <button class="tool-btn" id="bookmarkBtn" title="Bookmark this question">🔖</button>
+    <button class="tool-btn" id="flagBtn" title="Report a problem">🚩</button>
+    <button class="tool-btn" id="calcBtn" title="Calculator">🧮</button>
+  </div>
+  <div id="timerPill" class="timer-pill">
+    <span>⏱</span>
+    <span id="timerDisplay">2:00:00</span>
+  </div>
 </div>
 
-<div class="options" id="optionsContainer">
+<!-- ============ Subject tabs ============ -->
+<div class="subject-tabs" id="subjectTabs"></div>
+
+<!-- ============ Question navigator ============ -->
+<div class="q-nav">
+  <button class="q-nav-btn" id="prevBtnTop">‹</button>
+  <div class="q-nav-center">
+    <button class="q-audio-btn" title="Audio (coming soon)">🔊</button>
+    <span class="q-counter" id="qCounter">Question 1 / 40</span>
+  </div>
+  <button class="q-nav-btn" id="nextBtnTop">›</button>
 </div>
 
-<div class="answer-box" id="answerBox">
-
-<div class="answer-topic" id="answerTopic">
-Topic
+<!-- ============ Main scrollable question area ============ -->
+<div class="question-scroll" id="questionScroll">
+  <div class="question-area" id="questionArea">
+    <!-- Rendered by JS -->
+  </div>
 </div>
 
-<div id="answerExplanation">
-Explanation
+<!-- ============ Bottom bar ============ -->
+<div class="practice-bottom">
+  <button class="answered-pill" id="gridOpenBtn">
+    <span id="answeredCount">0 / 40</span>
+    <span class="grid-arrow">▲</span>
+  </button>
+  <div class="nav-btns">
+    <button class="nav-prev-btn" id="prevBtnBottom">‹ Prev</button>
+    <button class="nav-next-btn" id="nextBtnBottom">Next ›</button>
+  </div>
+  <button class="submit-btn" id="submitBtn">Submit</button>
 </div>
 
+<!-- ============ Question grid panel ============ -->
+<div class="grid-panel-overlay" id="gridPanelOverlay">
+  <div class="grid-panel">
+    <div class="grid-panel-head">
+      <h3>Questions</h3>
+      <button id="gridCloseBtn">×</button>
+    </div>
+    <div class="grid-legend">
+      <div class="grid-legend-item"><div class="grid-dot current"></div> Current</div>
+      <div class="grid-legend-item"><div class="grid-dot answered"></div> Answered</div>
+      <div class="grid-legend-item"><div class="grid-dot unanswered"></div> Not answered</div>
+    </div>
+    <div class="grid-scroll">
+      <div class="q-grid" id="qGrid"></div>
+    </div>
+  </div>
 </div>
 
+<!-- ============ Submit confirmation dialog ============ -->
+<div class="submit-dialog-overlay" id="submitDialogOverlay">
+  <div class="submit-dialog">
+    <div class="submit-dialog-icon">📋</div>
+    <h3>Submit exam?</h3>
+    <p id="submitDialogMsg">You've answered 15 / 40 questions. Unanswered questions will be marked wrong.</p>
+    <div class="submit-dialog-btns">
+      <button class="dialog-cancel" id="dialogCancelBtn">Not yet</button>
+      <button class="dialog-submit" id="dialogSubmitBtn">Submit ✓</button>
+    </div>
+  </div>
 </div>
 
-</main>
-
-<div class="bottom-bar">
-
-<div class="bottom-top">
-
-<div class="score-display" id="scoreDisplay">
-0/0
-</div>
-
-<button class="jump-btn" id="openNavBtn">
-Jump To Question
-</button>
-
-</div>
-
-<div class="bottom-buttons">
-
-<button id="prevBtn">
-← Previous
-</button>
-
-<button id="nextBtn">
-Next →
-</button>
-
-<button id="showBtn" class="show-btn">
-Show
-</button>
-
-<button id="submitBtn" class="submit-btn">
-Submit
-</button>
-
-</div>
-
-</div>
-
-<!-- Navigation Modal -->
-
-<div class="nav-overlay" id="navOverlay">
-
-<div class="nav-box">
-
-<h3>Select Question</h3>
-
-<div class="nav-grid" id="navGrid">
-</div>
-
-</div>
-
-</div>
-
-<!-- Calculator -->
-
+<!-- ============ Calculator overlay ============ -->
 <div class="calc-overlay" id="calcOverlay">
+  <div class="calc-panel">
+    <div class="calc-head">
+      <h4>🧮 Calculator</h4>
+      <button id="calcCloseBtn">×</button>
+    </div>
+    <div class="calc-display">
+      <div class="calc-expr" id="calcExprDisplay"></div>
+      <div id="calcDisplay">0</div>
+    </div>
+    <div class="calc-grid">
+      <button class="calc-btn clear" data-val="C">C</button>
+      <button class="calc-btn clear" data-val="DEL">⌫</button>
+      <button class="calc-btn fn" data-val="√">√</button>
+      <button class="calc-btn op" data-val="÷">÷</button>
 
-<div class="calc-box">
+      <button class="calc-btn" data-val="7">7</button>
+      <button class="calc-btn" data-val="8">8</button>
+      <button class="calc-btn" data-val="9">9</button>
+      <button class="calc-btn op" data-val="×">×</button>
 
-<div class="calc-display" id="calcDisplay">
-0
-</div>
-
-<div class="calc-grid">
-
-<button>7</button>
-<button>8</button>
-<button>9</button>
-<button>/</button>
-
-<button>4</button>
-<button>5</button>
-<button>6</button>
-<button>*</button>
-
-<button>1</button>
-<button>2</button>
-<button>3</button>
-<button>-</button>
-
-<button>0</button>
-<button>.</button>
-<button>=</button>
-<button>+</button>
-
-</div>
-
-</div>
-
-</div>
-
-<script src="shared.js"></script>
-<script src="practice.js"></script>
-
-</body>
-</html>
+      <button class="calc-btn" data-val="4">4</button>
+      <button class="calc-btn" data-val="5">5</button>
+      <button class="calc-btn" data-val="6">6</button>
+      <but
