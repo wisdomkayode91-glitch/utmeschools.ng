@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Dashboard — UTMESchools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* ---- Tabs ---- */
+  .dash-tabs{
+    display:flex; background:var(--white); border-bottom:1px solid var(--line);
+    position:sticky; top:52px; z-index:90;
+  }
+  .dash-tab{
+    flex:1; padding:12px; text-align:center;
+    font-size:13px; font-weight:700; color:var(--ink-soft);
+    border-bottom:2.5px solid transparent; cursor:pointer;
+    background:none; border-top:none; border-left:none; border-right:none;
+  }
+  .dash-tab.active{
+    color:var(--navy); border-bottom-color:var(--orange);
+  }
+
+  /* ---- Section header ---- */
+  .sec-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 14px 8px;
+  }
+  .sec-head h2{font-size:15px;}
+  .sec-head .count-badge{
+    font-family:var(--font-mono); font-size:10px; font-weight:700;
+    background:var(--paper-dim); padding:3px 9px; border-radius:99px;
+    color:var(--ink-soft);
+  }
+
+  /* ---- Filter bar ---- */
+  .filter-bar{
+    display:flex; gap:7px; overflow-x:auto; scrollbar-width:none;
+    padding:0 14px 10px;
+  }
+  .filter-bar::-webkit-scrollbar{display:none;}
+  .filter-chip{
+    flex-shrink:0; padding:5px 12px; border-radius:99px;
+    border:1.5px solid var(--line); background:var(--white);
+    font-size:12px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+  }
+  .filter-chip.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+
+  /* ---- Result cards ---- */
+  .result-list{padding:0 14px 80px; display:flex; flex-direction:column; gap:10px;}
+  .result-card{
+    background:var(--white); border:1px solid var(--line);
+    border-radius:var(--radius-md); overflow:hidden;
+  }
+  .result-card-head{
+    display:flex; align-items:center; gap:10px;
+    padding:12px 14px; cursor:pointer;
+  }
+  .result-num{
+    font-family:var(--font-mono); font-size:11px; font-weight:700;
+    background:var(--paper-dim); padding:3px 9px; border-radius:99px;
+    color:var(--ink-soft); flex-shrink:0;
+  }
+  .result-info{flex:1; min-width:0;}
+  .result-info-top{
+    display:flex; align-items:center; gap:8px; margin-bottom:3px;
+  }
+  .result-score{font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--navy);}
+  .result-pct-badge{
+    font-family:var(--font-mono); font-size:10px; font-weight:700;
+    padding:2px 8px; border-radius:99px; flex-shrink:0;
+  }
+  .result-pct-badge.green{background:#E7F8EF; color:#0C8C58;}
+  .result-pct-badge.amber{background:#FFF4DC; color:#A6760A;}
+  .result-pct-badge.red{background:#FCE4E4; color:#C0392B;}
+  .result-subjects{
+    font-size:11px; color:var(--ink-soft); line-height:1.4;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .result-meta-row{
+    display:flex; align-items:center; gap:8px; margin-top:3px;
+  }
+  .result-date{font-size:10.5px; color:var(--ink-soft);}
+  .result-mode{
+    font-family:var(--font-mono); font-size:9px; font-weight:700;
+    letter-spacing:0.04em; text-transform:uppercase;
+    background:var(--paper-dim); padding:2px 7px; border-radius:99px;
+    color:var(--ink-soft);
+  }
+  .result-expand{
+    width:28px; height:28px; border-radius:50%;
+    background:var(--paper-dim); border:none; color:var(--ink-soft);
+    font-size:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    transition:transform 0.15s ease;
+  }
+  .result-expand.open{transform:rotate(180deg);}
+
+  .result-card-body{
+    display:none; padding:0 14px 12px;
+    border-top:1px solid var(--line);
+  }
+  .result-card-body.open{display:block;}
+  .result-actions-mini{
+    display:flex; flex-direction:column; gap:6px; padding-top:10px;
+  }
+  .result-actions-mini .btn{
+    justify-content:flex-start; padding:8px 12px; font-size:12.5px;
+  }
+
+  /* ---- Bookmarks cards ---- */
+  .bookmark-list{padding:0 14px 80px; display:flex; flex-direction:column; gap:10px;}
+  .bookmark-card{
+    background:var(--white); border:1px solid var(--line);
+    border-radius:var(--radius-md); overflow:hidden;
+  }
+  .bookmark-card-head{
+    display:flex; align-items:center; gap:10px;
+    padding:12px 14px; cursor:pointer;
+  }
+  .bookmark-subject-tag{
+    font-family:var(--font-mono); font-size:9px; font-weight:700;
+    letter-spacing:0.04em; text-transform:uppercase;
+    padding:2px 7px; border-radius:99px; flex-shrink:0;
+  }
+  .bookmark-info{flex:1; min-width:0;}
+  .bookmark-qref{
+    font-size:12px; font-weight:600; color:var(--navy);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .bookmark-date{font-size:10.5px; color:var(--ink-soft); margin-top:2px;}
+  .bookmark-expand{
+    width:28px; height:28px; border-radius:50%;
+    background:var(--paper-dim); border:none; color:var(--ink-soft);
+    font-size:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+    transition:transform 0.15s ease;
+  }
+  .bookmark-expand.open{transform:rotate(180deg);}
+
+  .bookmark-card-body{
+    display:none; padding:0 14px 12px;
+    border-top:1px solid var(--line);
+  }
+  .bookmark-card-body.open{display:block;}
+  .bookmark-actions-mini{
+    display:flex; flex-direction:column; gap:6px; padding-top:10px;
+  }
+
+  /* ---- Empty states ---- */
+  .empty-state{
+    text-align:center; padding:50px 30px;
+  }
+  .empty-state .es-icon{font-size:36px; margin-bottom:12px;}
+  .empty-state h3{font-size:15px; margin-bottom:6px;}
+  .empty-state p{font-size:12.5px; color:var(--ink-soft); line-height:1.5;}
+
+  /* ---- Delete all row ---- */
+  .delete-all-row{
+    padding:10px 14px; text-align:right;
+  }
+  .delete-all-btn{
+    font-size:11px; color:#C0392B; font-weight:600;
+    background:none; border:none; padding:6px 10px;
+  }
+
+  /* ---- Sort dropdown ---- */
+  .sort-select{
+    border:1px solid var(--line); border-radius:7px;
+    padding:5px 8px; font-size:12px; font-family:inherit;
+    background:var(--white); color:var(--ink);
+  }
+
+  /* ---- Tab panels ---- */
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* ---- Toast ---- */
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--navy); color:#fff; padding:10px 18px; border-radius:99px;
+    font-size:12.5px; font-weight:600; z-index:300; opacity:0; pointer-events:none;
+    transition:opacity 0.2s ease, transform 0.2s ease; white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  @media (min-width:640px){
+    .result-list, .bookmark-list, .filter-bar, .sec-head{
+      max-width:600px; margin-left:auto; margin-right:auto; padding-left:0; padding-right:0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <button class="appbar-back" onclick="window.location.href='index.html'" aria-label="Back">←</button>
+  <span class="appbar-title">Dashboard</span>
+  <button class="appbar-burger" id="menuOpenBtn" aria-label="Open menu">☰</button>
+</header>
+
+<div class="dash-tabs">
+  <button class="dash-tab active" data-tab="history">📊 Result History</button>
+  <button class="dash-tab" data-tab="bookmarks">🔖 Bookmarks</button>
+</div>
+
+<!-- ============ Result History Tab ============ -->
+<div class="tab-panel active" id="panel-history">
+  <div class="sec-head">
+    <h2>Past attempts</h2>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <select class="sort-select" id="sortSelect">
+        <option value="date-desc">Newest first</option>
+        <option value="date-asc">Oldest first</option>
+        <option value="score-desc">Highest score</option>
+        <option value="score-asc">Lowest score</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="filter-bar" id="historyFilter">
+    <button class="filter-chip active" data-filter="all">All subjects</button>
+  </div>
+
+  <div class="delete-all-row" id="deleteAllRow" style="display:none;">
+    <button class="delete-all-btn" id="deleteAllBtn">🗑️ Delete all history</button>
+  </div>
+
+  <div class="result-list" id="resultList">
+    <div class="empty-state">
+      <div class="es-icon">📋</div>
+      <h3>No results yet</h3>
+      <p>Complete a practice session and your results will show up here automatically.</p>
+      <a href="select-subjects.html" class="btn btn-primary btn-sm" style="margin-top:14px;">Start practicing</a>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Bookmarks Tab ============ -->
+<div class="tab-panel" id="panel-bookmarks">
+  <div class="sec-head">
+    <h2>Saved questions</h2>
+    <div class="count-badge" id="bookmarkCountBadge">0</div>
+  </div>
+
+  <div class="filter-bar" id="bookmarkFilter">
+    <button class="filter-chip active" data-filter="all">All subjects</button>
+  </div>
+
+  <div class="delete-all-row" id="deleteAllBookmarksRow" style="display:none;">
+    <button class="delete-all-btn" id="deleteAllBookmarksBtn">🗑️ Delete all bookmarks</button>
+  </div>
+
+  <div class="bookmark-list" id="bookmarkList">
+    <div class="empty-state">
+      <div class="es-icon">🔖</div>
+      <h3>No bookmarks yet</h3>
+      <p>Tap the bookmark icon on any question during practice to save it here.</p>
+      <a href="select-subjects.html" class="btn btn-primary btn-sm" style="margin-top:14px;">Start practicing</a>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ============ Hamburger menu ============ -->
+<div class="menu-overlay" id="menuOverlay">
+  <div class="menu-panel">
+    <button class="menu-close" id="menuCloseBtn">×</button>
+    <div class="menu-head">
+      <div class="appbar-mark">U</div>
+      <div>
+        <div class="menu-head-name">UTMESchools</div>
+        <div class="menu-head-sub">JAMB · UTME Practice</div>
+      </div>
+    </div>
+    <nav class="menu-list">
+      <a href="index.html"><span class="menu-icon">🏠</span> Home</a>
+      <a href="select-subjects.html"><span class="menu-icon">📚</span> Practice for UTME</a>
+      <a href="dashboard.html" class="active"><span class="menu-icon">📊</span> Result History</a>
+      <a href="bookmarks.html"><span class="menu-icon">🔖</span> Bookmarks</a>
+      <a href="discussion.html"><span class="menu-icon">💬</span> Discussion</a>
+      <div class="menu-divider"></div>
+      <a href="#"><span class="menu-icon">👤</span> My account</a>
+      <a href="index.html#pricing"><span class="menu-icon">🔓</span> Unlock full access</a>
+      <div class="menu-divider"></div>
+      <a href="https://wa.me/2347065732365" target="_blank"><span class="menu-icon">💬</span> WhatsApp support</a>
+    </nav>
+    <div class="menu-foot">
+      <a href="#" class="btn btn-ghost btn-block btn-sm">Log out</a>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>
