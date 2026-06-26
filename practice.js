@@ -1,408 +1,389 @@
 /* ============================================================
    UTMESchools v2 — practice.js
-   Question-answering screen.
-   Reads settings from URL query string set by select-subjects.js.
-   Uses hardcoded sample questions until Supabase is connected.
+   Handles Practice mode, Mock Exam mode, and Study mode.
+
+   Question JSON format (questions/english.json etc.):
+   {
+     "id": "eng_1992_001",
+     "subject": "english",
+     "year": 1992,
+     "year_label": "1992",       // display label (e.g. "2017 Model I")
+     "question_text": "...",
+     "option_a": "...",
+     "option_b": "...",
+     "option_c": "...",
+     "option_d": "...",
+     "correct_option": "A",      // A, B, C, or D
+     "explanation": "...",
+     "topic": "ORAL FORMS",
+     "subtopic": "ORAL FORMS : CONSONANTS",
+     "difficulty": "Basic",      // Basic | Intermediate | Advanced
+     "has_svg": false,
+     "svg_code": null,
+     "image_file": null,         // e.g. "eng_1992_q3.jpg" — null if none
+     "passage_id": null,         // links to a shared passage group
+     "passage_text": null        // the passage text (repeated on all linked questions)
+   }
+
+   Passage handling:
+   - If a question has a passage_id, show the passage above the question.
+   - The same passage_text appears for every question that shares that passage_id.
+   - When questions are reordered/shuffled, passage questions are kept together
+     in their original relative order (shuffling happens at passage-group level).
+
+   Image file naming convention (for questions with diagrams):
+   - Place images in: images/questions/
+   - Name format: {subject}_{year}_{question_number}.jpg
+     e.g.  physics_2005_q12.jpg
+           chemistry_2018_q07.jpg
+   - For model years: physics_2017_m1_q05.jpg (m1 = Model I)
+   - Claude will tell you the exact filename to use for each question.
    ============================================================ */
 
-/* ================================================================
-   SAMPLE QUESTIONS (replace with real DB calls later)
-   Each question object:
-   {
-     id, subjectId, year, passageId (optional, groups comprehension),
-     passage (optional text for comprehension blocks),
-     text, optA, optB, optC, optD, correct ('A'|'B'|'C'|'D'),
-     topic, subtopic, difficulty ('Basic'|'Intermediate'|'Advanced'),
-     explanation, hasSvg (bool), svgCode (string|null)
-   }
-   ================================================================ */
+/* ---- Parse URL settings ---- */
+const params      = new URLSearchParams(window.location.search);
+const subjectIds  = (params.get('subjects') || 'english').split(',').filter(Boolean);
+const mode        = params.get('mode') || 'practice'; // practice | mock | study
+const timerH      = parseInt(params.get('h') || '2', 10);
+const timerM      = parseInt(params.get('m') || '0', 10);
+const FREE_LIMIT  = 5;
 
+/* ---- Subject metadata (same list as select-subjects.js) ---- */
+const ALL_SUBJECTS = [
+  { id:'english',     name:'English Language',     icon:'🔤', bg:'#E8F1FF', fg:'#1F5FBF' },
+  { id:'accounts',    name:'Accounts',             icon:'🧾', bg:'#E7F8EF', fg:'#0C8C58' },
+  { id:'agriculture', name:'Agriculture',          icon:'🌾', bg:'#E8F1FF', fg:'#1F5FBF' },
+  { id:'biology',     name:'Biology',              icon:'🧬', bg:'#F1EAFB', fg:'#6C3FBF' },
+  { id:'chemistry',   name:'Chemistry',            icon:'⚗️', bg:'#E7F8EF', fg:'#0C8C58' },
+  { id:'commerce',    name:'Commerce',             icon:'🛒', bg:'#FCE4E4', fg:'#C0392B' },
+  { id:'computer',    name:'Computer Studies',     icon:'💻', bg:'#E7F8EF', fg:'#0C8C58' },
+  { id:'crk',         name:'CRK',                  icon:'✝️', bg:'#E8F1FF', fg:'#1F5FBF' },
+  { id:'economics',   name:'Economics',            icon:'📈', bg:'#FFF4DC', fg:'#A6760A' },
+  { id:'fineart',     name:'Fine Art',             icon:'🎨', bg:'#FFF4DC', fg:'#A6760A' },
+  { id:'french',      name:'French',               icon:'🇫🇷', bg:'#E7F8EF', fg:'#0C8C58' },
+  { id:'geography',   name:'Geography',            icon:'🌍', bg:'#FFF4DC', fg:'#A6760A' },
+  { id:'government',  name:'Government',           icon:'🏛️', bg:'#E8F1FF', fg:'#1F5FBF' },
+  { id:'hausa',       name:'Hausa',                icon:'📜', bg:'#FCE4E4', fg:'#C0392B' },
+  { id:'history',     name:'History',              icon:'🏺', bg:'#FCE4E4', fg:'#C0392B' },
+  { id:'homeec',      name:'Home Economics',       icon:'🏠', bg:'#F1EAFB', fg:'#6C3FBF' },
+  { id:'igbo',        name:'Igbo',                 icon:'📖', bg:'#E8F1FF', fg:'#1F5FBF' },
+  { id:'irk',         name:'IRK',                  icon:'☪️', bg:'#F1EAFB', fg:'#6C3FBF' },
+  { id:'literature',  name:'Literature',           icon:'📚', bg:'#FCE4E4', fg:'#C0392B' },
+  { id:'littext',     name:'Literature Textbooks', icon:'📗', bg:'#E7F8EF', fg:'#0C8C58' },
+  { id:'mathematics', name:'Mathematics',          icon:'📐', bg:'#FFF4DC', fg:'#A6760A' },
+  { id:'music',       name:'Music',                icon:'🎵', bg:'#FCE4E4', fg:'#C0392B' },
+  { id:'phe',         name:'PHE',                  icon:'🏃', bg:'#E7F8EF', fg:'#0C8C58' },
+  { id:'physics',     name:'Physics',              icon:'⚛️', bg:'#FCE4E4', fg:'#C0392B' },
+  { id:'lekki',       name:'The Lekki Headmaster', icon:'📕', bg:'#F1EAFB', fg:'#6C3FBF' },
+  { id:'yoruba',      name:'Yoruba',               icon:'🌺', bg:'#FFF4DC', fg:'#A6760A' },
+];
+
+/* ============================================================
+   SAMPLE QUESTIONS (placeholder until real data is loaded)
+   Replace this section with actual JSON fetched from
+   questions/{subject}.json once you have real questions.
+   ============================================================ */
 const SAMPLE_QUESTIONS = {
-
   english: [
-    /* Comprehension passage — 3 questions share one passage */
     {
-      id: 'en001', subjectId: 'english', year: 2019,
-      passageId: 'passage_en_2019_1',
-      passage: 'Read the following passage carefully and answer the questions that follow.\n\nThe role of education in national development cannot be overemphasised. It is through education that individuals acquire the knowledge, skills and attitudes necessary for meaningful participation in society. In Nigeria, the Federal Government has continued to invest heavily in education at all levels, recognising that an educated populace is the foundation of sustainable development. However, challenges such as inadequate funding, poor infrastructure and shortage of qualified teachers continue to undermine the quality of education delivered.',
-      text: 'According to the passage, what does the Federal Government of Nigeria recognise as the foundation of sustainable development?',
-      optA: 'Adequate funding of schools',
-      optB: 'An educated populace',
-      optC: 'Improved infrastructure',
-      optD: 'Qualified teachers',
-      correct: 'B',
-      topic: 'COMPREHENSION PASSAGE',
-      subtopic: 'MAIN IDEA',
-      difficulty: 'Basic',
-      explanation: 'The passage states that the Federal Government recognises "an educated populace is the foundation of sustainable development." This directly answers the question. Option A, C and D are challenges listed in the passage, not what the government recognises as the foundation.',
-      hasSvg: false, svgCode: null
+      id:'eng_s_001', subject:'english', year:2023, year_label:'2023',
+      passage_id:'eng_2023_p1',
+      passage_text:`In every human society, people communicate with one another using a natural language, spoken or signed, to convey meaning. The English language, in particular, has spread across the world as a result of British colonisation, trade, and the dominance of English-language media. Today, it serves as a lingua franca — a shared language that allows speakers of different native tongues to communicate.`,
+      question_text:'According to the passage, which factor is NOT mentioned as responsible for the spread of English?',
+      option_a:'British colonisation', option_b:'Trade', option_c:'Military conquest', option_d:'English-language media',
+      correct_option:'C', explanation:'The passage lists colonisation, trade, and media dominance as reasons. Military conquest is not mentioned.',
+      topic:'COMPREHENSION PASSAGE', subtopic:'COMPREHENSION PASSAGE', difficulty:'Basic',
+      has_svg:false, svg_code:null, image_file:null
     },
     {
-      id: 'en002', subjectId: 'english', year: 2019,
-      passageId: 'passage_en_2019_1',
-      passage: null, /* passage already shown above — don't repeat */
-      text: 'Which of the following is NOT listed as a challenge undermining education quality in the passage?',
-      optA: 'Inadequate funding',
-      optB: 'Poor infrastructure',
-      optC: 'Government neglect',
-      optD: 'Shortage of qualified teachers',
-      correct: 'C',
-      topic: 'COMPREHENSION PASSAGE',
-      subtopic: 'DETAIL RETRIEVAL',
-      difficulty: 'Basic',
-      explanation: '"Government neglect" is not mentioned anywhere in the passage. The three challenges explicitly listed are: inadequate funding, poor infrastructure, and shortage of qualified teachers.',
-      hasSvg: false, svgCode: null
+      id:'eng_s_002', subject:'english', year:2023, year_label:'2023',
+      passage_id:'eng_2023_p1',
+      passage_text:`In every human society, people communicate with one another using a natural language, spoken or signed, to convey meaning. The English language, in particular, has spread across the world as a result of British colonisation, trade, and the dominance of English-language media. Today, it serves as a lingua franca — a shared language that allows speakers of different native tongues to communicate.`,
+      question_text:'As used in the passage, the word "lingua franca" most nearly means:',
+      option_a:'A dead language used in formal writing', option_b:'A shared language between different native speakers',
+      option_c:'The official language of France', option_d:'A dialect spoken only in Britain',
+      correct_option:'B', explanation:'"Lingua franca" means a bridge language used by speakers who do not share the same native language. The passage defines this directly.',
+      topic:'COMPREHENSION PASSAGE', subtopic:'COMPREHENSION PASSAGE', difficulty:'Basic',
+      has_svg:false, svg_code:null, image_file:null
     },
     {
-      id: 'en003', subjectId: 'english', year: 2019,
-      passageId: 'passage_en_2019_1',
-      passage: null,
-      text: 'The word "overemphasised" as used in the passage means that the role of education is —',
-      optA: 'frequently doubted',
-      optB: 'greatly undervalued',
-      optC: 'too important to stress enough',
-      optD: 'difficult to measure',
-      correct: 'C',
-      topic: 'COMPREHENSION PASSAGE',
-      subtopic: 'VOCABULARY IN CONTEXT',
-      difficulty: 'Intermediate',
-      explanation: '"Cannot be overemphasised" is a fixed English expression meaning the thing is so important that no amount of emphasis is too much — i.e. it is too important to stress enough. The sentence structure "cannot be overemphasised" signals this meaning.',
-      hasSvg: false, svgCode: null
-    },
-    /* Lexis and structure */
-    {
-      id: 'en004', subjectId: 'english', year: 2021,
-      passageId: null, passage: null,
-      text: 'Choose the option that is nearest in meaning to the underlined word.\nThe students were <u>perturbed</u> by the sudden change in examination timetable.',
-      optA: 'delighted',
-      optB: 'confused',
-      optC: 'disturbed',
-      optD: 'encouraged',
-      correct: 'C',
-      topic: 'LEXIS AND STRUCTURE',
-      subtopic: 'SYNONYMS',
-      difficulty: 'Basic',
-      explanation: '"Perturbed" means made anxious or unsettled — the closest synonym is "disturbed." "Confused" (B) is close but focuses on mental clarity rather than emotional upset. "Delighted" and "encouraged" are antonyms.',
-      hasSvg: false, svgCode: null
+      id:'eng_s_003', subject:'english', year:2022, year_label:'2022',
+      passage_id:null, passage_text:null,
+      question_text:'Choose the option that best fills the gap: The committee _____ not been able to reach a decision.',
+      option_a:'have', option_b:'has', option_c:'had', option_d:'was',
+      correct_option:'B', explanation:'"Committee" is a collective noun treated as singular in formal British English. The correct auxiliary is "has". "The committee has not been able to reach a decision."',
+      topic:'LEXIS AND STRUCTURE', subtopic:'LEXIS AND STRUCTURE : SENTENCE COMPLETION', difficulty:'Basic',
+      has_svg:false, svg_code:null, image_file:null
     },
     {
-      id: 'en005', subjectId: 'english', year: 2023,
-      passageId: null, passage: null,
-      text: 'From the options lettered A to D, choose the one that has the same stress pattern as the given word.\n\nPHOTOGRAPHY',
-      optA: 'geo-GRA-phy',
-      optB: 'PHO-to-graph',
-      optC: 'pho-TO-gra-phy',
-      optD: 'PHO-to-gra-phy',
-      correct: 'C',
-      topic: 'ORAL FORMS',
-      subtopic: 'STRESS PATTERN',
-      difficulty: 'Intermediate',
-      explanation: 'PHO-TO-GRA-PHY: the stress falls on the second syllable — pho-TO-gra-phy. This matches option C. Option D places stress on the first syllable (PHO), which is wrong. Option A (geo-GRA-phy) has stress on the second syllable but is a different word used for comparison — PHO-TO-GRA-PHY and geo-GRA-phy do NOT share the same stress pattern because photography has 4 syllables stressed on the 2nd (pho-TO-gra-phy).',
-      hasSvg: false, svgCode: null
+      id:'eng_s_004', subject:'english', year:2021, year_label:'2021',
+      passage_id:null, passage_text:null,
+      question_text:'Which of the following words contains a voiced consonant at the beginning?',
+      option_a:'Phone', option_b:'Thick', option_c:'Sheep', option_d:'Voice',
+      correct_option:'D', explanation:'/v/ in "voice" is voiced (vocal cords vibrate). /f/ in "phone", /θ/ in "thick", and /ʃ/ in "sheep" are all voiceless.',
+      topic:'ORAL FORMS', subtopic:'ORAL FORMS : CONSONANTS', difficulty:'Intermediate',
+      has_svg:false, svg_code:null, image_file:null
+    },
+    {
+      id:'eng_s_005', subject:'english', year:2020, year_label:'2020',
+      passage_id:null, passage_text:null,
+      question_text:'In which of these words does the stress fall on the second syllable?',
+      option_a:'Comfort', option_b:'Carpet', option_c:'Forget', option_d:'Open',
+      correct_option:'C', explanation:'"Forget" is stressed on the second syllable: for-GET. The others are stressed on the first syllable: COM-fort, CAR-pet, O-pen.',
+      topic:'ORAL FORMS', subtopic:'ORAL FORMS : STRESS PATTERN', difficulty:'Intermediate',
+      has_svg:false, svg_code:null, image_file:null
+    },
+    {
+      id:'eng_s_006', subject:'english', year:2019, year_label:'2019',
+      passage_id:null, passage_text:null,
+      question_text:'Choose the word nearest in meaning to BENEVOLENT.',
+      option_a:'Generous', option_b:'Fierce', option_c:'Stubborn', option_d:'Cunning',
+      correct_option:'A', explanation:'"Benevolent" means well-meaning and kind. "Generous" is the closest synonym. The other options are antonyms or unrelated.',
+      topic:'LEXIS AND STRUCTURE', subtopic:'LEXIS AND STRUCTURE : SYNONYMS', difficulty:'Basic',
+      has_svg:false, svg_code:null, image_file:null
     },
   ],
-
   mathematics: [
     {
-      id: 'ma001', subjectId: 'mathematics', year: 2022,
-      passageId: null, passage: null,
-      text: 'Simplify: (2x<sup>3</sup>y<sup>2</sup>) × (3x<sup>2</sup>y<sup>4</sup>)',
-      optA: '5x<sup>5</sup>y<sup>6</sup>',
-      optB: '6x<sup>5</sup>y<sup>6</sup>',
-      optC: '6x<sup>6</sup>y<sup>8</sup>',
-      optD: '5x<sup>6</sup>y<sup>8</sup>',
-      correct: 'B',
-      topic: 'ALGEBRA',
-      subtopic: 'LAWS OF INDICES',
-      difficulty: 'Basic',
-      explanation: 'Multiply the coefficients: 2 × 3 = 6. Add the powers of x: 3 + 2 = 5. Add the powers of y: 2 + 4 = 6. Result: 6x⁵y⁶. This applies the law aᵐ × aⁿ = aᵐ⁺ⁿ.',
-      hasSvg: false, svgCode: null
+      id:'mth_s_001', subject:'mathematics', year:2023, year_label:'2023',
+      passage_id:null, passage_text:null,
+      question_text:'Simplify: (x² − 9) ÷ (x − 3)',
+      option_a:'x − 3', option_b:'x + 3', option_c:'x² + 3', option_d:'x² − 3',
+      correct_option:'B', explanation:'x² − 9 = (x+3)(x−3). Dividing by (x−3) gives (x+3).',
+      topic:'ALGEBRA', subtopic:'ALGEBRA', difficulty:'Basic',
+      has_svg:false, svg_code:null, image_file:null
     },
     {
-      id: 'ma002', subjectId: 'mathematics', year: 2020,
-      passageId: null, passage: null,
-      text: 'The mean of 5, 8, x, 11 and 14 is 10. Find the value of x.',
-      optA: '10',
-      optB: '12',
-      optC: '14',
-      optD: '8',
-      correct: 'B',
-      topic: 'STATISTICS AND PROBABILITY',
-      subtopic: 'MEAN',
-      difficulty: 'Basic',
-      explanation: 'Sum of all values = mean × number of values = 10 × 5 = 50.\nKnown values: 5 + 8 + 11 + 14 = 38.\nTherefore x = 50 − 38 = 12.',
-      hasSvg: false, svgCode: null
+      id:'mth_s_002', subject:'mathematics', year:2022, year_label:'2022',
+      passage_id:null, passage_text:null,
+      question_text:'If log₁₀ 2 = 0.3010, find log₁₀ 8.',
+      option_a:'0.6020', option_b:'0.9030', option_c:'2.4080', option_d:'1.2040',
+      correct_option:'B', explanation:'8 = 2³, so log₁₀ 8 = 3 × log₁₀ 2 = 3 × 0.3010 = 0.9030.',
+      topic:'NUMBER AND NUMERATION', subtopic:'NUMBER AND NUMERATION', difficulty:'Intermediate',
+      has_svg:false, svg_code:null, image_file:null
     },
     {
-      id: 'ma003', subjectId: 'mathematics', year: 2018,
-      passageId: null, passage: null,
-      text: 'A triangle has vertices at P(2, 3), Q(−1, 1) and R(4, −2). What is the length of PQ?',
-      optA: '√13',
-      optB: '√10',
-      optC: '√17',
-      optD: '√5',
-      correct: 'A',
-      topic: 'GEOMETRY AND MENSURATION',
-      subtopic: 'COORDINATE GEOMETRY',
-      difficulty: 'Intermediate',
-      explanation: 'Using the distance formula: PQ = √[(x₂−x₁)² + (y₂−y₁)²]\n= √[(−1−2)² + (1−3)²]\n= √[(−3)² + (−2)²]\n= √[9 + 4]\n= √13',
-      hasSvg: false, svgCode: null
-    },
-    {
-      id: 'ma004', subjectId: 'mathematics', year: 2021,
-      passageId: null, passage: null,
-      text: 'Find the equation of a straight line passing through (3, 2) with gradient −2.',
-      optA: 'y = −2x + 5',
-      optB: 'y = −2x + 8',
-      optC: 'y = 2x − 4',
-      optD: 'y = −2x − 4',
-      correct: 'B',
-      topic: 'ALGEBRA',
-      subtopic: 'STRAIGHT LINE GRAPHS',
-      difficulty: 'Intermediate',
-      explanation: 'Using y − y₁ = m(x − x₁) with m = −2, (x₁,y₁) = (3,2):\ny − 2 = −2(x − 3)\ny − 2 = −2x + 6\ny = −2x + 8',
-      hasSvg: false, svgCode: null
-    },
-    {
-      id: 'ma005', subjectId: 'mathematics', year: 2023,
-      passageId: null, passage: null,
-      text: 'Evaluate: ∫(3x² + 2x − 5) dx',
-      optA: 'x³ + x² − 5x + c',
-      optB: '6x + 2 + c',
-      optC: 'x³ + x² + c',
-      optD: '3x³ + 2x² − 5x + c',
-      correct: 'A',
-      topic: 'CALCULUS',
-      subtopic: 'INTEGRATION',
-      difficulty: 'Advanced',
-      explanation: 'Integrate term by term:\n∫3x² dx = x³\n∫2x dx = x²\n∫−5 dx = −5x\nAdd the constant of integration c.\nResult: x³ + x² − 5x + c',
-      hasSvg: false, svgCode: null
+      id:'mth_s_003', subject:'mathematics', year:2021, year_label:'2021',
+      passage_id:null, passage_text:null,
+      question_text:'A triangle has sides 3 cm, 4 cm and 5 cm. What is the area?',
+      option_a:'6 cm²', option_b:'7.5 cm²', option_c:'10 cm²', option_d:'12 cm²',
+      correct_option:'A', explanation:'This is a right-angled triangle (3-4-5). Area = ½ × base × height = ½ × 3 × 4 = 6 cm².',
+      topic:'GEOMETRY AND MENSURATION', subtopic:'GEOMETRY AND MENSURATION', difficulty:'Basic',
+      has_svg:false, svg_code:null, image_file:null
     },
   ],
-
-  biology: [
-    {
-      id: 'bi001', subjectId: 'biology', year: 2022,
-      passageId: null, passage: null,
-      text: 'The diagram below shows a simplified diagram of a plant cell. What structure is labelled X?',
-      optA: 'Cell membrane',
-      optB: 'Cell wall',
-      optC: 'Chloroplast',
-      optD: 'Vacuole',
-      correct: 'B',
-      topic: 'CELL BIOLOGY',
-      subtopic: 'PLANT CELL STRUCTURE',
-      difficulty: 'Basic',
-      explanation: 'In a typical plant cell diagram, the outermost rigid layer is the cell wall (made of cellulose). It provides structural support and is found only in plant cells, not animal cells. The cell membrane lies just inside it.',
-      hasSvg: true,
-      svgCode: `<svg viewBox="0 0 220 160" xmlns="http://www.w3.org/2000/svg" style="max-width:220px;font-family:Inter,sans-serif">
-  <!-- Cell wall (outer rectangle) -->
-  <rect x="10" y="10" width="200" height="140" rx="8" fill="none" stroke="#5C6B82" stroke-width="6"/>
-  <!-- Cell membrane -->
-  <rect x="18" y="18" width="184" height="124" rx="6" fill="none" stroke="#0FA968" stroke-width="1.5" stroke-dasharray="4 2"/>
-  <!-- Nucleus -->
-  <ellipse cx="110" cy="80" rx="30" ry="24" fill="#E8F1FF" stroke="#1F5FBF" stroke-width="1.5"/>
-  <text x="110" y="84" text-anchor="middle" font-size="9" fill="#1F5FBF">Nucleus</text>
-  <!-- Chloroplasts -->
-  <ellipse cx="50" cy="55" rx="16" ry="9" fill="#C8EDCC" stroke="#0FA968" stroke-width="1"/>
-  <ellipse cx="170" cy="110" rx="16" ry="9" fill="#C8EDCC" stroke="#0FA968" stroke-width="1"/>
-  <!-- Vacuole -->
-  <ellipse cx="60" cy="108" rx="20" ry="15" fill="#EFF7FF" stroke="#1F5FBF" stroke-width="1" stroke-dasharray="3 2"/>
-  <!-- Label X pointing to cell wall -->
-  <line x1="10" y1="50" x2="-5" y2="38" stroke="#C0392B" stroke-width="1.5"/>
-  <circle cx="10" cy="50" r="3" fill="#C0392B"/>
-  <text x="0" y="32" text-anchor="middle" font-size="11" font-weight="700" fill="#C0392B">X</text>
-</svg>`
-    },
-    {
-      id: 'bi002', subjectId: 'biology', year: 2020,
-      passageId: null, passage: null,
-      text: 'During aerobic respiration, glucose is completely oxidised to produce —',
-      optA: 'Carbon dioxide, water and energy',
-      optB: 'Lactic acid and energy',
-      optC: 'Ethanol, carbon dioxide and energy',
-      optD: 'Pyruvate and ATP only',
-      correct: 'A',
-      topic: 'PLANT AND ANIMAL NUTRITION',
-      subtopic: 'RESPIRATION',
-      difficulty: 'Basic',
-      explanation: 'Aerobic respiration: C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O + Energy (ATP).\nThe end products are carbon dioxide, water and energy. Lactic acid is produced in anaerobic respiration in animals; ethanol + CO₂ is produced in anaerobic fermentation by yeast.',
-      hasSvg: false, svgCode: null
-    },
-    {
-      id: 'bi003', subjectId: 'biology', year: 2021,
-      passageId: null, passage: null,
-      text: 'In genetics, if a tall plant (TT) is crossed with a dwarf plant (tt), what will be the phenotypic ratio in the F₁ generation?',
-      optA: '3 tall : 1 dwarf',
-      optB: 'All tall',
-      optC: '1 tall : 1 dwarf',
-      optD: 'All dwarf',
-      correct: 'B',
-      topic: 'GENETICS AND EVOLUTION',
-      subtopic: 'MENDELIAN GENETICS',
-      difficulty: 'Intermediate',
-      explanation: 'Cross: TT × tt\nAll F₁ offspring receive one T from the tall parent and one t from the dwarf parent → all are Tt (heterozygous tall).\nSince T (tall) is dominant over t (dwarf), all F₁ plants will be phenotypically TALL.\nThe 3:1 ratio appears in the F₂ generation, not F₁.',
-      hasSvg: false, svgCode: null
-    },
-    {
-      id: 'bi004', subjectId: 'biology', year: 2019,
-      passageId: null, passage: null,
-      text: 'The part of the human brain responsible for coordination of muscular movement and body balance is the —',
-      optA: 'Cerebrum',
-      optB: 'Medulla oblongata',
-      optC: 'Cerebellum',
-      optD: 'Hypothalamus',
-      correct: 'C',
-      topic: 'COORDINATION AND CONTROL',
-      subtopic: 'THE BRAIN',
-      difficulty: 'Basic',
-      explanation: 'The cerebellum controls coordination of voluntary muscular movement and body balance/posture. The cerebrum handles higher functions (thinking, speech). The medulla oblongata controls automatic functions (breathing, heartbeat). The hypothalamus regulates body temperature and hormones.',
-      hasSvg: false, svgCode: null
-    },
-    {
-      id: 'bi005', subjectId: 'biology', year: 2023,
-      passageId: null, passage: null,
-      text: 'Which of the following organisms is an example of a primary consumer in a food chain?',
-      optA: 'Hawk',
-      optB: 'Snake',
-      optC: 'Grasshopper',
-      optD: 'Grass',
-      correct: 'C',
-      topic: 'ECOLOGY',
-      subtopic: 'FOOD CHAINS AND WEBS',
-      difficulty: 'Basic',
-      explanation: 'A primary consumer (herbivore) eats producers directly.\nFood chain: Grass → Grasshopper → Frog → Snake → Hawk\nGrass is the producer. Grasshopper is the primary consumer. Snake and Hawk are secondary/tertiary consumers.',
-      hasSvg: false, svgCode: null
-    },
-  ],
-
-  chemistry: [
-    {
-      id: 'ch001', subjectId: 'chemistry', year: 2022,
-      passageId: null, passage: null,
-      text: 'Balance the following equation and identify the coefficient of H₂O:\nFe + H₂O → Fe₃O₄ + H₂',
-      optA: '2',
-      optB: '4',
-      optC: '3',
-      optD: '8',
-      correct: 'B',
-      topic: 'ATOMIC STRUCTURE',
-      subtopic: 'BALANCING EQUATIONS',
-      difficulty: 'Intermediate',
-      explanation: 'Balanced equation: 3Fe + 4H₂O → Fe₃O₄ + 4H₂\nCheck: Fe: 3=3 ✓, H: 8=8 ✓, O: 4=4 ✓\nThe coefficient of H₂O is 4.',
-      hasSvg: false, svgCode: null
-    },
-    {
-      id: 'ch002', subjectId: 'chemistry', year: 2021,
-      passageId: null, passage: null,
-      text: 'Calculate the molar mass of CaCO₃. (Ca=40, C=12, O=16)',
-      optA: '80 g/mol',
-      optB: '100 g/mol',
-      optC: '116 g/mol',
-      optD: '68 g/mol',
-      correct: 'B',
-      topic: 'MOLE CONCEPT',
-      subtopic: 'MOLAR MASS',
-      difficulty: 'Basic',
-      explanation: 'Molar mass of CaCO₃ = Ca + C + 3O\n= 40 + 12 + (3 × 16)\n= 40 + 12 + 48\n= 100 g/mol',
-      hasSvg: false, svgCode: null
-    },
-    {
-      id: 'ch003', subjectId: 'chemistry', year: 2020,
-      passageId: null, passage: null,
-      text: 'Which of the following is an example of a homologous series?',
-      optA: 'CH₄, C₂H₄, C₃H₄',
-      optB: 'CH₄, C₂H₆, C₃H₈',
-      optC: 'C₂H₂, C₂H₄, C₂H₆',
-      optD: 'CH₄, C₂H₂, C₃H₄',
-      correct: 'B',
-      topic: 'ORGANIC CHEMISTRY',
-      subtopic: 'HYDROCARBONS — ALKANES',
-      difficulty: 'Intermediate',
-      explanation: 'A homologous series is a group of compounds with the same general formula, differing by CH₂ each time.\nCH₄, C₂H₆, C₃H₈ = alkanes (general formula CₙH₂ₙ₊₂). Each member differs by CH₂.\nOption A is not a valid homologous series (the differences are not consistent CH₂ units).',
-      hasSvg: false, svgCode: null
-    },
-    {
-      id: 'ch004', subjectId: 'chemistry', year: 2023,
-      passageId: null, passage: null,
-      text: 'In electrolysis of dilute H₂SO₄, the gas produced at the cathode is —',
-      optA: 'Oxygen',
-      optB: 'Sulphur dioxide',
-      optC: 'Hydrogen',
-      optD: 'Sulphur trioxide',
-      correct: 'C',
-      topic: 'ELECTROLYSIS',
-      subtopic: 'PRODUCTS OF ELECTROLYSIS',
-      difficulty: 'Basic',
-      explanation: 'In electrolysis:\n• Cathode (negative electrode): H⁺ ions are attracted and gain electrons → H₂ gas\n• Anode (positive electrode): OH⁻ ions lose electrons → O₂ gas\nSo hydrogen is produced at the cathode.',
-      hasSvg: false, svgCode: null
-    },
-    {
-      id: 'ch005', subjectId: 'chemistry', year: 2019,
-      passageId: null, passage: null,
-      text: 'According to Le Chatelier\'s principle, increasing pressure on the equilibrium:\nN₂(g) + 3H₂(g) ⇌ 2NH₃(g)\nwill —',
-      optA: 'shift equilibrium to the left',
-      optB: 'have no effect',
-      optC: 'shift equilibrium to the right',
-      optD: 'decompose the ammonia completely',
-      correct: 'C',
-      topic: 'EQUILIBRIUM',
-      subtopic: 'LE CHATELIER\'S PRINCIPLE',
-      difficulty: 'Advanced',
-      explanation: 'Left side: 1 + 3 = 4 moles of gas. Right side: 2 moles of gas.\nIncreasing pressure favours the side with fewer moles of gas — the right side (2 moles). So equilibrium shifts to the right, producing MORE ammonia. This is the basis of the industrial Haber process.',
-      hasSvg: false, svgCode: null
-    },
-  ],
-
   physics: [
     {
-      id: 'ph001', subjectId: 'physics', year: 2022,
-      passageId: null, passage: null,
-      text: 'A body of mass 5 kg moves with velocity 10 m/s. Calculate its kinetic energy.',
-      optA: '50 J',
-      optB: '250 J',
-      optC: '500 J',
-      optD: '125 J',
-      correct: 'B',
-      topic: 'MECHANICS',
-      subtopic: 'WORK, ENERGY AND POWER',
-      difficulty: 'Basic',
-      explanation: 'KE = ½mv²\n= ½ × 5 × (10)²\n= ½ × 5 × 100\n= 250 J',
-      hasSvg: false, svgCode: null
+      id:'phy_s_001', subject:'physics', year:2023, year_label:'2023',
+      passage_id:null, passage_text:null,
+      question_text:'A body accelerates uniformly from rest and covers 20 m in 4 s. What is its acceleration?',
+      option_a:'1.25 m/s²', option_b:'2.5 m/s²', option_c:'5 m/s²', option_d:'10 m/s²',
+      correct_option:'B', explanation:'s = ut + ½at². u=0, s=20, t=4. 20 = ½ × a × 16. a = 40/16 = 2.5 m/s².',
+      topic:'MECHANICS : MOTION', subtopic:'MECHANICS : MOTION', difficulty:'Intermediate',
+      has_svg:false, svg_code:null, image_file:null
     },
     {
-      id: 'ph002', subjectId: 'physics', year: 2021,
-      passageId: null, passage: null,
-      text: 'The diagram shows a simple electrical circuit. If the resistors R₁ = 6Ω and R₂ = 3Ω are connected in parallel across a 12V battery, what is the total current drawn from the battery?',
-      optA: '2 A',
-      optB: '4 A',
-      optC: '6 A',
-      optD: '3 A',
-      correct: 'C',
-      topic: 'CURRENT ELECTRICITY',
-      subtopic: 'PARALLEL CIRCUITS',
-      difficulty: 'Intermediate',
-      explanation: 'For parallel resistors: 1/R_total = 1/R₁ + 1/R₂ = 1/6 + 1/3 = 1/6 + 2/6 = 3/6\nR_total = 2Ω\nTotal current I = V/R = 12/2 = 6 A',
-      hasSvg: true,
-      svgCode: `<svg viewBox="0 0 240 140" xmlns="http://www.w3.org/2000/svg" style="max-width:240px;font-family:Inter,sans-serif">
-  <!-- Battery -->
-  <rect x="10" y="55" width="16" height="30" rx="2" fill="#FFF4DC" stroke="#A6760A" stroke-width="1.5"/>
-  <text x="18" y="50" text-anchor="middle" font-size="9" fill="#A6760A">12V</text>
-  <!-- Top wire -->
-  <line x1="26" y1="58" x2="80" y2="58" stroke="#0B2545" stroke-width="2"/>
-  <line x1="80" y1="58" x2="80" y2="30" stroke="#0B2545" stroke-width="2"/>
-  <line x1="80" y1="30" x2="180" y2="30" stroke="#0B2545" stroke-width="2"/>
-  <line x1="180" y1="30" x2="180" y2="58" stroke="#0B2545" stroke-width="2"/>
-  <!-- Bottom wire -->
-  <line x1="26" y1="82" x2="80" y2="82" stroke="#0B2545" stroke-width="2"/>
-  <line x1="80" y1="82" x2="80" y2="110" stroke="#0B2545" stroke-width="2"/>
-  <line x1="80" y1="110" x2="180" y2="110" stroke="#0B2545" stroke-width="2"/>
-  <line x1="180" y1="110" x2="180" y2="82" stroke="#0B2545" stroke-width="2"/>
-  <!-- R1 branch (left) -->
-  <line x1="80" y1="30" x2="80" y2="82" stroke="none"/>
-  <rect x="68" y="50" width="24" height="30" rx="4" fill="#E8F1FF" stroke="#1F5FBF" stroke-width="1.5"/>
-  <text x="80" y="69" text-anchor="middle" font-size="9" font-weight="700" fill="#1F5FBF">R₁=6Ω</text>
-  <!-- R2 branch (right) -->
-  <line x1="180" y1="30" x2="180" y2="82" stroke="none"/>
-  <rect x="168" y="50" width="24" height="30" rx="4" fill="#E8F1FF" stroke="#1F5FBF" stroke-width="1.5"/>
-  <text x="180" y="69" text-anchor="middle" font-size="9" font-weight="700" fill="#1F5F
+      id:'phy_s_002', subject:'physics', year:2022, year_label:'2022',
+      passage_id:null, passage_text:null,
+      question_text:'Which of the following is a vector quantity?',
+      option_a:'Mass', option_b:'Speed', option_c:'Temperature', option_d:'Velocity',
+      correct_option:'D', explanation:'Velocity has both magnitude and direction (making it a vector). Mass, speed, and temperature are scalar quantities.',
+      topic:'MECHANICS : SCALARS AND VECTORS', subtopic:'MECHANICS : SCALARS AND VECTORS', difficulty:'Basic',
+      has_svg:false, svg_code:null, image_file:null
+    },
+  ],
+  chemistry: [
+    {
+      id:'chem_s_001', subject:'chemistry', year:2023, year_label:'2023',
+      passage_id:null, passage_text:null,
+      question_text:'What is the oxidation number of sulphur in H₂SO₄?',
+      option_a:'+4', option_b:'+6', option_c:'-2', option_d:'+2',
+      correct_option:'B', explanation:'H is +1 (×2 = +2), O is -2 (×4 = -8). For the molecule to be neutral: +2 + S + (-8) = 0, so S = +6.',
+      topic:'ATOMIC STRUCTURE', subtopic:'ATOMIC STRUCTURE', difficulty:'Intermediate',
+      has_svg:false, svg_code:null, image_file:null
+    },
+  ],
+  biology: [
+    {
+      id:'bio_s_001', subject:'biology', year:2023, year_label:'2023',
+      passage_id:null, passage_text:null,
+      question_text:'Which organelle is known as the powerhouse of the cell?',
+      option_a:'Nucleus', option_b:'Ribosome', option_c:'Mitochondrion', option_d:'Vacuole',
+      correct_option:'C', explanation:'The mitochondrion produces ATP (adenosine triphosphate) through cellular respiration, supplying energy for cell activities. It is called the powerhouse of the cell.',
+      topic:'CELL BIOLOGY', subtopic:'CELL BIOLOGY', difficulty:'Basic',
+      has_svg:false, svg_code:null, image_file:null
+    },
+  ],
+};
+
+/* ============================================================
+   LOAD QUESTIONS
+   Currently uses sample data above. Replace with:
+
+     const res  = await fetch(`questions/${subjectId}.json`);
+     const data = await res.json();
+
+   once you have real question files in the questions/ folder.
+   ============================================================ */
+function getQuestionsForSubject(subjectId){
+  const bank = SAMPLE_QUESTIONS[subjectId] || [];
+  // Apply year/count filters from URL params
+  const year  = params.get(`year_${subjectId}`) || 'Random';
+  const count = parseInt(params.get(`count_${subjectId}`) || '40', 10);
+
+  let filtered = year === 'Random'
+    ? [...bank]
+    : bank.filter(q => String(q.year_label) === year || String(q.year) === year);
+
+  // Group by passage so passage questions stay together
+  filtered = groupPassageQuestions(filtered);
+
+  // Shuffle if not study mode (for practice/mock)
+  if (mode !== 'study' && params.get('shuffleQ') !== 'false'){
+    filtered = shuffleKeepingPassages(filtered);
+  }
+
+  return filtered.slice(0, count);
+}
+
+/* Keep passage groups together; shuffle at group level */
+function groupPassageQuestions(questions){
+  const groups  = [];
+  const seen    = new Set();
+  questions.forEach(q => {
+    if (!q.passage_id){ groups.push([q]); return; }
+    if (seen.has(q.passage_id)) return;
+    seen.add(q.passage_id);
+    groups.push(questions.filter(x => x.passage_id === q.passage_id));
+  });
+  return groups.flat();
+}
+
+function shuffleKeepingPassages(questions){
+  // Build groups
+  const groups  = [];
+  const seen    = new Set();
+  questions.forEach(q => {
+    if (!q.passage_id){ groups.push([q]); return; }
+    if (seen.has(q.passage_id)) return;
+    seen.add(q.passage_id);
+    groups.push(questions.filter(x => x.passage_id === q.passage_id));
+  });
+  // Shuffle group order
+  for (let i = groups.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [groups[i], groups[j]] = [groups[j], groups[i]];
+  }
+  return groups.flat();
+}
+
+/* ============================================================
+   SESSION STATE
+   ============================================================ */
+// Flat list of all questions across all subjects, in order
+let allQuestions  = [];
+// Track current position
+let currentIdx    = 0;
+// Student answers: { questionId: 'A'|'B'|'C'|'D' }
+let answers       = {};
+// Bookmarks: Set of question IDs
+let bookmarks     = new Set(JSON.parse(localStorage.getItem('utme_bookmarks') || '[]'));
+// Study mode: which questions have been shown
+let shownAnswers  = new Set();
+// Session start time
+const sessionStart = Date.now();
+
+/* Build flat question list from all selected subjects */
+subjectIds.forEach(id => {
+  getQuestionsForSubject(id).forEach(q => allQuestions.push(q));
+});
+
+// If no questions found, show a helpful message
+if (allQuestions.length === 0){
+  document.getElementById('questionText').textContent = 'No questions found for the selected settings. Go back and try different filters.';
+}
+
+/* ---- Check if user is paid (reads localStorage flag) ---- */
+function isPaid(){
+  return localStorage.getItem('utme_paid') === 'true';
+}
+
+/* ---- Is this question beyond the free limit? ---- */
+function isBeyondFreeLimit(q){
+  if (isPaid()) return false;
+  // Count how many questions from the same subject + year we've shown
+  const sameGroup = allQuestions.filter(x =>
+    x.subject === q.subject && (x.year_label || String(x.year)) === (q.year_label || String(q.year))
+  );
+  const idx = sameGroup.indexOf(q);
+  return idx >= FREE_LIMIT;
+}
+
+/* ============================================================
+   TIMER
+   ============================================================ */
+let totalSeconds  = (timerH * 3600) + (timerM * 60);
+let timerInterval = null;
+const timerEl     = document.getElementById('timerDisplay');
+const timerPill   = document.getElementById('timerPill');
+
+function formatTime(s){
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function startTimer(){
+  if (mode === 'study'){ timerPill.innerHTML = '<span class="mode-badge">STUDY MODE</span>'; return; }
+  if (totalSeconds === 0){ timerPill.innerHTML = '<span class="mode-badge">' + (mode === 'mock' ? 'MOCK' : 'PRACTICE') + '</span>'; return; }
+
+  timerEl.textContent = formatTime(totalSeconds);
+  timerInterval = setInterval(() => {
+    totalSeconds--;
+    timerEl.textContent = formatTime(totalSeconds);
+    if (totalSeconds <= 300) timerEl.classList.add('warning');
+    if (totalSeconds <= 0){
+      clearInterval(timerInterval);
+      submitSession('timeout');
+    }
+  }, 1000);
+}
+
+/* ============================================================
+   RENDER QUESTION
+   ============================================================ */
+function renderQuestion(idx){
+  const q = allQuestions[idx];
+  if (!q) return;
+
+  // Update nav
+  document.getElementById('qCounterText').textContent = `${idx + 1} / ${allQuestions.length}`;
+  document.getElementById('prevBtn').disabled = idx === 0;
+  document.getElementById('nextBtn').disabled = idx === allQuestions.length - 1;
+
+  // Update answered pill
+  updateAnsweredPill();
+
+  // Bookmark icon state
+  const bmBtn = document.getElementById('bookmarkBtn');
+  bmBtn.classList.toggle('bookmarked', bookmarks.has(q.id));
+
+  // Paywall check
+  const blocked = isBeyondFreeLimit(q);
+  document.getElementById('paywallCard').style.display = blocked ? 'block' : 'none';
+  document.getElementById('optionsList').style.display = blocked ? 'none' : 'flex';
+  document.getElementById('showHideWrap').style.display = (blocked || mode !== 'study') ? 'none' : 'flex';
+  document.getElementById('explanationBox').style.display = 'none';
+  document.getElementById('passageArea').style.display = 'none';
+  document.getElementById('diagramArea').style.display = 'none';
+
+  if (blocked){
+    document.getElementById('questionText').textContent = '🔒 Free limit reached for this subject and year.';
+    return;
+  }
+
+  // Passage
+  if (q.passage_id && q.passage_text){
+    document.getElementById('passageText').innerHTML = q.passage_text.replace(/\n/g, '<br>');
+    document.getElementById('passageArea').style.display
