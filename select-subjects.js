@@ -1,11 +1,7 @@
 /* ============================================================
-   UTMESchools v2 — select-subjects.js
-   - All 27 JAMB subjects (from O3Schools screenshots)
-   - English auto-selected on load
-   - No subject cap — select as many as you want
-   - Calculator overlay
-   - Free limit: 5 questions
-   - Year range: 1992 to date
+   UTMESchools v2 — select-subjects.js (FIXED)
+   - Select All / Deselect All topics now toggles properly
+   - Click once = select all, click again = deselect all
    ============================================================ */
 
 const ALL_SUBJECTS = [
@@ -37,7 +33,7 @@ const ALL_SUBJECTS = [
   { id: 'yoruba',      name: 'Yoruba',                        icon: '🌺', bg: '#FFF4DC', fg: '#A6760A', max: 60 },
 ];
 
-const FREE_LIMIT = 5; // questions free users can see per subject per year
+const FREE_LIMIT = 5;
 
 function yearOptions(){
   const years = ['Random'];
@@ -295,7 +291,7 @@ const SUBJECT_TOPICS = {
 };
 // For subjects not listed above, fall back to empty (All Topics only)
 
-/* ---- Topic picker sheet ---- */
+/* ---- Topic picker sheet (FIXED: Select All / Deselect All toggle) ---- */
 let topicSheetSubjectId = null;
 
 function openTopicSheet(subjectId){
@@ -303,25 +299,34 @@ function openTopicSheet(subjectId){
   const s      = ALL_SUBJECTS.find(x => x.id === subjectId);
   const topics = SUBJECT_TOPICS[subjectId] || [];
   const cfg    = subjectConfig[subjectId];
-  const selectedTopics = cfg.selectedTopics || [];
+  
+  // Get current selected topics
+  let selectedTopics = cfg.selectedTopics || [];
+  
+  // If no topics selected yet, treat as "All" (everything selected)
+  const isAllSelected = selectedTopics.length === 0 || selectedTopics.length === topics.length;
 
   const overlay = document.getElementById('topicSheetOverlay');
   const list    = document.getElementById('topicSheetList');
   document.getElementById('topicSheetTitle').textContent = s.name + ' — Select Topics';
   list.innerHTML = '';
 
-  // Select All checkbox
-  const allChecked = selectedTopics.length === 0 || selectedTopics.length === topics.length;
+  // Select All checkbox — toggles between ALL and NONE
   const allRow = document.createElement('div');
   allRow.className = 'sheet-item';
-  allRow.innerHTML = `<div class="sheet-checkbox ${allChecked ? 'checked' : ''}">${allChecked ? '✓' : ''}</div><div class="sheet-item-name" style="font-weight:700;">Select All</div>`;
+  allRow.innerHTML = `
+    <div class="sheet-checkbox ${isAllSelected ? 'checked' : ''}">${isAllSelected ? '✓' : ''}</div>
+    <div class="sheet-item-name" style="font-weight:700;">${isAllSelected ? 'Deselect All' : 'Select All'}</div>
+  `;
   allRow.addEventListener('click', () => {
-    if (allChecked){
+    if (isAllSelected){
+      // Deselect all — store empty array (meaning none selected)
       subjectConfig[subjectId].selectedTopics = [];
     } else {
+      // Select all — store all topics
       subjectConfig[subjectId].selectedTopics = [...topics];
     }
-    openTopicSheet(subjectId);
+    openTopicSheet(subjectId); // Re-render
   });
   list.appendChild(allRow);
 
@@ -329,19 +334,37 @@ function openTopicSheet(subjectId){
   divider.style.cssText = 'height:1px;background:var(--line);margin:6px 0;';
   list.appendChild(divider);
 
+  // Individual topic checkboxes
   topics.forEach(topic => {
+    // A topic is "checked" if it's in selectedTopics OR if selectedTopics is empty (All mode)
     const checked = selectedTopics.length === 0 || selectedTopics.includes(topic);
     const row = document.createElement('div');
     row.className = 'sheet-item';
-    row.innerHTML = `<div class="sheet-checkbox ${checked ? 'checked' : ''}">${checked ? '✓' : ''}</div><div class="sheet-item-name">${topic}</div>`;
+    row.innerHTML = `
+      <div class="sheet-checkbox ${checked ? 'checked' : ''}">${checked ? '✓' : ''}</div>
+      <div class="sheet-item-name">${topic}</div>
+    `;
     row.addEventListener('click', () => {
       let sel = [...(subjectConfig[subjectId].selectedTopics || [])];
-      if (sel.length === 0) sel = [...topics]; // was "All", convert to explicit list
-      if (checked) sel = sel.filter(t => t !== topic);
-      else sel.push(topic);
-      if (sel.length === topics.length) sel = []; // all selected = "All"
+      
+      // If we were in "All" mode (empty array), convert to explicit list of all topics
+      if (sel.length === 0) sel = [...topics];
+      
+      if (checked){
+        // Uncheck this topic
+        sel = sel.filter(t => t !== topic);
+      } else {
+        // Check this topic
+        sel.push(topic);
+      }
+      
+      // If all topics selected, revert to "All" (empty array)
+      if (sel.length === topics.length){
+        sel = [];
+      }
+      
       subjectConfig[subjectId].selectedTopics = sel;
-      openTopicSheet(subjectId);
+      openTopicSheet(subjectId); // Re-render
     });
     list.appendChild(row);
   });
@@ -376,6 +399,7 @@ function topicLabel(id){
   if (sel.length === 1) return sel[0].slice(0, 28) + (sel[0].length > 28 ? '…' : '');
   return `${sel.length} topics`;
 }
+
 let currentMode = 'practice';
 document.querySelectorAll('.mode-toggle button').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -417,7 +441,6 @@ function calcPress(val){
     calcExpr = calcExpr.length > 1 ? calcExpr.slice(0, -1) : '';
   } else if (val === '='){
     try {
-      // safe eval: only allow digits and operators
       const safe = calcExpr.replace(/[^0-9+\-*/.()%√]/g, '').replace(/√(\d+(\.\d+)?)/g, 'Math.sqrt($1)');
       const result = Function('"use strict"; return (' + safe + ')')();
       calcDisplay = isFinite(result) ? String(parseFloat(result.toFixed(8))) : 'Error';
@@ -467,10 +490,4 @@ startBtn.addEventListener('click', () => {
   selectedIds.forEach(id => {
     params.set(`year_${id}`, subjectConfig[id].year);
     params.set(`count_${id}`, subjectConfig[id].count);
-  });
-  window.location.href = `practice.html?${params.toString()}`;
-});
-
-/* ---- Initial render (English already selected) ---- */
-renderConfigList();
-     
+       }
