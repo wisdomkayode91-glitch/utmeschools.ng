@@ -1,390 +1,339 @@
-/* ============================================================
-   UTMESchools v2 — dashboard.js
-   Result History + Bookmarks tabs with localStorage persistence.
+
+# Build discussion.js - Discussion board logic
+
+discussion_js = '''/* ============================================================
+   UTMESchools v2 — discussion.js
+   Student discussion board.
+   Uses localStorage as placeholder until Supabase is connected.
    ============================================================ */
 
-const SUBJECT_NAMES = {
-  english:'English Language', mathematics:'Mathematics',
-  physics:'Physics', chemistry:'Chemistry', biology:'Biology',
-  government:'Government', economics:'Economics', literature:'Literature',
-  crk:'CRK', irk:'IRK', geography:'Geography', commerce:'Commerce',
-  accounts:'Accounts', agriculture:'Agriculture', computer:'Computer Studies',
-  fineart:'Fine Art', french:'French', hausa:'Hausa', history:'History',
-  homeec:'Home Economics', igbo:'Igbo', music:'Music',
-  phe:'PHE', lekki:'The Lekki Headmaster', yoruba:'Yoruba', littext:'Literature Textbooks',
-};
+const ALL_SUBJECTS = [
+  { id: 'english',     name: 'English Language',       icon: '🔤', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'accounts',    name: 'Accounts',               icon: '🧾', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'agriculture', name: 'Agriculture',            icon: '🌾', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'biology',     name: 'Biology',                icon: '🧬', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'chemistry',   name: 'Chemistry',              icon: '⚗️', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'commerce',    name: 'Commerce',               icon: '🛒', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'computer',    name: 'Computer Studies',       icon: '💻', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'crk',         name: 'CRK',                    icon: '✝️', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'economics',   name: 'Economics',              icon: '📈', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'fineart',     name: 'Fine Art',               icon: '🎨', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'french',      name: 'French',                 icon: '🇫🇷', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'geography',   name: 'Geography',              icon: '🌍', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'government',  name: 'Government',             icon: '🏛️', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'hausa',       name: 'Hausa',                  icon: '📜', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'history',     name: 'History',                icon: '🏺', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'homeec',      name: 'Home Economics',         icon: '🏠', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'igbo',        name: 'Igbo',                   icon: '📖', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'irk',         name: 'IRK',                    icon: '☪️', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'literature',  name: 'Literature',             icon: '📚', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'littext',     name: 'Literature Textbooks',   icon: '📗', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'mathematics', name: 'Mathematics',            icon: '📐', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'music',       name: 'Music',                  icon: '🎵', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'phe',         name: 'PHE',                    icon: '🏃', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'physics',     name: 'Physics',                icon: '⚛️', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'lekki',       name: 'The Lekki Headmaster',   icon: '📕', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'yoruba',      name: 'Yoruba',                 icon: '🌺', bg: '#FFF4DC', fg: '#A6760A' },
+];
 
-const SUBJECT_COLORS = {
-  english:'#E8F1FF', mathematics:'#FFF4DC', physics:'#FCE4E4',
-  chemistry:'#E7F8EF', biology:'#F1EAFB', government:'#E8F1FF',
-  economics:'#FFF4DC', literature:'#FCE4E4', crk:'#E7F8EF',
-  irk:'#F1EAFB', geography:'#FFF4DC', commerce:'#FCE4E4',
-  accounts:'#E7F8EF', agriculture:'#E8F1FF', computer:'#FFF4DC',
-  fineart:'#FCE4E4', french:'#E7F8EF', hausa:'#F1EAFB',
-  history:'#FFF4DC', homeec:'#FCE4E4', igbo:'#E7F8EF',
-  music:'#F1EAFB', phe:'#E8F1FF', lekki:'#F1EAFB', yoruba:'#FFF4DC', littext:'#E7F8EF',
-};
+function getSubject(id) { return ALL_SUBJECTS.find(s => s.id === id); }
 
-let currentTab = 'history';
-let historyFilter = 'all';
-let bookmarkFilter = 'all';
-let historySort = 'date-desc';
+/* ---- localStorage helpers ---- */
+function getComments() {
+  try { return JSON.parse(localStorage.getItem('utme_comments') || '[]'); }
+  catch(e) { return []; }
+}
+function saveComments(comments) {
+  localStorage.setItem('utme_comments', JSON.stringify(comments));
+}
+function getCurrentUser() {
+  try { return JSON.parse(localStorage.getItem('utme_user') || 'null'); }
+  catch(e) { return null; }
+}
 
-/* ================================================================
-   INIT
-   ================================================================ */
-document.addEventListener('DOMContentLoaded', () => {
-  initTabs();
-  initHistory();
-  initBookmarks();
-  initFilters();
-  initSort();
-  initDeleteAll();
-});
+/* ---- Check login state ---- */
+const currentUser = getCurrentUser();
+const isLoggedIn = !!currentUser;
 
-/* ================================================================
-   TABS
-   ================================================================ */
-function initTabs(){
-  document.querySelectorAll('.dash-tab').forEach(tab => {
+/* ---- Show/hide comment form based on login ---- */
+if (isLoggedIn) {
+  document.getElementById('commentForm').style.display = 'block';
+  document.getElementById('loginPrompt').style.display = 'none';
+} else {
+  document.getElementById('commentForm').style.display = 'none';
+  document.getElementById('loginPrompt').style.display = 'block';
+}
+
+/* ---- Populate subject dropdown and tabs ---- */
+function populateSubjects() {
+  const select = document.getElementById('commentSubject');
+  const tabs = document.getElementById('discTabs');
+
+  ALL_SUBJECTS.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    select.appendChild(opt);
+
+    const tab = document.createElement('button');
+    tab.className = 'disc-tab';
+    tab.dataset.filter = s.id;
+    tab.textContent = s.name;
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.disc-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
-      currentTab = tab.dataset.tab;
+      currentFilter = s.id;
+      renderComments();
     });
+    tabs.appendChild(tab);
   });
 }
 
-/* ================================================================
-   RESULT HISTORY
-   ================================================================ */
-function getResults(){
-  try {
-    const raw = localStorage.getItem('utme_results');
-    return raw ? JSON.parse(raw) : [];
-  } catch(e) { return []; }
+/* ---- Format time ago ---- */
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hrs < 24) return `${hrs}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
 }
 
-function saveResults(results){
-  localStorage.setItem('utme_results', JSON.stringify(results));
+/* ---- Avatar color from initials ---- */
+function avatarColor(name) {
+  const colors = ['#1F5FBF','#0C8C58','#C0392B','#6C3FBF','#A6760A','#0B2545','#E2531F'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
 }
 
-function deleteResult(id){
-  let results = getResults();
-  results = results.filter(r => r.id !== id);
-  saveResults(results);
-  renderHistory();
-  showToast('Result deleted');
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function deleteAllResults(){
-  if (!confirm('Delete all result history? This cannot be undone.')) return;
-  localStorage.removeItem('utme_results');
-  renderHistory();
-  showToast('All history cleared');
-}
+/* ============================================================
+   COMMENTS RENDERING
+   ============================================================ */
+let currentFilter = 'all';
 
-function initHistory(){
-  renderHistory();
-}
+function renderComments() {
+  const list = document.getElementById('commentsList');
+  let comments = getComments();
 
-function renderHistory(){
-  const container = document.getElementById('resultList');
-  let results = getResults();
-
-  // Apply subject filter
-  if (historyFilter !== 'all'){
-    results = results.filter(r => r.subjects && r.subjects.includes(historyFilter));
+  // Filter
+  if (currentFilter !== 'all') {
+    comments = comments.filter(c => c.subjectId === currentFilter);
   }
 
-  // Apply sort
-  results.sort((a, b) => {
-    if (historySort === 'date-desc') return new Date(b.date) - new Date(a.date);
-    if (historySort === 'date-asc') return new Date(a.date) - new Date(b.date);
-    if (historySort === 'score-desc') return (b.totalCorrect/b.totalPossible) - (a.totalCorrect/a.totalPossible);
-    if (historySort === 'score-asc') return (a.totalCorrect/a.totalPossible) - (b.totalCorrect/b.totalPossible);
-    return 0;
-  });
+  // Sort newest first
+  comments.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  // Build filter chips from all subjects that appear in results
-  buildHistoryFilterChips(results);
-
-  // Show/hide delete all
-  document.getElementById('deleteAllRow').style.display = results.length > 0 ? 'block' : 'none';
-
-  if (results.length === 0){
-    container.innerHTML = `
+  if (comments.length === 0) {
+    list.innerHTML = `
       <div class="empty-state">
-        <div class="es-icon">📋</div>
-        <h3>No results yet</h3>
-        <p>Complete a practice session and your results will show up here automatically.</p>
-        <a href="select-subjects.html" class="btn btn-primary btn-sm" style="margin-top:14px;">Start practicing</a>
-      </div>`;
+        <div class="icon">💬</div>
+        <h3>No discussions yet</h3>
+        <p>Be the first to start a conversation about JAMB and admission topics.</p>
+      </div>
+    `;
     return;
   }
 
-  container.innerHTML = '';
-  results.forEach((r, idx) => {
-    const pct = Math.round((r.totalCorrect / r.totalPossible) * 100) || 0;
-    const badgeClass = pct >= 60 ? 'green' : pct >= 40 ? 'amber' : 'red';
-    const date = new Date(r.date);
-    const dateStr = date.toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
-    const timeStr = date.toLocaleTimeString('en-NG', { hour:'2-digit', minute:'2-digit' });
-    const modeLabel = r.mode === 'mock' ? 'Mock' : r.mode === 'study' ? 'Study' : 'Practice';
-    const subjectNames = (r.subjects || []).map(id => SUBJECT_NAMES[id] || id).join(', ');
-    const attemptNum = results.length - idx;
+  list.innerHTML = '';
+  comments.forEach(c => {
+    const s = getSubject(c.subjectId);
+    const commentEl = document.createElement('div');
+    commentEl.className = 'comment';
+    commentEl.dataset.id = c.id;
 
-    const card = document.createElement('div');
-    card.className = 'result-card';
-    card.innerHTML = `
-      <div class="result-card-head" data-expand="${r.id}">
-        <div class="result-num">#${attemptNum}</div>
-        <div class="result-info">
-          <div class="result-info-top">
-            <span class="result-score">${r.totalCorrect}/${r.totalPossible}</span>
-            <span class="result-pct-badge ${badgeClass}">${pct}%</span>
+    // Replies
+    let repliesHtml = '';
+    if (c.replies && c.replies.length > 0) {
+      repliesHtml = '<div class="replies">';
+      c.replies.forEach(r => {
+        repliesHtml += `
+          <div class="reply">
+            <div class="reply-head">
+              <div class="reply-avatar" style="background:${avatarColor(r.author)};">${initials(r.author)}</div>
+              <span class="reply-author">${r.author}</span>
+              <span class="reply-time">${timeAgo(r.date)}</span>
+            </div>
+            <div class="reply-body">${escapeHtml(r.body)}</div>
           </div>
-          <div class="result-subjects">${subjectNames}</div>
-          <div class="result-meta-row">
-            <span class="result-date">${dateStr} · ${timeStr}</span>
-            <span class="result-mode">${modeLabel}</span>
-          </div>
+        `;
+      });
+      repliesHtml += '</div>';
+    }
+
+    commentEl.innerHTML = `
+      <div class="comment-head">
+        <div class="comment-avatar" style="background:${avatarColor(c.author)};">${initials(c.author)}</div>
+        <div class="comment-meta">
+          <div class="comment-author">${escapeHtml(c.author)}</div>
+          <div class="comment-time">${timeAgo(c.date)}</div>
         </div>
-        <button class="result-expand" data-expand-btn="${r.id}">▾</button>
+        <div class="comment-tag">${s?.name || 'General'}</div>
       </div>
-      <div class="result-card-body" id="body-${r.id}">
-        <div class="result-actions-mini">
-          <button class="btn btn-ghost btn-sm" onclick="viewResult('${r.id}')">📋 View Detail</button>
-          <button class="btn btn-ghost btn-sm" onclick="viewCorrection('${r.id}')">🔍 View Correction</button>
-          <button class="btn btn-ghost btn-sm" style="color:#C0392B;" onclick="deleteResult('${r.id}')">🗑️ Delete</button>
+      <div class="comment-body">${escapeHtml(c.body)}</div>
+      <div class="comment-actions">
+        <button class="like-btn ${c.likedBy?.includes(currentUser?.email) ? 'liked' : ''}" data-like="${c.id}">
+          👍 ${c.likes || 0}
+        </button>
+        <button data-reply="${c.id}">💬 Reply</button>
+        <button data-report="${c.id}">🚩 Report</button>
+      </div>
+      <div class="reply-form" id="reply-form-${c.id}">
+        <textarea placeholder="Write your reply..."></textarea>
+        <div class="reply-form-row">
+          <button class="btn btn-ghost btn-sm" data-cancel-reply="${c.id}">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-post-reply="${c.id}">Reply</button>
         </div>
       </div>
+      ${repliesHtml}
     `;
-    container.appendChild(card);
+    list.appendChild(commentEl);
   });
 
-  // Wire expand buttons
-  document.querySelectorAll('[data-expand]').forEach(head => {
-    head.addEventListener('click', () => toggleExpand(head.dataset.expand));
-  });
-}
-
-function toggleExpand(id){
-  const body = document.getElementById('body-' + id);
-  const btn = document.querySelector('[data-expand-btn="' + id + '"]');
-  const isOpen = body.classList.contains('open');
-  if (isOpen){
-    body.classList.remove('open');
-    btn.classList.remove('open');
-  } else {
-    body.classList.add('open');
-    btn.classList.add('open');
-  }
-}
-
-function buildHistoryFilterChips(results){
-  const bar = document.getElementById('historyFilter');
-  const subjectsInResults = new Set();
-  results.forEach(r => {
-    if (r.subjects) r.subjects.forEach(s => subjectsInResults.add(s));
+  // Wire like buttons
+  list.querySelectorAll('[data-like]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!isLoggedIn) { showToast('Log in to like comments'); return; }
+      const id = btn.dataset.like;
+      let comments = getComments();
+      const c = comments.find(x => x.id === id);
+      if (c) {
+        if (!c.likedBy) c.likedBy = [];
+        if (c.likedBy.includes(currentUser.email)) {
+          c.likedBy = c.likedBy.filter(e => e !== currentUser.email);
+          c.likes = (c.likes || 1) - 1;
+        } else {
+          c.likedBy.push(currentUser.email);
+          c.likes = (c.likes || 0) + 1;
+        }
+        saveComments(comments);
+        renderComments();
+      }
+    });
   });
 
-  let html = `<button class="filter-chip ${historyFilter === 'all' ? 'active' : ''}" data-filter="all">All subjects</button>`;
-  subjectsInResults.forEach(id => {
-    html += `<button class="filter-chip ${historyFilter === id ? 'active' : ''}" data-filter="${id}">${SUBJECT_NAMES[id] || id}</button>`;
+  // Wire reply buttons
+  list.querySelectorAll('[data-reply]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!isLoggedIn) { showToast('Log in to reply'); return; }
+      const id = btn.dataset.reply;
+      document.querySelectorAll('.reply-form').forEach(f => f.classList.remove('open'));
+      document.getElementById('reply-form-' + id).classList.add('open');
+    });
   });
-  bar.innerHTML = html;
 
-  bar.querySelectorAll('.filter-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      historyFilter = chip.dataset.filter;
-      renderHistory();
+  list.querySelectorAll('[data-cancel-reply]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('reply-form-' + btn.dataset.cancelReply).classList.remove('open');
+    });
+  });
+
+  list.querySelectorAll('[data-post-reply]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.postReply;
+      const textarea = document.querySelector('#reply-form-' + id + ' textarea');
+      const body = textarea.value.trim();
+      if (!body) { showToast('Please write a reply'); return; }
+
+      let comments = getComments();
+      const c = comments.find(x => x.id === id);
+      if (c) {
+        if (!c.replies) c.replies = [];
+        c.replies.push({
+          author: currentUser.name || currentUser.email,
+          body,
+          date: new Date().toISOString()
+        });
+        saveComments(comments);
+        renderComments();
+        showToast('Reply posted');
+      }
+    });
+  });
+
+  // Wire report buttons
+  list.querySelectorAll('[data-report]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      showToast('Reported. Thank you for keeping the board clean.');
     });
   });
 }
 
-function initSort(){
-  document.getElementById('sortSelect').addEventListener('change', e => {
-    historySort = e.target.value;
-    renderHistory();
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/* ============================================================
+   POST COMMENT
+   ============================================================ */
+function postComment() {
+  if (!isLoggedIn) { showToast('Please log in first'); return; }
+
+  const body = document.getElementById('commentBody').value.trim();
+  const subjectId = document.getElementById('commentSubject').value;
+
+  if (!body) { showToast('Please write something'); return; }
+
+  const comments = getComments();
+  comments.push({
+    id: 'c_' + Date.now(),
+    author: currentUser.name || currentUser.email,
+    body,
+    subjectId,
+    date: new Date().toISOString(),
+    likes: 0,
+    likedBy: [],
+    replies: []
   });
+  saveComments(comments);
+
+  document.getElementById('commentBody').value = '';
+  renderComments();
+  showToast('Comment posted');
 }
 
-function viewResult(id){
-  const results = getResults();
-  const r = results.find(x => x.id === id);
-  if (!r) return;
-  sessionStorage.setItem('utme_result', JSON.stringify(r));
-  window.location.href = 'results.html';
-}
-
-function viewCorrection(id){
-  const results = getResults();
-  const r = results.find(x => x.id === id);
-  if (!r) return;
-  sessionStorage.setItem('utme_result', JSON.stringify(r));
-  window.location.href = 'results.html?view=corrections';
-}
-
-/* ================================================================
-   BOOKMARKS
-   ================================================================ */
-function getBookmarks(){
-  try {
-    const raw = localStorage.getItem('utme_bookmarks');
-    return raw ? JSON.parse(raw) : [];
-  } catch(e) { return []; }
-}
-
-function saveBookmarks(bookmarks){
-  localStorage.setItem('utme_bookmarks', JSON.stringify(bookmarks));
-}
-
-function removeBookmark(id){
-  let bookmarks = getBookmarks();
-  bookmarks = bookmarks.filter(b => b.id !== id);
-  saveBookmarks(bookmarks);
-  renderBookmarks();
-  showToast('Bookmark removed');
-}
-
-function deleteAllBookmarks(){
-  if (!confirm('Delete all bookmarks? This cannot be undone.')) return;
-  localStorage.removeItem('utme_bookmarks');
-  renderBookmarks();
-  showToast('All bookmarks cleared');
-}
-
-function initBookmarks(){
-  renderBookmarks();
-}
-
-function renderBookmarks(){
-  const container = document.getElementById('bookmarkList');
-  let bookmarks = getBookmarks();
-
-  // Apply subject filter
-  if (bookmarkFilter !== 'all'){
-    bookmarks = bookmarks.filter(b => b.subject === bookmarkFilter);
-  }
-
-  // Build filter chips
-  buildBookmarkFilterChips(bookmarks);
-
-  // Update count badge
-  document.getElementById('bookmarkCountBadge').textContent = bookmarks.length;
-
-  // Show/hide delete all
-  document.getElementById('deleteAllBookmarksRow').style.display = bookmarks.length > 0 ? 'block' : 'none';
-
-  if (bookmarks.length === 0){
-    container.innerHTML = `
-      <div class="empty-state">
-        <div class="es-icon">🔖</div>
-        <h3>No bookmarks yet</h3>
-        <p>Tap the bookmark icon on any question during practice to save it here.</p>
-        <a href="select-subjects.html" class="btn btn-primary btn-sm" style="margin-top:14px;">Start practicing</a>
-      </div>`;
-    return;
-  }
-
-  container.innerHTML = '';
-  bookmarks.forEach(b => {
-    const bg = SUBJECT_COLORS[b.subject] || '#E8F1FF';
-    const fg = '#1F5FBF';
-    const date = new Date(b.date);
-    const dateStr = date.toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
-
-    const card = document.createElement('div');
-    card.className = 'bookmark-card';
-    card.innerHTML = `
-      <div class="bookmark-card-head" data-expand="${b.id}">
-        <div class="bookmark-subject-tag" style="background:${bg};color:${fg};">${SUBJECT_NAMES[b.subject] || b.subject}</div>
-        <div class="bookmark-info">
-          <div class="bookmark-qref">${b.yearLabel || b.year || ''} · Q${b.questionNum || '?'}</div>
-          <div class="bookmark-date">Bookmarked ${dateStr}</div>
-        </div>
-        <button class="bookmark-expand" data-expand-btn="${b.id}">▾</button>
-      </div>
-      <div class="bookmark-card-body" id="bbody-${b.id}">
-        <div class="bookmark-actions-mini">
-          <button class="btn btn-ghost btn-sm" onclick="viewBookmark('${b.id}')">👁️ View Question</button>
-          <button class="btn btn-ghost btn-sm" style="color:#C0392B;" onclick="removeBookmark('${b.id}')">🗑️ Remove</button>
-        </div>
-      </div>
-    `;
-    container.appendChild(card);
-  });
-
-  // Wire expand buttons
-  document.querySelectorAll('.bookmark-card-head').forEach(head => {
-    head.addEventListener('click', () => toggleBookmarkExpand(head.dataset.expand));
-  });
-}
-
-function toggleBookmarkExpand(id){
-  const body = document.getElementById('bbody-' + id);
-  const btn = document.querySelector('[data-expand-btn="' + id + '"]');
-  const isOpen = body.classList.contains('open');
-  if (isOpen){
-    body.classList.remove('open');
-    btn.classList.remove('open');
-  } else {
-    body.classList.add('open');
-    btn.classList.add('open');
-  }
-}
-
-function buildBookmarkFilterChips(bookmarks){
-  const bar = document.getElementById('bookmarkFilter');
-  const subjectsInBookmarks = new Set();
-  bookmarks.forEach(b => { if (b.subject) subjectsInBookmarks.add(b.subject); });
-
-  let html = `<button class="filter-chip ${bookmarkFilter === 'all' ? 'active' : ''}" data-filter="all">All subjects</button>`;
-  subjectsInBookmarks.forEach(id => {
-    html += `<button class="filter-chip ${bookmarkFilter === id ? 'active' : ''}" data-filter="${id}">${SUBJECT_NAMES[id] || id}</button>`;
-  });
-  bar.innerHTML = html;
-
-  bar.querySelectorAll('.filter-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      bookmarkFilter = chip.dataset.filter;
-      renderBookmarks();
-    });
-  });
-}
-
-function viewBookmark(id){
-  // For now, just show toast. In full version, this would navigate to the question.
-  showToast('View bookmark — coming with real questions');
-}
-
-/* ================================================================
-   DELETE ALL
-   ================================================================ */
-function initDeleteAll(){
-  document.getElementById('deleteAllBtn').addEventListener('click', deleteAllResults);
-  document.getElementById('deleteAllBookmarksBtn').addEventListener('click', deleteAllBookmarks);
-}
-
-/* ================================================================
-   FILTERS INIT
-   ================================================================ */
-function initFilters(){
-  // Already wired inside render functions
-}
-
-/* ================================================================
+/* ============================================================
    TOAST
-   ================================================================ */
-let toastTimer = null;
-function showToast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+   ============================================================ */
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
 }
-  
+
+/* ============================================================
+   EVENT LISTENERS
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  populateSubjects();
+  renderComments();
+
+  // Filter tabs
+  document.querySelectorAll('.disc-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.disc-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      currentFilter = tab.dataset.filter;
+      renderComments();
+    });
+  });
+
+  // Post comment
+  document.getElementById('postCommentBtn').addEventListener('click', postComment);
+});
+'''
+
+with open('/mnt/agents/output/discussion.js', 'w') as f:
+    f.write(discussion_js)
+
+print(f"discussion.js written: {len(discussion_js)} chars")
