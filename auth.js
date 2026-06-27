@@ -1,234 +1,138 @@
-/* ============================================================
+
+# Build auth.js - Login / Signup logic
+
+auth_js = '''/* ============================================================
    UTMESchools v2 — auth.js
-   Login, signup, and guest flow. Stores user in localStorage
-   until Supabase is wired.
+   Login and signup. Uses localStorage as placeholder
+   until Supabase is connected.
    ============================================================ */
 
-/* ================================================================
-   INIT
-   ================================================================ */
-document.addEventListener('DOMContentLoaded', () => {
-  initTabs();
-  initLoginForm();
-  initSignupForm();
-  checkRedirect();
+let currentForm = 'login';
+
+/* ---- Tab switching ---- */
+document.querySelectorAll('.auth-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentForm = tab.dataset.form;
+    document.getElementById('loginForm').style.display = currentForm === 'login' ? 'block' : 'none';
+    document.getElementById('signupForm').style.display = currentForm === 'signup' ? 'block' : 'none';
+  });
 });
 
-/* ================================================================
-   TABS
-   ================================================================ */
-function initTabs(){
-  document.querySelectorAll('.auth-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(tab.dataset.tab + 'Form').classList.add('active');
-    });
-  });
+/* ---- localStorage helpers ---- */
+function getUsers() {
+  try { return JSON.parse(localStorage.getItem('utme_users') || '[]'); }
+  catch(e) { return []; }
 }
-
-/* ================================================================
-   LOGIN
-   ================================================================ */
-function initLoginForm(){
-  const form = document.getElementById('loginForm');
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    if (!validateLogin()) return;
-
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-
-    // Placeholder: simulate login (replace with Supabase signIn)
-    const stored = getStoredUsers();
-    const user = stored.find(u => u.email === email);
-    if (!user){
-      showFieldError('loginEmailError', 'No account found with this email');
-      return;
-    }
-    if (user.password !== password){
-      showFieldError('loginPasswordError', 'Incorrect password');
-      return;
-    }
-
-    // Success
-    setCurrentUser(user);
-    showToast('Welcome back, ' + user.full_name.split(' ')[0] + '!');
-    redirectAfterAuth();
-  });
+function saveUsers(users) {
+  localStorage.setItem('utme_users', JSON.stringify(users));
 }
-
-function validateLogin(){
-  let ok = true;
-  const email = document.getElementById('loginEmail').value.trim();
-  const password = document.getElementById('loginPassword').value;
-
-  if (!isValidEmail(email)){
-    showFieldError('loginEmailError');
-    ok = false;
-  } else {
-    hideFieldError('loginEmailError');
-  }
-
-  if (password.length < 8){
-    showFieldError('loginPasswordError');
-    ok = false;
-  } else {
-    hideFieldError('loginPasswordError');
-  }
-
-  return ok;
-}
-
-/* ================================================================
-   SIGNUP
-   ================================================================ */
-function initSignupForm(){
-  const form = document.getElementById('signupForm');
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    if (!validateSignup()) return;
-
-    const name = document.getElementById('signupName').value.trim();
-    const email = document.getElementById('signupEmail').value.trim();
-    const password = document.getElementById('signupPassword').value;
-
-    // Placeholder: simulate signup (replace with Supabase signUp)
-    const stored = getStoredUsers();
-    if (stored.find(u => u.email === email)){
-      showFieldError('signupEmailError', 'An account with this email already exists');
-      return;
-    }
-
-    const user = {
-      id: 'u_' + Date.now(),
-      full_name: name,
-      email: email,
-      password: password, // In real version, NEVER store plain text
-      has_paid: false,
-      paid_until: null,
-      is_admin: false,
-      created_at: new Date().toISOString(),
-    };
-
-    stored.push(user);
-    localStorage.setItem('utme_users', JSON.stringify(stored));
-    setCurrentUser(user);
-
-    showToast('Account created! Welcome, ' + name.split(' ')[0]);
-    redirectAfterAuth();
-  });
-}
-
-function validateSignup(){
-  let ok = true;
-  const name = document.getElementById('signupName').value.trim();
-  const email = document.getElementById('signupEmail').value.trim();
-  const password = document.getElementById('signupPassword').value;
-
-  if (name.length < 2){
-    showFieldError('signupNameError');
-    ok = false;
-  } else {
-    hideFieldError('signupNameError');
-  }
-
-  if (!isValidEmail(email)){
-    showFieldError('signupEmailError');
-    ok = false;
-  } else {
-    hideFieldError('signupEmailError');
-  }
-
-  if (password.length < 8){
-    showFieldError('signupPasswordError');
-    ok = false;
-  } else {
-    hideFieldError('signupPasswordError');
-  }
-
-  return ok;
-}
-
-/* ================================================================
-   USER STORAGE (placeholder until Supabase)
-   ================================================================ */
-function getStoredUsers(){
-  try {
-    const raw = localStorage.getItem('utme_users');
-    return raw ? JSON.parse(raw) : [];
-  } catch(e) { return []; }
-}
-
-function setCurrentUser(user){
+function setCurrentUser(user) {
   localStorage.setItem('utme_user', JSON.stringify(user));
 }
 
-function getCurrentUser(){
-  try {
-    return JSON.parse(localStorage.getItem('utme_user') || 'null');
-  } catch(e) { return null; }
-}
+/* ---- Sign up ---- */
+document.getElementById('signupForm').addEventListener('submit', e => {
+  e.preventDefault();
 
-function logOut(){
-  localStorage.removeItem('utme_user');
-  window.location.href = 'index.html';
-}
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+  const password = document.getElementById('signupPassword').value;
 
-function isPaid(){
-  const user = getCurrentUser();
-  if (!user) return false;
-  if (!user.has_paid) return false;
-  if (user.paid_until){
-    return new Date(user.paid_until) > new Date();
+  // Validation
+  let hasError = false;
+  document.querySelectorAll('#signupForm .form-group').forEach(g => g.classList.remove('has-error'));
+
+  if (!name) {
+    document.getElementById('signupName').closest('.form-group').classList.add('has-error');
+    hasError = true;
   }
-  return true;
-}
-
-/* ================================================================
-   REDIRECT
-   ================================================================ */
-function checkRedirect(){
-  const params = new URLSearchParams(window.location.search);
-  const redirect = params.get('redirect');
-  if (redirect){
-    sessionStorage.setItem('utme_auth_redirect', redirect);
+  if (!email || !email.includes('@')) {
+    document.getElementById('signupEmail').closest('.form-group').classList.add('has-error');
+    hasError = true;
   }
-}
+  if (password.length < 8) {
+    document.getElementById('signupPassword').closest('.form-group').classList.add('has-error');
+    hasError = true;
+  }
+  if (hasError) return;
 
-function redirectAfterAuth(){
-  const redirect = sessionStorage.getItem('utme_auth_redirect') || 'select-subjects.html';
-  sessionStorage.removeItem('utme_auth_redirect');
-  window.location.href = redirect;
-}
+  // Check if email already exists
+  const users = getUsers();
+  if (users.find(u => u.email === email)) {
+    showToast('An account with this email already exists');
+    return;
+  }
 
-/* ================================================================
-   VALIDATION HELPERS
-   ================================================================ */
-function isValidEmail(email){
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+  // Create user
+  const newUser = {
+    id: 'u_' + Date.now(),
+    name,
+    email,
+    password, // In production: hash this on the server
+    has_paid: false,
+    paid_until: null,
+    is_admin: false,
+    created_at: new Date().toISOString()
+  };
+  users.push(newUser);
+  saveUsers(users);
+  setCurrentUser(newUser);
 
-function showFieldError(id, msg){
-  const el = document.getElementById(id);
-  if (msg) el.textContent = msg;
-  el.classList.add('show');
-}
+  showToast('Account created! Redirecting...');
+  setTimeout(() => {
+    window.location.href = 'select-subjects.html';
+  }, 800);
+});
 
-function hideFieldError(id){
-  document.getElementById(id).classList.remove('show');
-}
+/* ---- Log in ---- */
+document.getElementById('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
 
-/* ================================================================
-   TOAST
-   ================================================================ */
-let toastTimer = null;
-function showToast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+
+  // Validation
+  let hasError = false;
+  document.querySelectorAll('#loginForm .form-group').forEach(g => g.classList.remove('has-error'));
+
+  if (!email || !email.includes('@')) {
+    document.getElementById('loginEmail').closest('.form-group').classList.add('has-error');
+    hasError = true;
+  }
+  if (!password) {
+    document.getElementById('loginPassword').closest('.form-group').classList.add('has-error');
+    hasError = true;
+  }
+  if (hasError) return;
+
+  // Find user
+  const users = getUsers();
+  const user = users.find(u => u.email === email && u.password === password);
+
+  if (!user) {
+    showToast('Invalid email or password');
+    return;
+  }
+
+  setCurrentUser(user);
+  showToast('Welcome back! Redirecting...');
+  setTimeout(() => {
+    window.location.href = 'select-subjects.html';
+  }, 800);
+});
+
+/* ---- Toast ---- */
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
 }
-  
+'''
+
+with open('/mnt/agents/output/auth.js', 'w') as f:
+    f.write(auth_js)
+
+print(f"auth.js written: {len(auth_js)} chars")
