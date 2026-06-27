@@ -1,4 +1,7 @@
-<!DOCTYPE html>
+
+# Build discussion.html - Student discussion board
+
+discussion_html = '''<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -8,235 +11,192 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="shared.css">
 <style>
-  /* ---- Notice bar ---- */
+  /* ===== Notice bar ===== */
   .notice-bar{
-    background:var(--navy); color:#fff;
-    padding:10px 14px; font-size:11.5px; line-height:1.5;
+    background:#E7F8EF; border-bottom:1px solid #C8E6D5;
+    padding:8px 14px; font-size:11.5px; color:#0C8C58; font-weight:600;
     text-align:center;
   }
-  .notice-bar strong{color:var(--gold);}
 
-  /* ---- Subject filter tabs ---- */
-  .subj-filter{
-    display:flex; gap:7px; overflow-x:auto; scrollbar-width:none;
-    padding:12px 14px; background:var(--white);
+  /* ===== Subject filter tabs ===== */
+  .disc-tabs{
+    display:flex; gap:6px; padding:10px 14px;
+    overflow-x:auto; scrollbar-width:none; background:var(--white);
     border-bottom:1px solid var(--line);
   }
-  .subj-filter::-webkit-scrollbar{display:none;}
-  .subj-chip{
-    flex-shrink:0; padding:6px 13px; border-radius:99px;
-    border:1.5px solid var(--line); background:var(--white);
-    font-size:12px; font-weight:700; color:var(--ink-soft); cursor:pointer;
+  .disc-tabs::-webkit-scrollbar{display:none;}
+  .disc-tab{
+    flex-shrink:0; padding:5px 12px; border-radius:99px;
+    font-size:12px; font-weight:600; color:var(--ink-soft);
+    background:var(--paper); border:1px solid var(--line);
+    white-space:nowrap; cursor:pointer;
   }
-  .subj-chip.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .disc-tab.active{background:var(--navy); color:#fff; border-color:var(--navy);}
 
-  /* ---- Login prompt ---- */
+  /* ===== Comment form ===== */
+  .comment-form{
+    padding:14px; background:var(--white); border-bottom:1px solid var(--line);
+  }
+  .comment-form textarea{
+    width:100%; min-height:80px; padding:10px 12px;
+    border:1.5px solid var(--line); border-radius:10px;
+    font-size:13.5px; font-family:inherit; resize:vertical;
+    background:var(--paper); color:var(--ink);
+  }
+  .comment-form textarea:focus{outline:none; border-color:var(--navy);}
+  .comment-form-row{
+    display:flex; align-items:center; gap:8px; margin-top:8px;
+  }
+  .comment-form-row select{
+    flex:1; padding:7px 10px; border:1px solid var(--line); border-radius:8px;
+    font-size:12.5px; background:var(--white);
+  }
+  .comment-form-row .btn{flex-shrink:0;}
+
+  /* ===== Login prompt ===== */
   .login-prompt{
-    background:var(--white); border:1.5px dashed var(--line);
-    border-radius:var(--radius-md); padding:24px 18px; text-align:center;
-    margin:14px;
+    padding:30px 24px; text-align:center; background:var(--white);
+    border-bottom:1px solid var(--line);
   }
-  .login-prompt h3{font-size:14px; margin-bottom:6px;}
-  .login-prompt p{font-size:12px; color:var(--ink-soft); line-height:1.5; margin-bottom:14px;}
+  .login-prompt .icon{font-size:32px; margin-bottom:10px;}
+  .login-prompt h3{font-size:15px; margin-bottom:6px;}
+  .login-prompt p{font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin-bottom:14px;}
 
-  /* ---- Comment composer ---- */
-  .composer{
-    background:var(--white); border-top:1px solid var(--line);
-    padding:12px 14px; position:sticky; bottom:0; z-index:80;
+  /* ===== Comments list ===== */
+  .comments-list{padding:14px;}
+  .comment{
+    background:var(--white); border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:14px; margin-bottom:10px;
   }
-  .composer-inner{display:flex; gap:8px; align-items:flex-end;}
-  .composer-input{
-    flex:1; border:1px solid var(--line); border-radius:12px;
-    padding:10px 12px; font-size:13px; font-family:inherit;
-    background:var(--paper); color:var(--ink); resize:none;
-    min-height:44px; max-height:120px;
-  }
-  .composer-btn{
-    width:44px; height:44px; border-radius:50%; flex-shrink:0;
-    background:var(--orange); color:#fff; border:none;
-    font-size:18px; display:flex; align-items:center; justify-content:center;
-  }
-  .composer-btn:disabled{background:#C9D3DE;}
-
-  /* ---- Comments ---- */
-  .comment-list{padding:14px; display:flex; flex-direction:column; gap:12px;}
-  .comment-card{
-    background:var(--white); border:1px solid var(--line);
-    border-radius:var(--radius-md); padding:12px 14px;
-  }
-  .comment-head{
-    display:flex; align-items:center; gap:9px; margin-bottom:8px;
-  }
+  .comment-head{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
   .comment-avatar{
-    width:32px; height:32px; border-radius:50%;
-    background:var(--navy); color:#fff;
+    width:32px; height:32px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-display); font-weight:700; font-size:12px;
-    flex-shrink:0;
+    font-family:var(--font-display); font-size:13px; font-weight:700; color:#fff;
   }
   .comment-meta{flex:1; min-width:0;}
-  .comment-user{
-    font-size:13px; font-weight:700; color:var(--navy);
+  .comment-author{font-size:13px; font-weight:700; color:var(--navy);}
+  .comment-time{font-size:11px; color:var(--ink-soft);}
+  .comment-tag{
+    font-size:10px; font-family:var(--font-mono); font-weight:600;
+    background:var(--paper-dim); padding:2px 8px; border-radius:99px;
+    color:var(--ink-soft); flex-shrink:0;
   }
-  .comment-time{
-    font-size:10.5px; color:var(--ink-soft); margin-top:1px;
+  .comment-body{font-size:13.5px; line-height:1.6; color:var(--ink); margin-bottom:10px; word-break:break-word;}
+  .comment-actions{display:flex; gap:12px;}
+  .comment-actions button{
+    background:none; border:none; font-size:12px; font-weight:600;
+    color:var(--ink-soft); cursor:pointer; display:flex; align-items:center; gap:4px;
   }
-  .comment-subject-tag{
-    font-family:var(--font-mono); font-size:9px; font-weight:700;
-    letter-spacing:0.04em; text-transform:uppercase;
-    padding:2px 7px; border-radius:99px; flex-shrink:0;
-  }
-  .comment-body{
-    font-size:13px; line-height:1.6; color:var(--ink);
-    margin-bottom:10px; word-wrap:break-word;
-  }
-  .comment-actions{
-    display:flex; align-items:center; gap:14px;
-  }
-  .comment-action{
-    font-size:12px; color:var(--ink-soft); font-weight:600;
-    background:none; border:none; padding:4px 0;
-    display:flex; align-items:center; gap:4px; cursor:pointer;
-  }
-  .comment-action.liked{color:var(--orange);}
+  .comment-actions button.liked{color:var(--orange);}
 
-  /* ---- Replies ---- */
-  .replies-wrap{
-    margin-left:20px; margin-top:10px;
-    border-left:2px solid var(--line); padding-left:12px;
-    display:flex; flex-direction:column; gap:10px;
+  /* ===== Replies ===== */
+  .replies{margin-left:24px; margin-top:10px; padding-left:14px; border-left:2px solid var(--line);}
+  .reply{
+    background:var(--paper); border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:8px;
   }
-  .reply-card{
-    background:var(--paper-dim); border-radius:var(--radius-sm);
-    padding:10px 12px;
-  }
-  .reply-head{
-    display:flex; align-items:center; gap:7px; margin-bottom:5px;
-  }
+  .reply-head{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
   .reply-avatar{
-    width:24px; height:24px; border-radius:50%;
-    background:var(--ink-soft); color:#fff;
+    width:24px; height:24px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-display); font-weight:700; font-size:10px;
-    flex-shrink:0;
+    font-family:var(--font-display); font-size:10px; font-weight:700; color:#fff;
   }
-  .reply-user{font-size:12px; font-weight:700; color:var(--navy);}
+  .reply-author{font-size:12px; font-weight:700; color:var(--navy);}
   .reply-time{font-size:10px; color:var(--ink-soft);}
-  .reply-body{font-size:12px; line-height:1.55; color:var(--ink);}
+  .reply-body{font-size:12.5px; line-height:1.5; color:var(--ink); word-break:break-word;}
 
-  /* ---- Empty state ---- */
-  .empty-state{
-    text-align:center; padding:50px 30px;
+  /* ===== Reply form ===== */
+  .reply-form{
+    margin-left:24px; margin-top:10px; padding-left:14px; border-left:2px solid var(--line);
+    display:none;
   }
-  .empty-state .es-icon{font-size:36px; margin-bottom:12px;}
+  .reply-form.open{display:block;}
+  .reply-form textarea{
+    width:100%; min-height:50px; padding:8px 10px;
+    border:1.5px solid var(--line); border-radius:8px;
+    font-size:13px; font-family:inherit; resize:vertical;
+    background:var(--paper); color:var(--ink);
+  }
+  .reply-form-row{display:flex; gap:8px; margin-top:6px;}
+  .reply-form-row .btn{flex:1;}
+
+  /* ===== Empty state ===== */
+  .empty-state{padding:50px 24px; text-align:center;}
+  .empty-state .icon{font-size:36px; margin-bottom:10px;}
   .empty-state h3{font-size:15px; margin-bottom:6px;}
   .empty-state p{font-size:12.5px; color:var(--ink-soft); line-height:1.5;}
 
-  /* ---- Report modal ---- */
-  .report-overlay{
-    position:fixed; inset:0; z-index:250;
-    background:rgba(11,37,69,0.45);
-    opacity:0; pointer-events:none; transition:opacity 0.2s ease;
-    display:flex; align-items:flex-end;
-  }
-  .report-overlay.open{opacity:1; pointer-events:auto;}
-  .report-sheet{
-    background:#fff; width:100%; border-radius:18px 18px 0 0;
-    padding:16px; transform:translateY(100%);
-    transition:transform 0.22s ease;
-  }
-  .report-overlay.open .report-sheet{transform:translateY(0);}
-  .report-sheet h3{font-size:15px; margin-bottom:12px;}
-  .report-option{
-    display:block; width:100%; text-align:left;
-    padding:12px 14px; border-radius:10px; border:none;
-    background:var(--paper-dim); font-size:13px; font-weight:600;
-    margin-bottom:8px; color:var(--ink);
-  }
-  .report-option:hover{background:var(--line);}
-  .report-cancel{
-    display:block; width:100%; text-align:center;
-    padding:12px; border-radius:10px; border:none;
-    background:none; font-size:13px; font-weight:600;
-    color:var(--ink-soft); margin-top:4px;
-  }
+  /* ===== Hamburger menu ===== */
+  .menu-overlay{position:fixed; inset:0; z-index:200; background:rgba(11,37,69,0.45); opacity:0; pointer-events:none; transition:opacity 0.2s ease;}
+  .menu-overlay.open{opacity:1; pointer-events:auto;}
+  .menu-panel{position:fixed; top:0; left:0; bottom:0; width:78%; max-width:300px; background:var(--white); z-index:201; transform:translateX(-100%); transition:transform 0.22s ease; display:flex; flex-direction:column; box-shadow:var(--shadow-lift);}
+  .menu-overlay.open .menu-panel{transform:translateX(0);}
+  .menu-head{background:var(--navy); color:#fff; padding:22px 18px; display:flex; align-items:center; gap:10px;}
+  .menu-head .appbar-mark{background:var(--gold); color:var(--navy);}
+  .menu-head-name{font-family:var(--font-display); font-weight:700; font-size:15px;}
+  .menu-head-sub{font-size:11px; color:#9FB0CB; margin-top:1px;}
+  .menu-list{padding:10px 8px; flex:1; overflow-y:auto;}
+  .menu-list a{display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:10px; font-size:14px; font-weight:600; color:var(--ink);}
+  .menu-list a:hover, .menu-list a.active{background:var(--paper-dim); color:var(--navy);}
+  .menu-list .menu-icon{width:20px; text-align:center; font-size:15px;}
+  .menu-divider{height:1px; background:var(--line); margin:8px 12px;}
+  .menu-foot{padding:14px 18px; border-top:1px solid var(--line);}
+  .menu-close{position:absolute; top:16px; right:-44px; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.15); color:#fff; border:none; font-size:18px;}
 
-  /* ---- Toast ---- */
+  /* ===== Toast ===== */
   .toast{
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
     background:var(--navy); color:#fff; padding:10px 18px; border-radius:99px;
-    font-size:12.5px; font-weight:600; z-index:300; opacity:0; pointer-events:none;
-    transition:opacity 0.2s ease, transform 0.2s ease; white-space:nowrap;
+    font-size:12.5px; font-weight:600; z-index:400;
+    opacity:0; pointer-events:none; transition:opacity 0.25s ease, transform 0.25s ease;
+    white-space:nowrap;
   }
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
-
-  @media (min-width:640px){
-    .comment-list, .subj-filter, .notice-bar{
-      max-width:600px; margin-left:auto; margin-right:auto;
-    }
-    .composer-inner, .login-prompt{
-      max-width:600px; margin-left:auto; margin-right:auto;
-    }
-  }
 </style>
 </head>
 <body>
 
+<!-- ===== App bar ===== -->
 <header class="appbar">
   <button class="appbar-back" onclick="window.location.href='index.html'" aria-label="Back">←</button>
   <span class="appbar-title">Discussion</span>
   <button class="appbar-burger" id="menuOpenBtn" aria-label="Open menu">☰</button>
 </header>
 
-<div class="notice-bar">
-  <strong>📌</strong> This board is for <strong>exam and admission questions only.</strong>
+<!-- ===== Notice ===== -->
+<div class="notice-bar">📌 This board is for exam and admission questions only.</div>
+
+<!-- ===== Subject filter tabs ===== -->
+<div class="disc-tabs" id="discTabs">
+  <button class="disc-tab active" data-filter="all">All</button>
 </div>
 
-<div class="subj-filter" id="subjFilter">
-  <button class="subj-chip active" data-filter="all">All topics</button>
-  <button class="subj-chip" data-filter="jamb">JAMB/UTME</button>
-  <button class="subj-chip" data-filter="admission">Admission</button>
-  <button class="subj-chip" data-filter="postutme">Post-UTME</button>
-  <button class="subj-chip" data-filter="study">Study tips</button>
+<!-- ===== Comment form (shown if logged in) ===== -->
+<div class="comment-form" id="commentForm" style="display:none;">
+  <textarea id="commentBody" placeholder="Ask a question or share something helpful..."></textarea>
+  <div class="comment-form-row">
+    <select id="commentSubject">
+      <option value="general">General</option>
+    </select>
+    <button class="btn btn-primary btn-sm" id="postCommentBtn">Post</button>
+  </div>
 </div>
 
-<div id="loginPrompt" class="login-prompt" style="display:none;">
+<!-- ===== Login prompt (shown if not logged in) ===== -->
+<div class="login-prompt" id="loginPrompt">
+  <div class="icon">🔒</div>
   <h3>Log in to join the discussion</h3>
-  <p>Create a free account to post comments, reply to others, and like posts.</p>
-  <a href="auth.html?redirect=discussion.html" class="btn btn-primary btn-sm">Log in / Sign up</a>
+  <p>Create a free account to ask questions, reply to others, and get help from fellow candidates.</p>
+  <a href="auth.html" class="btn btn-primary btn-sm">Log in or Sign up</a>
 </div>
 
-<div class="comment-list" id="commentList">
-  <div class="empty-state">
-    <div class="es-icon">💬</div>
-    <h3>No discussions yet</h3>
-    <p>Be the first to ask a question or share advice about JAMB, Post-UTME, or admission.</p>
-  </div>
-</div>
+<!-- ===== Comments list ===== -->
+<div class="comments-list" id="commentsList"></div>
 
-<!-- Composer (shown when logged in) -->
-<div class="composer" id="composer" style="display:none;">
-  <div class="composer-inner">
-    <textarea class="composer-input" id="commentInput" placeholder="Ask about JAMB, Post-UTME, admission..." rows="2"></textarea>
-    <button class="composer-btn" id="postBtn">➤</button>
-  </div>
-</div>
-
-<!-- Report modal -->
-<div class="report-overlay" id="reportOverlay">
-  <div class="report-sheet">
-    <h3>Report comment</h3>
-    <button class="report-option" data-reason="spam">🚫 Spam or irrelevant</button>
-    <button class="report-option" data-reason="abuse">😠 Harassment or abuse</button>
-    <button class="report-option" data-reason="offtopic">📵 Off-topic (not about exam/admission)</button>
-    <button class="report-cancel" id="reportCancelBtn">Cancel</button>
-  </div>
-</div>
-
-<!-- Toast -->
+<!-- ===== Toast ===== -->
 <div class="toast" id="toast"></div>
 
-<!-- ============ Hamburger menu ============ -->
+<!-- ===== Hamburger menu ===== -->
 <div class="menu-overlay" id="menuOverlay">
   <div class="menu-panel">
     <button class="menu-close" id="menuCloseBtn">×</button>
@@ -257,7 +217,7 @@
       <a href="#"><span class="menu-icon">👤</span> My account</a>
       <a href="index.html#pricing"><span class="menu-icon">🔓</span> Unlock full access</a>
       <div class="menu-divider"></div>
-      <a href="https://wa.me/2347065732365" target="_blank"><span class="menu-icon">💬</span> WhatsApp support</a>
+      <a href="https://wa.me/2347065732365" target="_blank" rel="noopener"><span class="menu-icon">💬</span> WhatsApp support</a>
     </nav>
     <div class="menu-foot">
       <a href="#" class="btn btn-ghost btn-block btn-sm">Log out</a>
@@ -268,5 +228,9 @@
 <script src="shared.js"></script>
 <script src="discussion.js"></script>
 </body>
-    </html>
-    
+</html>'''
+
+with open('/mnt/agents/output/discussion.html', 'w') as f:
+    f.write(discussion_html)
+
+print(f"discussion.html written: {len(discussion_html)} chars")
