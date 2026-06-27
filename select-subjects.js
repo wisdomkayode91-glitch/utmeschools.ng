@@ -1,7 +1,11 @@
 /* ============================================================
-   UTMESchools v2 — select-subjects.js (FIXED)
-   All event listeners now inside DOMContentLoaded.
-   Select All / Deselect All topics toggles properly.
+   UTMESchools v2 — select-subjects.js
+   - All 27 JAMB subjects (from O3Schools screenshots)
+   - English auto-selected on load
+   - No subject cap — select as many as you want
+   - Calculator overlay
+   - Free limit: 5 questions
+   - Year range: 1992 to date
    ============================================================ */
 
 const ALL_SUBJECTS = [
@@ -10,6 +14,7 @@ const ALL_SUBJECTS = [
   { id: 'agriculture', name: 'Agriculture',                   icon: '🌾', bg: '#E8F1FF', fg: '#1F5FBF', max: 60 },
   { id: 'biology',     name: 'Biology',                       icon: '🧬', bg: '#F1EAFB', fg: '#6C3FBF', max: 60 },
   { id: 'chemistry',   name: 'Chemistry',                     icon: '⚗️', bg: '#E7F8EF', fg: '#0C8C58', max: 60 },
+  { id: 'commerce',    name: 'Commerce: 60 },
   { id: 'commerce',    name: 'Commerce',                      icon: '🛒', bg: '#FCE4E4', fg: '#C0392B', max: 60 },
   { id: 'computer',    name: 'Computer Studies',              icon: '💻', bg: '#E7F8EF', fg: '#0C8C58', max: 60 },
   { id: 'crk',         name: 'CRK',                           icon: '✝️', bg: '#E8F1FF', fg: '#1F5FBF', max: 60 },
@@ -33,7 +38,7 @@ const ALL_SUBJECTS = [
   { id: 'yoruba',      name: 'Yoruba',                        icon: '🌺', bg: '#FFF4DC', fg: '#A6760A', max: 60 },
 ];
 
-const FREE_LIMIT = 5;
+const FREE_LIMIT = 5; // questions free users can see per subject per year
 
 function yearOptions(){
   const years = ['Random'];
@@ -48,231 +53,11 @@ let subjectConfig = {
   english: { year: 'Random', count: 40, topic: 'All' }
 };
 
-/* ---- DOM refs (set after DOM ready) ---- */
-let sheetList, sheetOverlay, configList, emptyState, optionsCard, startBtn, pickedCount;
+/* ---- Bottom sheet ---- */
+const sheetList    = document.getElementById('sheetList');
+const sheetOverlay = document.getElementById('sheetOverlay');
 
-/* ---- Topics/subtopics per subject ---- */
-const SUBJECT_TOPICS = {
-  english: [
-    'ORAL FORMS : CONSONANTS','ORAL FORMS : VOWELS','ORAL FORMS : STRESS PATTERN',
-    'ORAL FORMS : RHYMES','ORAL FORMS : EMPHATIC STRESS',
-    'LEXIS AND STRUCTURE : ANTONYMS','LEXIS AND STRUCTURE : SYNONYMS',
-    'LEXIS AND STRUCTURE : SENTENCE COMPLETION','LEXIS AND STRUCTURE : SENTENCE INTERPRETATION',
-    'COMPREHENSION PASSAGE','CLOZE PASSAGE',
-    'NOVEL : THE LEKKI HEADMASTER',
-  ],
-  mathematics: [
-    'NUMBER AND NUMERATION','ALGEBRA','GEOMETRY AND MENSURATION',
-    'TRIGONOMETRY','CALCULUS','STATISTICS AND PROBABILITY',
-    'SETS AND LOGIC','MATRICES AND DETERMINANTS',
-  ],
-  physics: [
-    'MECHANICS : SCALARS AND VECTORS','MECHANICS : MOTION',
-    'MECHANICS : EQUILIBRIUM','MECHANICS : WORK, ENERGY AND POWER',
-    'MECHANICS : MOMENTUM','HEAT : TEMPERATURE AND THERMOMETRY',
-    'CHANGE OF STATE','CHANGE OF STATE : LATENT HEAT',
-    'CHANGE OF STATE : EVAPORATION AND BOILING',
-    'CHANGE OF STATE : SPECIFIC LATENT HEATS OF FUSION',
-    'CHANGE OF STATE : SPECIFIC LATENT HEATS OF VAPORIZATION',
-    'WAVES','LIGHT : REFLECTION','LIGHT : REFRACTION',
-    'CURRENT ELECTRICITY','CAPACITORS','CAPACITORS : CAPACITANCE OF A CAPACITORS',
-    'CAPACITORS : CAPACITORS IN SERIES AND PARALLEL',
-    'CAPACITORS : ENERGY STORED IN A CAPACITOR',
-    'CHARACTERISTICS OF SOUND WAVES : FREQUENCY OF A NOTE EMITTED BY AIR COLUMNS',
-    'CHARACTERISTICS OF SOUND WAVES : QUALITY, PITCH, INTENSITY AND LOUDNESS',
-    'CONDUCTION OF ELECTRICITY THROUGH : GASES',
-    'CONDUCTION OF ELECTRICITY THROUGH : LIQUIDS',
-    'ATOMIC PHYSICS: ATOMS',
-  ],
-  chemistry: [
-    'ATOMIC STRUCTURE','CHEMICAL BONDING','ACIDS, BASES AND SALTS',
-    'ELECTROLYSIS','ORGANIC CHEMISTRY : HYDROCARBONS',
-    'ORGANIC CHEMISTRY : FUNCTIONAL GROUPS',
-    'RATES OF REACTION','EQUILIBRIUM','ELECTROCHEMISTRY',
-    'PERIODIC TABLE','GAS LAWS','MOLE CONCEPT',
-  ],
-  biology: [
-    'CELL BIOLOGY','GENETICS AND EVOLUTION','ECOLOGY',
-    'PLANT AND ANIMAL NUTRITION','TRANSPORT SYSTEMS',
-    'EXCRETION AND HOMEOSTASIS','REPRODUCTION',
-    'COORDINATION AND CONTROL','CLASSIFICATION OF LIVING THINGS',
-  ],
-  government: [
-    'BASIC CONCEPTS IN GOVERNMENT','CONSTITUTION','FEDERALISM',
-    'ARMS OF GOVERNMENT','ELECTORAL SYSTEMS','POLITICAL PARTIES',
-    'NIGERIAN GOVERNMENT','INTERNATIONAL ORGANIZATIONS',
-  ],
-  economics: [
-    'DEMAND AND SUPPLY','ELASTICITY','MARKET STRUCTURES',
-    'NATIONAL INCOME','MONETARY POLICY','FISCAL POLICY',
-    'INTERNATIONAL TRADE','ECONOMIC DEVELOPMENT',
-    'POPULATION AND LABOUR','AGRICULTURAL ECONOMICS',
-  ],
-  literature: [
-    'PROSE','POETRY','DRAMA',
-    'LITERARY TERMS AND DEVICES','WEST AFRICAN LITERATURE',
-  ],
-  crk: [
-    'OLD TESTAMENT','NEW TESTAMENT','TEMPTATION OF JESUS',
-    'CHRISTIAN ETHICS','CHURCH HISTORY',
-  ],
-  irk: [
-    'PILLARS OF ISLAM','SUNNAH AND HADITH','TAWHID',
-    'ISLAMIC JURISPRUDENCE','HISTORY OF ISLAM',
-  ],
-  geography: [
-    'PHYSICAL GEOGRAPHY : MAPS','PHYSICAL GEOGRAPHY : CLIMATE',
-    'PHYSICAL GEOGRAPHY : LANDFORMS','HUMAN GEOGRAPHY',
-    'ECONOMIC GEOGRAPHY','REGIONAL GEOGRAPHY : NIGERIA',
-    'REGIONAL GEOGRAPHY : AFRICA',
-  ],
-  commerce: [
-    'TRADE','RETAIL TRADE','WHOLESALE TRADE',
-    'BANKING','INSURANCE','TRANSPORTATION',
-    'WAREHOUSING','COMMUNICATION IN COMMERCE',
-  ],
-  accounts: [
-    'BOOK-KEEPING PRINCIPLES','TRIAL BALANCE','TRADING ACCOUNT',
-    'PROFIT AND LOSS ACCOUNT','BALANCE SHEET',
-    'PARTNERSHIP ACCOUNTS','COMPANY ACCOUNTS',
-  ],
-  agriculture: [
-    'CROP PRODUCTION','ANIMAL PRODUCTION','SOIL SCIENCE',
-    'AGRICULTURAL ECONOMICS','FARM MANAGEMENT',
-    'AGRO-ALLIED INDUSTRIES',
-  ],
-};
-
-let currentMode = 'practice';
-let topicSheetSubjectId = null;
-
-/* ============================================================
-   INIT — ALL EVENT LISTENERS INSIDE DOMContentLoaded
-   ============================================================ */
-document.addEventListener('DOMContentLoaded', () => {
-  // Cache DOM refs
-  sheetList    = document.getElementById('sheetList');
-  sheetOverlay = document.getElementById('sheetOverlay');
-  configList   = document.getElementById('configList');
-  emptyState   = document.getElementById('emptyState');
-  optionsCard  = document.getElementById('optionsCard');
-  startBtn     = document.getElementById('startBtn');
-  pickedCount  = document.getElementById('pickedCount');
-
-  // Wire subject picker
-  const pickSubjectsBtn = document.getElementById('pickSubjectsBtn');
-  if (pickSubjectsBtn){
-    pickSubjectsBtn.addEventListener('click', () => {
-      pendingIds = [...selectedIds];
-      renderSheet();
-      sheetOverlay.classList.add('open');
-      document.body.style.overflow = 'hidden';
-    });
-  }
-
-  // Wire sheet close
-  const sheetCloseBtn = document.getElementById('sheetCloseBtn');
-  if (sheetCloseBtn) sheetCloseBtn.addEventListener('click', closeSheet);
-  
-  const sheetCancelBtn = document.getElementById('sheetCancelBtn');
-  if (sheetCancelBtn) sheetCancelBtn.addEventListener('click', closeSheet);
-  
-  if (sheetOverlay){
-    sheetOverlay.addEventListener('click', e => { 
-      if (e.target === sheetOverlay) closeSheet(); 
-    });
-  }
-
-  // Wire sheet OK
-  const sheetOkBtn = document.getElementById('sheetOkBtn');
-  if (sheetOkBtn){
-    sheetOkBtn.addEventListener('click', () => {
-      selectedIds = [...pendingIds];
-      selectedIds.forEach(id => {
-        if (!subjectConfig[id]){
-          const s = ALL_SUBJECTS.find(x => x.id === id);
-          subjectConfig[id] = { year: 'Random', count: Math.min(40, s.max), topic: 'All' };
-        }
-      });
-      Object.keys(subjectConfig).forEach(id => {
-        if (!selectedIds.includes(id)) delete subjectConfig[id];
-      });
-      closeSheet();
-      renderConfigList();
-    });
-  }
-
-  // Wire mode toggle
-  document.querySelectorAll('.mode-toggle button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentMode = btn.dataset.mode;
-      const timerSection = document.getElementById('timerSection');
-      if (timerSection) timerSection.style.display = currentMode === 'study' ? 'none' : 'block';
-    });
-  });
-
-  // Wire toggle switches
-  document.querySelectorAll('.switch').forEach(sw => {
-    sw.addEventListener('click', () => sw.classList.toggle('on'));
-  });
-
-  // Wire calculator
-  document.querySelectorAll('.calc-btn').forEach(btn => {
-    btn.addEventListener('click', () => calcPress(btn.dataset.val));
-  });
-  
-  const calcCloseBtn = document.getElementById('calcCloseBtn');
-  if (calcCloseBtn) calcCloseBtn.addEventListener('click', closeCalc);
-  
-  const calcOpenBtn = document.getElementById('calcOpenBtn');
-  if (calcOpenBtn) calcOpenBtn.addEventListener('click', openCalc);
-
-  // Wire topic sheet
-  const topicSheetCloseBtn = document.getElementById('topicSheetCloseBtn');
-  if (topicSheetCloseBtn) topicSheetCloseBtn.addEventListener('click', closeTopicSheet);
-  
-  const topicSheetCancelBtn = document.getElementById('topicSheetCancelBtn');
-  if (topicSheetCancelBtn) topicSheetCancelBtn.addEventListener('click', closeTopicSheet);
-  
-  const topicSheetOkBtn = document.getElementById('topicSheetOkBtn');
-  if (topicSheetOkBtn) topicSheetOkBtn.addEventListener('click', closeTopicSheet);
-  
-  const topicSheetOverlay = document.getElementById('topicSheetOverlay');
-  if (topicSheetOverlay){
-    topicSheetOverlay.addEventListener('click', e => {
-      if (e.target === topicSheetOverlay) closeTopicSheet();
-    });
-  }
-
-  // Wire start button
-  if (startBtn){
-    startBtn.addEventListener('click', () => {
-      if (selectedIds.length === 0) return;
-      const p = new URLSearchParams({
-        subjects: selectedIds.join(','),
-        mode: currentMode,
-        h: document.getElementById('timerH')?.value || 2,
-        m: document.getElementById('timerM')?.value || 0,
-      });
-      selectedIds.forEach(id => {
-        p.set(`year_${id}`, subjectConfig[id].year);
-        p.set(`count_${id}`, subjectConfig[id].count);
-      });
-      window.location.href = `practice.html?${p.toString()}`;
-    });
-  }
-
-  // Initial render
-  renderConfigList();
-});
-
-/* ============================================================
-   SHEET
-   ============================================================ */
 function renderSheet(){
-  if (!sheetList) return;
   sheetList.innerHTML = '';
   ALL_SUBJECTS.forEach(s => {
     const checked = pendingIds.includes(s.id);
@@ -294,14 +79,43 @@ function renderSheet(){
   });
 }
 
+document.getElementById('pickSubjectsBtn').addEventListener('click', () => {
+  pendingIds = [...selectedIds];
+  renderSheet();
+  sheetOverlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+});
+
 function closeSheet(){
-  if (sheetOverlay) sheetOverlay.classList.remove('open');
+  sheetOverlay.classList.remove('open');
   document.body.style.overflow = '';
 }
+document.getElementById('sheetCloseBtn').addEventListener('click', closeSheet);
+document.getElementById('sheetCancelBtn').addEventListener('click', closeSheet);
+sheetOverlay.addEventListener('click', e => { if (e.target === sheetOverlay) closeSheet(); });
 
-/* ============================================================
-   CONFIG CARDS
-   ============================================================ */
+document.getElementById('sheetOkBtn').addEventListener('click', () => {
+  selectedIds = [...pendingIds];
+  selectedIds.forEach(id => {
+    if (!subjectConfig[id]){
+      const s = ALL_SUBJECTS.find(x => x.id === id);
+      subjectConfig[id] = { year: 'Random', count: Math.min(40, s.max), topic: 'All' };
+    }
+  });
+  Object.keys(subjectConfig).forEach(id => {
+    if (!selectedIds.includes(id)) delete subjectConfig[id];
+  });
+  closeSheet();
+  renderConfigList();
+});
+
+/* ---- Config cards ---- */
+const configList  = document.getElementById('configList');
+const emptyState  = document.getElementById('emptyState');
+const optionsCard = document.getElementById('optionsCard');
+const startBtn    = document.getElementById('startBtn');
+const pickedCount = document.getElementById('pickedCount');
+
 function questionCountOptions(max){
   const opts = [];
   for (let n = 10; n <= max; n += 10) opts.push(n);
@@ -310,8 +124,6 @@ function questionCountOptions(max){
 }
 
 function renderConfigList(){
-  if (!pickedCount || !startBtn || !configList || !emptyState || !optionsCard) return;
-
   pickedCount.textContent = selectedIds.length;
   startBtn.disabled = selectedIds.length === 0;
 
@@ -391,85 +203,173 @@ function renderConfigList(){
   });
 }
 
-/* ============================================================
-   TOPIC PICKER (FIXED: Select All / Deselect All toggle)
-   ============================================================ */
+/* ---- Topics/subtopics per subject ---- */
+const SUBJECT_TOPICS = {
+  english: [
+    'ORAL FORMS : CONSONANTS','ORAL FORMS : VOWELS','ORAL FORMS : STRESS PATTERN',
+    'ORAL FORMS : RHYMES','ORAL FORMS : EMPHATIC STRESS',
+    'LEXIS AND STRUCTURE : ANTONYMS','LEXIS AND STRUCTURE : SYNONYMS',
+    'LEXIS AND STRUCTURE : SENTENCE COMPLETION','LEXIS AND STRUCTURE : SENTENCE INTERPRETATION',
+    'COMPREHENSION PASSAGE','CLOZE PASSAGE',
+    'NOVEL : THE LEKKI HEADMASTER',
+  ],
+  mathematics: [
+    'NUMBER AND NUMERATION','ALGEBRA','GEOMETRY AND MENSURATION',
+    'TRIGONOMETRY','CALCULUS','STATISTICS AND PROBABILITY',
+    'SETS AND LOGIC','MATRICES AND DETERMINANTS',
+  ],
+  physics: [
+    'MECHANICS : SCALARS AND VECTORS','MECHANICS : MOTION',
+    'MECHANICS : EQUILIBRIUM','MECHANICS : WORK, ENERGY AND POWER',
+    'MECHANICS : MOMENTUM','HEAT : TEMPERATURE AND THERMOMETRY',
+    'CHANGE OF STATE','CHANGE OF STATE : LATENT HEAT',
+    'CHANGE OF STATE : EVAPORATION AND BOILING',
+    'CHANGE OF STATE : SPECIFIC LATENT HEATS OF FUSION',
+    'CHANGE OF STATE : SPECIFIC LATENT HEATS OF VAPORIZATION',
+    'WAVES','LIGHT : REFLECTION','LIGHT : REFRACTION',
+    'CURRENT ELECTRICITY','CAPACITORS','CAPACITORS : CAPACITANCE OF A CAPACITORS',
+    'CAPACITORS : CAPACITORS IN SERIES AND PARALLEL',
+    'CAPACITORS : ENERGY STORED IN A CAPACITOR',
+    'CHARACTERISTICS OF SOUND WAVES : FREQUENCY OF A NOTE EMITTED BY AIR COLUMNS',
+    'CHARACTERISTICS OF SOUND WAVES : QUALITY, PITCH, INTENSITY AND LOUDNESS',
+    'CONDUCTION OF ELECTRICRICITY THROUGH : GASES',
+    'CONDUCTION OF ELECTRICITY THROUGH : LIQUIDS',
+    'ATOMIC PHYSICS: ATOMS',
+  ],
+  chemistry: [
+    'ATOMIC STRUCTURE','CHEMICAL BONDING','ACIDS, BASES AND SALTS',
+    'ELECTROLYSIS','ORGANIC CHEMISTRY : HYDROCARBONS',
+    'ORGANIC CHEMISTRY : FUNCTIONAL GROUPS',
+    'RATES OF REACTION','EQUILIBRIUM','ELECTROCHEMISTRY',
+    'PERIODIC TABLE','GAS LAWS','MOLE CONCEPT',
+  ],
+  biology: [
+    'CELL BIOLOGY','GENETICS AND EVOLUTION','ECOLOGY',
+    'PLANT AND ANIMAL NUTRITION','TRANSPORT SYSTEMS',
+    'EXCRETION AND HOMEOSTASIS','REPRODUCTION',
+    'COORDINATION AND CONTROL','CLASSIFICATION OF LIVING THINGS',
+  ],
+  government: [
+    'BASIC CONCEPTS IN GOVERNMENT','CONSTITUTION','FEDERALISM',
+    'ARMS OF GOVERNMENT','ELECTORAL SYSTEMS','POLITICAL PARTIES',
+    'NIGERIAN GOVERNMENT','INTERNATIONAL ORGANIZATIONS',
+  ],
+  economics: [
+    'DEMAND AND SUPPLY','ELASTICITY','MARKET STRUCTURES',
+    'NATIONAL INCOME','MONETARY POLICY','FISCAL POLICY',
+    'INTERNATIONAL TRADE','ECONOMIC DEVELOPMENT',
+    'POPULATION AND LABOUR','AGRICULTURAL ECONOMICS',
+  ],
+  literature: [
+    'PROSE','POETRY','DRAMA',
+    'LITERARY TERMS AND DEVICES','WEST AFRICAN LITERATURE',
+  ],
+  crk: [
+    'OLD TESTAMENT','NEW TESTAMENT','TEMPTATION OF JESUS',
+    'CHRISTIAN ETHICS','CHURCH HISTORY',
+  ],
+  irk: [
+    'PILLARS OF ISLAM','SUNNAH AND HADITH','TAWHID',
+    'ISLAMIC JURISPRUDENCE','HISTORY OF ISLAM',
+  ],
+  geography: [
+    'PHYSICAL GEOGRAPHY : MAPS','PHYSICAL GEOGRAPHY : CLIMATE',
+    'PHYSICAL GEOGRAPHY : LANDFORMS','HUMAN GEOGRAPHY',
+    'ECONOMIC GEOGRAPHY','REGIONAL GEOGRAPHY : NIGERIA',
+    'REGIONAL GEOGRAPHY : AFRICA',
+  ],
+  commerce: [
+    'TRADE','RETAIL TRADE','WHOLESALE TRADE',
+    'BANKING','INSURANCE','TRANSPORTATION',
+    'WAREHOUSING','COMMUNICATION IN COMMERCE',
+  ],
+  accounts: [
+    'BOOK-KEEPING PRINCIPLES','TRIAL BALANCE','TRADING ACCOUNT',
+    'PROFIT AND LOSS ACCOUNT','BALANCE SHEET',
+    'PARTNERSHIP ACCOUNTS','COMPANY ACCOUNTS',
+  ],
+  agriculture: [
+    'CROP PRODUCTION','ANIMAL PRODUCTION','SOIL SCIENCE',
+    'AGRICULTURAL ECONOMICS','FARM MANAGEMENT',
+    'AGRO-ALLIED INDUSTRIES',
+  ],
+};
+// For subjects not listed above, fall back to empty (All Topics only)
+
+/* ---- Topic picker sheet ---- */
+let topicSheetSubjectId = null;
+
 function openTopicSheet(subjectId){
   topicSheetSubjectId = subjectId;
   const s      = ALL_SUBJECTS.find(x => x.id === subjectId);
   const topics = SUBJECT_TOPICS[subjectId] || [];
   const cfg    = subjectConfig[subjectId];
-  
-  let selectedTopics = cfg.selectedTopics || [];
-  const isAllSelected = selectedTopics.length === 0 || selectedTopics.length === topics.length;
+  const selectedTopics = cfg.selectedTopics || [];
 
   const overlay = document.getElementById('topicSheetOverlay');
   const list    = document.getElementById('topicSheetList');
-  const title   = document.getElementById('topicSheetTitle');
-  if (title) title.textContent = s.name + ' — Select Topics';
-  if (list) list.innerHTML = '';
+  document.getElementById('topicSheetTitle').textContent = s.name + ' — Select Topics Topics';
+  list.innerHTML = '';
 
-  // Select All / Deselect All row
+  // Select All checkbox
+  const allChecked = selectedTopics.length === 0 || selectedTopics.length === topics.length;
   const allRow = document.createElement('div');
   allRow.className = 'sheet-item';
-  allRow.innerHTML = `
-    <div class="sheet-checkbox ${isAllSelected ? 'checked' : ''}">${isAllSelected ? '✓' : ''}</div>
-    <div class="sheet-item-name" style="font-weight:700;">${isAllSelected ? 'Deselect All' : 'Select All'}</div>
-  `;
+  allRow.innerHTML = `<div class="sheet-checkbox ${allChecked ? 'checked' : ''}">${allChecked ? '✓' : ''}</div><div class="sheet-item-name" style="font-weight:700;">Select All</div>`;
   allRow.addEventListener('click', () => {
-    if (isAllSelected){
+    if (allChecked){
       subjectConfig[subjectId].selectedTopics = [];
     } else {
       subjectConfig[subjectId].selectedTopics = [...topics];
     }
     openTopicSheet(subjectId);
   });
-  if (list) list.appendChild(allRow);
+  list.appendChild(allRow);
 
   const divider = document.createElement('div');
   divider.style.cssText = 'height:1px;background:var(--line);margin:6px 0;';
-  if (list) list.appendChild(divider);
+  list.appendChild(divider);
 
-  // Individual topics
   topics.forEach(topic => {
     const checked = selectedTopics.length === 0 || selectedTopics.includes(topic);
     const row = document.createElement('div');
     row.className = 'sheet-item';
-    row.innerHTML = `
-      <div class="sheet-checkbox ${checked ? 'checked' : ''}">${checked ? '✓' : ''}</div>
-      <div class="sheet-item-name">${topic}</div>
-    `;
+    row.innerHTML = `<div class="sheet-checkbox ${checked ? 'checked' : ''}">${checked ? '✓' : ''}</div><div class="sheet-item-name">${topic}</div>`;
     row.addEventListener('click', () => {
       let sel = [...(subjectConfig[subjectId].selectedTopics || [])];
-      if (sel.length === 0) sel = [...topics];
+      if (sel.length === 0) sel = [...topics]; // was "All", convert to explicit list
       if (checked) sel = sel.filter(t => t !== topic);
       else sel.push(topic);
-      if (sel.length === topics.length) sel = [];
+      if (sel.length === topics.length) sel = []; // all selected = "All"
       subjectConfig[subjectId].selectedTopics = sel;
       openTopicSheet(subjectId);
     });
-    if (list) list.appendChild(row);
+    list.appendChild(row);
   });
 
-  if (topics.length === 0 && list){
+  if (topics.length === 0){
     const msg = document.createElement('p');
     msg.style.cssText = 'padding:20px;text-align:center;color:var(--ink-soft);font-size:13px;';
     msg.textContent = 'Topics will appear here once questions are loaded.';
     list.appendChild(msg);
   }
 
-  if (overlay){
-    overlay.classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeTopicSheet(){
-  const overlay = document.getElementById('topicSheetOverlay');
-  if (overlay) overlay.classList.remove('open');
+  document.getElementById('topicSheetOverlay').classList.remove('open');
   document.body.style.overflow = '';
-  renderConfigList();
+  renderConfigList(); // refresh to show updated topic label
 }
+
+document.getElementById('topicSheetCloseBtn').addEventListener('click', closeTopicSheet);
+document.getElementById('topicSheetCancelBtn').addEventListener('click', closeTopicSheet);
+document.getElementById('topicSheetOkBtn').addEventListener('click', closeTopicSheet);
+document.getElementById('topicSheetOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('topicSheetOverlay')) closeTopicSheet();
+});
 
 function topicLabel(id){
   const sel = subjectConfig[id]?.selectedTopics;
@@ -477,19 +377,100 @@ function topicLabel(id){
   if (sel.length === 1) return sel[0].slice(0, 28) + (sel[0].length > 28 ? '…' : '');
   return `${sel.length} topics`;
 }
+let currentMode = 'practice';
+document.querySelectorAll('.mode-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+    document.getElementById('timerSection').style.display =
+      currentMode === 'study' ? 'none' : 'block';
+  });
+});
 
-/* ============================================================
-   CALCULATOR
-   ============================================================ */
+/* ---- Toggle switches ---- */
+document.querySelectorAll('.switch').forEach(sw => {
+  sw.addEventListener('click', () => sw.classList.toggle('on'));
+});
+
+/* ---- Calculator ---- */
 let calcDisplay = '0';
 let calcExpr    = '';
 let calcJustEvaled = false;
 
 function openCalc(){
-  const overlay = document.getElementById('calcOverlay');
-  if (overlay) overlay.classList.add('open');
+  document.getElementById('calcOverlay').classList.add('open');
+  updateCalcDisplay();
+}
+function closeCalc(){
+  document.getElementById('calcOverlay').classList.remove('open');
+}
+
+function updateCalcDisplay(){
+  document.getElementById('calcDisplay').textContent = calcDisplay;
+}
+
+function calcPress(val){
+  if (val === 'C'){
+    calcDisplay = '0'; calcExpr = ''; calcJustEvaled = false;
+  } else if (val === 'DEL'){
+    calcDisplay = calcDisplay.length > 1 ? calcDisplay.slice(0, -1) : '0';
+    calcExpr = calcExpr.length > 1 ? calcExpr.slice(0, -1) : '';
+  } else if (val === '='){
+    try {
+      // safe eval: only allow digits and operators
+      const safe = calcExpr.replace(/[^0-9+\-*/.()%√]/g, '').replace(/√(\d+(\.\d+)?)/g, 'Math.sqrt($1)');
+      const result = Function('"use strict"; return (' + safe + ')')();
+      calcDisplay = isFinite(result) ? String(parseFloat(result.toFixed(8))) : 'Error';
+      calcExpr = calcDisplay;
+      calcJustEvaled = true;
+    } catch(e){
+      calcDisplay = 'Error'; calcExpr = '';
+    }
+  } else if (val === '√'){
+    calcExpr += '√';
+    calcDisplay = calcExpr;
+    calcJustEvaled = false;
+  } else if (['+','-','×','÷','%'].includes(val)){
+    const opMap = {'×':'*','÷':'/'};
+    const op = opMap[val] || val;
+    calcExpr += op;
+    calcDisplay = calcExpr;
+    calcJustEvaled = false;
+  } else {
+    if (calcJustEvaled){ calcExpr = val; calcJustEvaled = false; }
+    else { calcExpr = (calcExpr === '0' || calcExpr === '') ? val : calcExpr + val; }
+    calcDisplay = calcExpr;
+  }
   updateCalcDisplay();
 }
 
-function closeCalc(){
-  const overlay = docum
+document.addEventListener('DOMContentLoaded', () => {
+  // wire calc buttons
+  document.querySelectorAll('.calc-btn').forEach(btn => {
+    btn.addEventListener('click', () => calcPress(btn.dataset.val));
+  });
+  document.getElementById('calcCloseBtn').addEventListener('click', closeCalc);
+  // open calc from toolbar
+  const calcOpenBtn = document.getElementById('calcOpenBtn');
+  if (calcOpenBtn) calcOpenBtn.addEventListener('click', openCalc);
+});
+
+/* ---- Start button ---- */
+startBtn.addEventListener('click', () => {
+  if (selectedIds.length === 0) return;
+  const params = new URLSearchParams({
+    subjects: selectedIds.join(','),
+    mode: currentMode,
+    h: document.getElementById('timerH')?.value || 2,
+    m: document.getElementById('timerM')?.value || 0,
+  });
+  selectedIds.forEach(id => {
+    params.set(`year_${id}`, subjectConfig[id].year);
+    params.set(`count_${id}`, subjectConfig[id].count);
+  });
+  window.location.href = `practice.html?${params.toString()}`;
+});
+
+/* ---- Initial render (English already selected) ---- */
+renderConfigList();
