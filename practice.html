@@ -1,6 +1,4 @@
-
-# Build practice.html - the question answering screen
-practice_html = '''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -38,8 +36,7 @@ practice_html = '''<!DOCTYPE html>
   .subject-tabs{
     display:flex; gap:6px; padding:8px 14px;
     overflow-x:auto; scrollbar-width:none;
-    border-bottom:1px solid var(--line);
-    background:var(--paper);
+    border-bottom:1px solid var(--line); background:var(--paper);
   }
   .subject-tabs::-webkit-scrollbar{display:none;}
   .subject-tab{
@@ -79,15 +76,14 @@ practice_html = '''<!DOCTYPE html>
   }
   .question-meta{
     display:flex; align-items:center; gap:6px; margin-bottom:10px;
-    font-size:11px; color:var(--ink-soft);
+    font-size:11px; color:var(--ink-soft); flex-wrap:wrap;
   }
   .question-meta .tag{
     background:var(--paper-dim); padding:2px 8px; border-radius:99px;
     font-family:var(--font-mono); font-size:10px; font-weight:600;
   }
   .question-text{
-    font-size:14.5px; line-height:1.6; color:var(--ink);
-    font-weight:500;
+    font-size:14.5px; line-height:1.6; color:var(--ink); font-weight:500;
   }
   .question-svg{
     margin:12px 0; text-align:center;
@@ -121,27 +117,21 @@ practice_html = '''<!DOCTYPE html>
   /* ===== Explanation box ===== */
   .explanation-box{
     margin:0 14px 14px;
-    background:#F4F7FB; border:1.5px solid #D6E0F0; border-radius:var(--radius-md);
-    padding:14px;
+    background:#F4F7FB; border:1.5px solid #D6E0F0; border-radius:var(--radius-md); padding:14px;
   }
   .explanation-box .ex-title{
     font-family:var(--font-mono); font-size:10px; font-weight:700;
-    letter-spacing:0.08em; text-transform:uppercase; color:var(--navy);
-    margin-bottom:8px;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--navy); margin-bottom:8px;
   }
-  .explanation-box .ex-meta{
-    display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;
-  }
+  .explanation-box .ex-meta{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
   .explanation-box .ex-meta span{
     font-size:11px; background:#fff; padding:3px 8px; border-radius:99px;
     color:var(--ink-soft); border:1px solid #D6E0F0;
   }
   .explanation-box .ex-text{font-size:13px; line-height:1.6; color:var(--ink);}
 
-  /* ===== Show/Hide answer button (Study mode) ===== */
-  .study-actions{
-    padding:0 14px 14px; display:flex; gap:8px;
-  }
+  /* ===== Study mode actions ===== */
+  .study-actions{padding:0 14px 14px; display:flex; gap:8px;}
   .study-actions .btn{flex:1;}
 
   /* ===== Bottom bar ===== */
@@ -162,8 +152,7 @@ practice_html = '''<!DOCTYPE html>
   .bottom-bar .submit-btn{
     background:var(--orange); color:#fff; border:none;
     padding:8px 18px; border-radius:99px;
-    font-family:var(--font-display); font-weight:700; font-size:13px;
-    cursor:pointer;
+    font-family:var(--font-display); font-weight:700; font-size:13px; cursor:pointer;
   }
   .bottom-bar .submit-btn:disabled{background:#C9D3DE;}
 
@@ -199,8 +188,7 @@ practice_html = '''<!DOCTYPE html>
     aspect-ratio:1; border-radius:8px;
     display:flex; align-items:center; justify-content:center;
     font-family:var(--font-mono); font-size:13px; font-weight:700;
-    border:1.5px solid var(--line); background:var(--white); color:var(--ink-soft);
-    cursor:pointer;
+    border:1.5px solid var(--line); background:var(--white); color:var(--ink-soft); cursor:pointer;
   }
   .grid-tile.answered{background:var(--navy); border-color:var(--navy); color:#fff;}
   .grid-tile.current{background:var(--white); border-color:var(--orange); color:var(--orange); box-shadow:0 0 0 2px rgba(255,107,53,0.2);}
@@ -210,21 +198,16 @@ practice_html = '''<!DOCTYPE html>
     position:fixed; inset:0; z-index:300;
     background:rgba(11,37,69,0.55);
     display:flex; align-items:center; justify-content:center;
-    opacity:0; pointer-events:none; transition:opacity 0.2s ease;
-    padding:16px;
+    opacity:0; pointer-events:none; transition:opacity 0.2s ease; padding:16px;
   }
   .dialog-overlay.open{opacity:1; pointer-events:auto;}
-  .dialog-box{
-    background:#fff; border-radius:var(--radius-lg);
-    padding:22px; max-width:340px; width:100%;
-    text-align:center;
-  }
+  .dialog-box{background:#fff; border-radius:var(--radius-lg); padding:22px; max-width:340px; width:100%; text-align:center;}
   .dialog-box h3{font-size:16px; margin-bottom:6px;}
   .dialog-box p{font-size:13px; color:var(--ink-soft); line-height:1.5; margin-bottom:16px;}
   .dialog-actions{display:flex; gap:8px;}
   .dialog-actions .btn{flex:1;}
 
-  /* ===== Calculator overlay (same pattern as select-subjects) ===== */
+  /* ===== Calculator overlay ===== */
   .calc-overlay{
     position:fixed; inset:0; z-index:300;
     background:rgba(11,37,69,0.55);
@@ -232,14 +215,12 @@ practice_html = '''<!DOCTYPE html>
     opacity:0; pointer-events:none; transition:opacity 0.2s ease;
   }
   .calc-overlay.open{opacity:1; pointer-events:auto;}
-  .calc-panel{
-    background:#fff; width:100%; border-radius:18px 18px 0 0; padding:14px;
-  }
+  .calc-panel{background:#fff; width:100%; border-radius:18px 18px 0 0; padding:14px;}
   .calc-display{
     background:var(--paper-dim); border-radius:10px; padding:12px 14px;
     text-align:right; font-family:var(--font-mono); font-size:22px; font-weight:700;
-    color:var(--navy); margin-bottom:12px;
-    min-height:52px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    color:var(--navy); margin-bottom:12px; min-height:52px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .calc-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
   .calc-btn{
@@ -254,6 +235,14 @@ practice_html = '''<!DOCTYPE html>
   .calc-head h4{font-size:14px;}
   .calc-head button{background:none; border:none; font-size:20px; color:var(--ink-soft); cursor:pointer;}
 
+  /* ===== Paywall card ===== */
+  .paywall-card{
+    margin:0 14px 14px; background:var(--navy); border-radius:var(--radius-md);
+    padding:18px; text-align:center; color:#fff;
+  }
+  .paywall-card h4{font-size:14px; color:var(--gold); margin-bottom:6px;}
+  .paywall-card p{font-size:12.5px; color:#C7D2E3; line-height:1.5; margin-bottom:12px;}
+
   /* ===== Toast ===== */
   .toast{
     position:fixed; bottom:70px; left:50%; transform:translateX(-50%) translateY(20px);
@@ -264,35 +253,7 @@ practice_html = '''<!DOCTYPE html>
   }
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 
-  /* ===== Paywall card (free limit) ===== */
-  .paywall-card{
-    margin:0 14px 14px;
-    background:var(--navy); border-radius:var(--radius-md);
-    padding:18px; text-align:center; color:#fff;
-  }
-  .paywall-card h4{font-size:14px; color:var(--gold); margin-bottom:6px;}
-  .paywall-card p{font-size:12.5px; color:#C7D2E3; line-height:1.5; margin-bottom:12px;}
-  .paywall-card .btn{background:var(--orange); color:#fff; border:none;}
-
-  /* ===== Spacer for bottom bar ===== */
-  .bottom-spacer{height:60px;}
-
-  /* ===== Hamburger menu ===== */
-  .menu-overlay{position:fixed; inset:0; z-index:200; background:rgba(11,37,69,0.45); opacity:0; pointer-events:none; transition:opacity 0.2s ease;}
-  .menu-overlay.open{opacity:1; pointer-events:auto;}
-  .menu-panel{position:fixed; top:0; left:0; bottom:0; width:78%; max-width:300px; background:var(--white); z-index:201; transform:translateX(-100%); transition:transform 0.22s ease; display:flex; flex-direction:column; box-shadow:var(--shadow-lift);}
-  .menu-overlay.open .menu-panel{transform:translateX(0);}
-  .menu-head{background:var(--navy); color:#fff; padding:22px 18px; display:flex; align-items:center; gap:10px;}
-  .menu-head .appbar-mark{background:var(--gold); color:var(--navy);}
-  .menu-head-name{font-family:var(--font-display); font-weight:700; font-size:15px;}
-  .menu-head-sub{font-size:11px; color:#9FB0CB; margin-top:1px;}
-  .menu-list{padding:10px 8px; flex:1; overflow-y:auto;}
-  .menu-list a{display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:10px; font-size:14px; font-weight:600; color:var(--ink);}
-  .menu-list a:hover, .menu-list a.active{background:var(--paper-dim); color:var(--navy);}
-  .menu-list .menu-icon{width:20px; text-align:center; font-size:15px;}
-  .menu-divider{height:1px; background:var(--line); margin:8px 12px;}
-  .menu-foot{padding:14px 18px; border-top:1px solid var(--line);}
-  .menu-close{position:absolute; top:16px; right:-44px; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.15); color:#fff; border:none; font-size:18px;}
+  .bottom-spacer{height:64px;}
 
   body{padding-bottom:0;}
 </style>
@@ -306,15 +267,13 @@ practice_html = '''<!DOCTYPE html>
     <span class="appbar-title" id="pageTitle">Practice</span>
     <div class="toolbar-actions">
       <button class="toolbar-btn" id="bookmarkBtn" title="Bookmark" aria-label="Bookmark">🔖</button>
-      <button class="toolbar-btn" id="flagBtn" title="Report" aria-label="Report">🚩</button>
+      <button class="toolbar-btn" id="flagBtn" title="Report question" aria-label="Report">🚩</button>
       <button class="toolbar-btn" id="calcBtn" title="Calculator" aria-label="Calculator">🧮</button>
       <div class="timer-pill" id="timerPill" style="display:none;">
         <span>⏱</span><span id="timerText">02:00:00</span>
       </div>
     </div>
   </header>
-
-  <!-- Subject tabs -->
   <div class="subject-tabs" id="subjectTabs" style="display:none;"></div>
 </div>
 
@@ -323,7 +282,7 @@ practice_html = '''<!DOCTYPE html>
   <div class="question-nav">
     <button class="qnav-btn" id="prevBtn" aria-label="Previous">‹</button>
     <div class="qnav-pill">
-      <span>Question</span>
+      <span>Q</span>
       <span id="qNum">1</span><span>/</span><span id="qTotal">5</span>
       <span class="speaker" id="speakerBtn" title="Read aloud">🔊</span>
     </div>
@@ -346,7 +305,7 @@ practice_html = '''<!DOCTYPE html>
   <!-- Options -->
   <div class="options-list" id="optionsList"></div>
 
-  <!-- Explanation (Study mode / after submit) -->
+  <!-- Explanation (shown after submit or in study mode) -->
   <div class="explanation-box" id="explanationBox" style="display:none;">
     <div class="ex-title">Explanation</div>
     <div class="ex-meta">
@@ -357,7 +316,7 @@ practice_html = '''<!DOCTYPE html>
     <div class="ex-text" id="exText"></div>
   </div>
 
-  <!-- Study mode Show/Hide -->
+  <!-- Study mode Show/Hide answer -->
   <div class="study-actions" id="studyActions" style="display:none;">
     <button class="btn btn-primary btn-block" id="showAnswerBtn">Show Answer</button>
   </div>
@@ -365,7 +324,7 @@ practice_html = '''<!DOCTYPE html>
   <!-- Paywall card (shown after free limit) -->
   <div class="paywall-card" id="paywallCard" style="display:none;">
     <h4>🔒 Free limit reached</h4>
-    <p>You\'ve answered 5 free questions for this subject and year. Unlock everything for ₦2,500.</p>
+    <p>You've answered 5 free questions. Unlock everything for ₦2,500 for the full season.</p>
     <a href="index.html#pricing" class="btn btn-primary btn-sm">Unlock full access</a>
   </div>
 
@@ -396,7 +355,7 @@ practice_html = '''<!DOCTYPE html>
 <div class="dialog-overlay" id="dialogOverlay">
   <div class="dialog-box">
     <h3>Submit exam?</h3>
-    <p id="dialogText">You have answered 0 of 5 questions. Are you sure you want to submit?</p>
+    <p id="dialogText">Are you sure you want to submit?</p>
     <div class="dialog-actions">
       <button class="btn btn-ghost btn-block" id="dialogCancel">Cancel</button>
       <button class="btn btn-primary btn-block" id="dialogSubmit">Submit</button>
@@ -412,23 +371,23 @@ practice_html = '''<!DOCTYPE html>
     <div class="calc-grid">
       <button class="calc-btn clear" data-val="C">C</button>
       <button class="calc-btn clear" data-val="DEL">DEL</button>
-      <button class="calc-btn op" data-val="%">%</button>
-      <button class="calc-btn op" data-val="÷">÷</button>
-      <button class="calc-btn" data-val="7">7</button>
-      <button class="calc-btn" data-val="8">8</button>
-      <button class="calc-btn" data-val="9">9</button>
-      <button class="calc-btn op" data-val="×">×</button>
-      <button class="calc-btn" data-val="4">4</button>
-      <button class="calc-btn" data-val="5">5</button>
-      <button class="calc-btn" data-val="6">6</button>
-      <button class="calc-btn op" data-val="-">−</button>
-      <button class="calc-btn" data-val="1">1</button>
-      <button class="calc-btn" data-val="2">2</button>
-      <button class="calc-btn" data-val="3">3</button>
-      <button class="calc-btn op" data-val="+">+</button>
-      <button class="calc-btn" data-val="0" style="grid-column:span 2;">0</button>
-      <button class="calc-btn" data-val=".">.</button>
-      <button class="calc-btn eq" data-val="=">=</button>
+      <button class="calc-btn op"    data-val="%">%</button>
+      <button class="calc-btn op"    data-val="÷">÷</button>
+      <button class="calc-btn"       data-val="7">7</button>
+      <button class="calc-btn"       data-val="8">8</button>
+      <button class="calc-btn"       data-val="9">9</button>
+      <button class="calc-btn op"    data-val="×">×</button>
+      <button class="calc-btn"       data-val="4">4</button>
+      <button class="calc-btn"       data-val="5">5</button>
+      <button class="calc-btn"       data-val="6">6</button>
+      <button class="calc-btn op"    data-val="-">−</button>
+      <button class="calc-btn"       data-val="1">1</button>
+      <button class="calc-btn"       data-val="2">2</button>
+      <button class="calc-btn"       data-val="3">3</button>
+      <button class="calc-btn op"    data-val="+">+</button>
+      <button class="calc-btn"       data-val="0" style="grid-column:span 2;">0</button>
+      <button class="calc-btn"       data-val=".">.</button>
+      <button class="calc-btn eq"    data-val="=">=</button>
     </div>
   </div>
 </div>
@@ -460,11 +419,13 @@ practice_html = '''<!DOCTYPE html>
       <a href="https://wa.me/2347065732365" target="_blank" rel="noopener"><span class="menu-icon">💬</span> WhatsApp support</a>
     </nav>
     <div class="menu-foot">
-      <a href="#" class="btn btn-ghost btn-block btn-sm">Log out</a>
+      <a href="auth.html" class="btn btn-ghost btn-block btn-sm">Log in / Sign up</a>
     </div>
   </div>
 </div>
 
 <script src="shared.js"></script>
 <script src="practice.js"></script>
-</body
+</body>
+        </html>
+  
