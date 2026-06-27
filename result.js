@@ -1,10 +1,9 @@
 
-# Build dashboard.js - Result History + Bookmarks logic
-
-dashboard_js = '''/* ============================================================
-   UTMESchools v2 — dashboard.js
-   Result History + Bookmarks tabs.
-   Uses localStorage as placeholder until Supabase is connected.
+# Build results.js - the results logic
+results_js = '''/* ============================================================
+   UTMESchools v2 — results.js
+   Displays score, subject breakdown, topic analysis, and
+   correction view. Reads result data from sessionStorage.
    ============================================================ */
 
 const ALL_SUBJECTS = [
@@ -28,7 +27,7 @@ const ALL_SUBJECTS = [
   { id: 'irk',         name: 'IRK',                    icon: '☪️', bg: '#F1EAFB', fg: '#6C3FBF' },
   { id: 'literature',  name: 'Literature',             icon: '📚', bg: '#FCE4E4', fg: '#C0392B' },
   { id: 'littext',     name: 'Literature Textbooks',   icon: '📗', bg: '#E7F8EF', fg: '#0C8C58' },
-  { id: 'mathematics', name: 'Mathematics',              icon: '📐', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'mathematics', name: 'Mathematics',            icon: '📐', bg: '#FFF4DC', fg: '#A6760A' },
   { id: 'music',       name: 'Music',                  icon: '🎵', bg: '#FCE4E4', fg: '#C0392B' },
   { id: 'phe',         name: 'PHE',                    icon: '🏃', bg: '#E7F8EF', fg: '#0C8C58' },
   { id: 'physics',     name: 'Physics',                icon: '⚛️', bg: '#FCE4E4', fg: '#C0392B' },
@@ -38,20 +37,17 @@ const ALL_SUBJECTS = [
 
 function getSubject(id) { return ALL_SUBJECTS.find(s => s.id === id); }
 
-/* ---- localStorage helpers ---- */
-function getResults() {
-  try { return JSON.parse(localStorage.getItem('utme_results') || '[]'); }
-  catch(e) { return []; }
-}
-function saveResults(results) {
-  localStorage.setItem('utme_results', JSON.stringify(results));
-}
-function getBookmarks() {
-  try { return JSON.parse(localStorage.getItem('utme_bookmarks') || '[]'); }
-  catch(e) { return []; }
-}
-function saveBookmarks(bmarks) {
-  localStorage.setItem('utme_bookmarks', JSON.stringify(bmarks));
+/* ---- Read result from sessionStorage ---- */
+let result = null;
+try {
+  const raw = sessionStorage.getItem('utme_result');
+  if (raw) result = JSON.parse(raw);
+} catch(e) { console.error('Failed to parse result:', e); }
+
+/* ---- No result state ---- */
+if (!result) {
+  document.getElementById('resultMain').style.display = 'none';
+  document.getElementById('noResult').style.display = 'block';
 }
 
 /* ---- Format helpers ---- */
@@ -59,278 +55,207 @@ function formatTime(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
 }
+
 function formatDate(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-function timeAgo(iso) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  const hrs = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  if (hrs < 24) return `${hrs}h ago`;
-  if (days < 7) return `${days}d ago`;
-  return formatDate(iso);
+  return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /* ============================================================
-   TABS
+   RENDER RESULTS
    ============================================================ */
-let activeTab = 'history';
+function renderResults() {
+  if (!result) return;
 
-document.querySelectorAll('.dash-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    activeTab = tab.dataset.tab;
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    document.getElementById(activeTab + 'Tab').classList.add('active');
-  });
-});
+  const { totalScore, totalPossible, timeTaken, mode, subjects, subjectScores, date } = result;
+  const pct = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
 
-/* ============================================================
-   RESULT HISTORY
-   ============================================================ */
-let historySort = 'date'; // 'date' | 'score'
-let historyFilter = 'all';
+  // Score ring animation
+  const circumference = 2 * Math.PI * 60; // r=60
+  const offset = circumference - (pct / 100) * circumference;
+  setTimeout(() => {
+    const ring = document.getElementById('scoreRing');
+    ring.style.strokeDashoffset = offset;
+    // Color based on score
+    if (pct < 40) ring.style.stroke = '#C0392B';
+    else if (pct < 60) ring.style.stroke = 'var(--gold)';
+    else ring.style.stroke = 'var(--green)';
+  }, 100);
 
-function populateSubjectFilters() {
-  const historySel = document.getElementById('historyFilter');
-  const bookmarkSel = document.getElementById('bookmarkFilter');
-  ALL_SUBJECTS.forEach(s => {
-    const opt1 = document.createElement('option');
-    opt1.value = s.id; opt1.textContent = s.name;
-    historySel.appendChild(opt1);
-    const opt2 = document.createElement('option');
-    opt2.value = s.id; opt2.textContent = s.name;
-    bookmarkSel.appendChild(opt2);
-  });
-}
+  document.getElementById('scorePct').textContent = pct + '%';
 
-function renderHistory() {
-  const list = document.getElementById('historyList');
-  let results = getResults();
+  // Title
+  const modeLabel = mode === 'mock' ? 'Mock Exam' : mode === 'study' ? 'Study Session' : 'Practice Result';
+  document.getElementById('scoreTitle').textContent = `${totalScore}/${totalPossible} — ${modeLabel}`;
 
-  // Filter
-  if (historyFilter !== 'all') {
-    results = results.filter(r => r.subjects && r.subjects.includes(historyFilter));
-  }
+  // Meta
+  const subjNames = subjects.map(sid => getSubject(sid)?.name || sid).join(', ');
+  document.getElementById('metaSubjects').textContent = '📚 ' + (subjNames.length > 35 ? subjNames.slice(0, 35) + '…' : subjNames);
+  document.getElementById('metaDate').textContent = '📅 ' + formatDate(date || new Date().toISOString());
+  document.getElementById('metaTime').textContent = '⏱ ' + formatTime(timeTaken || 0);
+  document.getElementById('metaMode').textContent = '📝 ' + modeLabel;
 
-  // Sort
-  results.sort((a, b) => {
-    if (historySort === 'date') return new Date(b.date) - new Date(a.date);
-    const aPct = a.totalPossible > 0 ? a.totalScore / a.totalPossible : 0;
-    const bPct = b.totalPossible > 0 ? b.totalScore / b.totalPossible : 0;
-    return bPct - aPct;
-  });
+  // Subject breakdown
+  const breakdown = document.getElementById('subjectBreakdown');
+  breakdown.innerHTML = '';
+  subjects.forEach(sid => {
+    const s = getSubject(sid);
+    const sc = subjectScores[sid] || { score: 0, possible: 0 };
+    const subjPct = sc.possible > 0 ? Math.round((sc.score / sc.possible) * 100) : 0;
 
-  if (results.length === 0) {
-    list.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">📭</div>
-        <h3>No results yet</h3>
-        <p>Your practice results will appear here after you complete a session.</p>
-        <a href="select-subjects.html" class="btn btn-primary btn-sm">Start practicing</a>
-      </div>
-    `;
-    document.getElementById('deleteAllHistory').style.display = 'none';
-    return;
-  }
+    const row = document.createElement('div');
+    row.className = 'subj-score';
+    let barColor = 'green';
+    if (subjPct < 40) barColor = 'red';
+    else if (subjPct < 60) barColor = 'amber';
 
-  document.getElementById('deleteAllHistory').style.display = 'block';
-  list.innerHTML = '';
-
-  results.forEach((r, idx) => {
-    const pct = r.totalPossible > 0 ? Math.round((r.totalScore / r.totalPossible) * 100) : 0;
-    let badgeClass = 'green';
-    if (pct < 40) badgeClass = 'red';
-    else if (pct < 60) badgeClass = 'amber';
-
-    const subjNames = (r.subjects || []).map(sid => getSubject(sid)?.name || sid);
-    const modeLabel = r.mode === 'mock' ? 'Mock' : r.mode === 'study' ? 'Study' : 'Practice';
-
-    const card = document.createElement('div');
-    card.className = 'result-card';
-    card.innerHTML = `
-      <div class="result-card-head">
-        <div class="result-card-num">${idx + 1}</div>
-        <div class="result-card-info">
-          <div class="result-card-title">${subjNames.join(', ')}</div>
-          <div class="result-card-meta">${formatDate(r.date)} · ${modeLabel} · ${formatTime(r.timeTaken || 0)}</div>
-        </div>
-        <div class="result-card-badge ${badgeClass}">${pct}%</div>
-      </div>
-      <div class="result-card-scores">
-        ${Object.entries(r.subjectScores || {}).map(([sid, sc]) => {
-          const s = getSubject(sid);
-          return `<span>${s?.icon || '📚'} ${s?.name || sid}: ${sc.score}/${sc.possible}</span>`;
-        }).join('')}
-      </div>
-      <div class="result-card-actions">
-        <button class="primary" data-view="${r.id || idx}">View Result</button>
-        <button data-correct="${r.id || idx}">Correction</button>
-        <button data-expand="${r.id || idx}">▾ More</button>
-      </div>
-      <div class="card-details" id="details-${r.id || idx}">
-        <button data-detail="${r.id || idx}">📋 View full details</button>
-        <button data-delete="${r.id || idx}">🗑 Delete this result</button>
-      </div>
-    `;
-    list.appendChild(card);
-  });
-
-  // Wire buttons
-  list.querySelectorAll('[data-view]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.view;
-      const results = getResults();
-      const r = results.find((x, i) => (x.id || String(i)) === id);
-      if (r) {
-        sessionStorage.setItem('utme_result', JSON.stringify(r));
-        window.location.href = 'results.html';
-      }
-    });
-  });
-
-  list.querySelectorAll('[data-correct]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.correct;
-      const results = getResults();
-      const r = results.find((x, i) => (x.id || String(i)) === id);
-      if (r) {
-        sessionStorage.setItem('utme_result', JSON.stringify(r));
-        window.location.href = 'results.html?view=correction';
-      }
-    });
-  });
-
-  list.querySelectorAll('[data-expand]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.expand;
-      const details = document.getElementById('details-' + id);
-      details.classList.toggle('open');
-      btn.textContent = details.classList.contains('open') ? '▴ Less' : '▾ More';
-    });
-  });
-
-  list.querySelectorAll('[data-delete]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.delete;
-      openConfirm('Delete Result', 'Are you sure you want to delete this result? This cannot be undone.', () => {
-        let results = getResults();
-        results = results.filter((x, i) => (x.id || String(i)) !== id);
-        saveResults(results);
-        renderHistory();
-        showToast('Result deleted');
-      });
-    });
-  });
-}
-
-/* ============================================================
-   BOOKMARKS
-   ============================================================ */
-let bookmarkFilter = 'all';
-
-function renderBookmarks() {
-  const list = document.getElementById('bookmarkList');
-  let bmarks = getBookmarks();
-
-  if (bookmarkFilter !== 'all') {
-    bmarks = bmarks.filter(b => b.subjectId === bookmarkFilter);
-  }
-
-  if (bmarks.length === 0) {
-    list.innerHTML = `
-      <div class="empty-state">
-        <div class="icon">🔖</div>
-        <h3>No bookmarks yet</h3>
-        <p>Bookmark questions during practice to revisit them here.</p>
-        <a href="select-subjects.html" class="btn btn-primary btn-sm">Start practicing</a>
-      </div>
-    `;
-    document.getElementById('deleteAllBookmarks').style.display = 'none';
-    return;
-  }
-
-  document.getElementById('deleteAllBookmarks').style.display = 'block';
-  list.innerHTML = '';
-
-  bmarks.forEach((b, idx) => {
-    const s = getSubject(b.subjectId);
-    const card = document.createElement('div');
-    card.className = 'bookmark-card';
-    card.innerHTML = `
-      <div class="bookmark-card-head">
-        <div class="bookmark-card-icon" style="background:${s?.bg || '#eee'};color:${s?.fg || '#333'};">${s?.icon || '📚'}</div>
-        <div class="bookmark-card-info">
-          <div class="bookmark-card-subj">${s?.name || b.subjectId}</div>
-          <div class="bookmark-card-meta">${b.year || 'Random'} · ${timeAgo(b.date)}</div>
+    row.innerHTML = `
+      <div class="subj-score-icon" style="background:${s?.bg || '#eee'};color:${s?.fg || '#333'};">${s?.icon || '📚'}</div>
+      <div class="subj-score-info">
+        <div class="subj-score-name">${s?.name || sid}</div>
+        <div class="subj-score-bar-wrap">
+          <div class="subj-score-bar ${barColor}" style="width:${subjPct}%"></div>
         </div>
       </div>
-      <div class="bookmark-card-text">${b.text || 'Question text unavailable'}</div>
-      <div class="bookmark-card-actions">
-        <button data-view="${idx}">View</button>
-        <button class="danger" data-remove="${idx}">Remove</button>
-      </div>
+      <div class="subj-score-val">${sc.score}/${sc.possible}</div>
     `;
-    list.appendChild(card);
+    breakdown.appendChild(row);
   });
 
-  list.querySelectorAll('[data-view]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.view);
-      const bmarks = getBookmarks();
-      const b = bmarks[idx];
-      if (b) {
-        // For now, show a simple alert with the question
-        alert(`${b.text || 'Question unavailable'}\\n\\nCorrect answer: ${b.correct || 'N/A'}\\n\\n${b.explanation || ''}`);
-      }
+  // Topic performance table
+  const tbody = document.getElementById('topicTableBody');
+  tbody.innerHTML = '';
+
+  // Aggregate by topic/subtopic
+  const topicMap = {};
+  if (result.questions) {
+    result.questions.forEach(q => {
+      const key = `${q.topic || 'General'} : ${q.subtopic || 'General'}`;
+      if (!topicMap[key]) topicMap[key] = { topic: q.topic || 'General', subtopic: q.subtopic || 'General', correct: 0, total: 0 };
+      topicMap[key].total++;
+      if (q.isCorrect) topicMap[key].correct++;
     });
+  }
+
+  const topicRows = Object.values(topicMap).sort((a, b) => (a.correct / a.total) - (b.correct / b.total));
+  topicRows.forEach((row, idx) => {
+    const tr = document.createElement('tr');
+    const pctVal = row.total > 0 ? Math.round((row.correct / row.total) * 100) : 0;
+    let scoreClass = 'good';
+    if (pctVal < 40) scoreClass = 'bad';
+    else if (pctVal < 60) scoreClass = 'mid';
+
+    tr.innerHTML = `
+      <td class="rank">${idx + 1}</td>
+      <td><strong>${row.topic}</strong><br><span style="color:var(--ink-soft);font-size:11px;">${row.subtopic}</span></td>
+      <td class="score ${scoreClass}">${pctVal}%</td>
+      <td class="score">${row.correct}/${row.total}</td>
+    `;
+    tbody.appendChild(tr);
   });
 
-  list.querySelectorAll('[data-remove]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.remove);
-      openConfirm('Remove Bookmark', 'Remove this bookmark?', () => {
-        let bmarks = getBookmarks();
-        bmarks.splice(idx, 1);
-        saveBookmarks(bmarks);
-        renderBookmarks();
-        showToast('Bookmark removed');
-      });
-    });
-  });
+  if (topicRows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);padding:20px;">No topic data available</td></tr>';
+  }
 }
 
 /* ============================================================
-   CONFIRM DIALOG
+   CORRECTION VIEW
    ============================================================ */
-let confirmCallback = null;
+function openCorrection() {
+  const body = document.getElementById('correctionBody');
+  body.innerHTML = '';
 
-function openConfirm(title, text, callback) {
-  confirmCallback = callback;
-  document.getElementById('confirmTitle').textContent = title;
-  document.getElementById('confirmText').textContent = text;
-  document.getElementById('confirmOverlay').classList.add('open');
+  if (!result || !result.questions) {
+    body.innerHTML = '<p style="text-align:center;color:var(--ink-soft);padding:40px;">No questions to display</p>';
+  } else {
+    result.questions.forEach((q, idx) => {
+      const cq = document.createElement('div');
+      cq.className = 'correction-q';
+
+      const s = getSubject(q.subjectId);
+      const userAns = q.userAnswer;
+      const correctAns = q.correct;
+
+      let optsHtml = '';
+      q.options.forEach((opt, oi) => {
+        const letter = String.fromCharCode(65 + oi);
+        let cls = 'neutral';
+        if (letter === correctAns) cls = 'correct';
+        else if (letter === userAns && letter !== correctAns) cls = 'wrong';
+
+        let dotContent = letter;
+        if (cls === 'correct') dotContent = '✓';
+        if (cls === 'wrong') dotContent = '✗';
+
+        optsHtml += `
+          <div class="cq-opt ${cls}">
+            <div class="dot">${dotContent}</div>
+            <div>${opt.replace(/^[A-D]\\.\\s*/, '')}</div>
+          </div>
+        `;
+      });
+
+      cq.innerHTML = `
+        <div class="cq-meta">
+          <span>${s?.icon || '📚'} ${s?.name || q.subjectId}</span>
+          <span>Q${idx + 1}</span>
+          <span>${q.topic || 'General'}</span>
+          <span style="color:${q.isCorrect ? 'var(--green)' : '#C0392B'};">${q.isCorrect ? '✓ Correct' : '✗ Wrong'}</span>
+        </div>
+        <div class="cq-text">${q.text}</div>
+        ${optsHtml}
+        <div class="cq-ex">
+          <div class="cq-ex-label">Explanation</div>
+          <div>${q.explanation || 'No explanation available.'}</div>
+        </div>
+      `;
+      body.appendChild(cq);
+    });
+  }
+
+  document.getElementById('correctionOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
 
-function closeConfirm() {
-  document.getElementById('confirmOverlay').classList.remove('open');
+function closeCorrection() {
+  document.getElementById('correctionOverlay').classList.remove('open');
   document.body.style.overflow = '';
-  confirmCallback = null;
 }
 
 /* ============================================================
-   TOAST
+   SHARE
    ============================================================ */
+function openShare() {
+  if (!result) return;
+  const { totalScore, totalPossible, mode, subjects } = result;
+  const pct = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
+  const subjNames = subjects.map(sid => getSubject(sid)?.name || sid).join(', ');
+  const modeLabel = mode === 'mock' ? 'Mock Exam' : mode === 'study' ? 'Study Session' : 'Practice';
+
+  const text = `🎓 My UTMESchools Result 🎓
+📚 ${subjNames}
+📝 ${modeLabel}
+✅ Score: ${totalScore}/${totalPossible} (${pct}%)
+⏱ Time: ${formatTime(result.timeTaken || 0)}
+
+Practice JAMB past questions at UTMESchools!`;
+
+  document.getElementById('shareText').textContent = text;
+  document.getElementById('shareWaBtn').href =
+    `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+  document.getElementById('shareOverlay').classList.add('open');
+}
+
+function closeShare() {
+  document.getElementById('shareOverlay').classList.remove('open');
+}
+
 function showToast(msg) {
   const toast = document.getElementById('toast');
   toast.textContent = msg;
@@ -342,61 +267,37 @@ function showToast(msg) {
    EVENT LISTENERS
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-  populateSubjectFilters();
-  renderHistory();
-  renderBookmarks();
+  renderResults();
 
-  // History filter
-  document.getElementById('historyFilter').addEventListener('change', e => {
-    historyFilter = e.target.value;
-    renderHistory();
+  document.getElementById('backBtn').addEventListener('click', () => {
+    window.location.href = 'select-subjects.html';
   });
 
-  // History sort
-  document.getElementById('historySort').addEventListener('click', () => {
-    historySort = historySort === 'date' ? 'score' : 'date';
-    document.getElementById('historySort').textContent =
-      historySort === 'date' ? 'Sort: Date ▾' : 'Sort: Score ▾';
-    renderHistory();
+  document.getElementById('viewCorrectionBtn').addEventListener('click', openCorrection);
+  document.getElementById('correctionBack').addEventListener('click', closeCorrection);
+
+  document.getElementById('tryAgainBtn').addEventListener('click', () => {
+    window.location.href = 'select-subjects.html';
   });
 
-  // Bookmark filter
-  document.getElementById('bookmarkFilter').addEventListener('change', e => {
-    bookmarkFilter = e.target.value;
-    renderBookmarks();
+  document.getElementById('shareBtn').addEventListener('click', openShare);
+  document.getElementById('shareCloseBtn').addEventListener('click', closeShare);
+  document.getElementById('shareOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('shareOverlay')) closeShare();
+  });
+  document.getElementById('shareCopyBtn').addEventListener('click', () => {
+    const text = document.getElementById('shareText').textContent;
+    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!'))
+      .catch(() => showToast('Copy failed'));
   });
 
-  // Delete all history
-  document.getElementById('deleteAllHistory').addEventListener('click', () => {
-    openConfirm('Delete All History', 'Are you sure you want to delete ALL your result history? This cannot be undone.', () => {
-      saveResults([]);
-      renderHistory();
-      showToast('All history deleted');
-    });
-  });
-
-  // Delete all bookmarks
-  document.getElementById('deleteAllBookmarks').addEventListener('click', () => {
-    openConfirm('Delete All Bookmarks', 'Are you sure you want to remove ALL bookmarks?', () => {
-      saveBookmarks([]);
-      renderBookmarks();
-      showToast('All bookmarks removed');
-    });
-  });
-
-  // Confirm dialog
-  document.getElementById('confirmCancel').addEventListener('click', closeConfirm);
-  document.getElementById('confirmOk').addEventListener('click', () => {
-    if (confirmCallback) confirmCallback();
-    closeConfirm();
-  });
-  document.getElementById('confirmOverlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('confirmOverlay')) closeConfirm();
+  document.getElementById('dashboardBtn').addEventListener('click', () => {
+    window.location.href = 'dashboard.html';
   });
 });
 '''
 
-with open('/mnt/agents/output/dashboard.js', 'w') as f:
-    f.write(dashboard_js)
+with open('/mnt/agents/output/results.js', 'w') as f:
+    f.write(results_js)
 
-print(f"dashboard.js written: {len(dashboard_js)} chars")
+print(f"results.js written: {len(results_js)} chars")
