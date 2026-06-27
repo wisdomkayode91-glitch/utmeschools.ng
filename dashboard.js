@@ -1,9 +1,9 @@
 
-# Build discussion.js - Discussion board logic
+# Build dashboard.js - Result History + Bookmarks logic
 
-discussion_js = '''/* ============================================================
-   UTMESchools v2 — discussion.js
-   Student discussion board.
+dashboard_js = '''/* ============================================================
+   UTMESchools v2 — dashboard.js
+   Result History + Bookmarks tabs.
    Uses localStorage as placeholder until Supabase is connected.
    ============================================================ */
 
@@ -28,7 +28,7 @@ const ALL_SUBJECTS = [
   { id: 'irk',         name: 'IRK',                    icon: '☪️', bg: '#F1EAFB', fg: '#6C3FBF' },
   { id: 'literature',  name: 'Literature',             icon: '📚', bg: '#FCE4E4', fg: '#C0392B' },
   { id: 'littext',     name: 'Literature Textbooks',   icon: '📗', bg: '#E7F8EF', fg: '#0C8C58' },
-  { id: 'mathematics', name: 'Mathematics',            icon: '📐', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'mathematics', name: 'Mathematics',              icon: '📐', bg: '#FFF4DC', fg: '#A6760A' },
   { id: 'music',       name: 'Music',                  icon: '🎵', bg: '#FCE4E4', fg: '#C0392B' },
   { id: 'phe',         name: 'PHE',                    icon: '🏃', bg: '#E7F8EF', fg: '#0C8C58' },
   { id: 'physics',     name: 'Physics',                icon: '⚛️', bg: '#FCE4E4', fg: '#C0392B' },
@@ -39,57 +39,34 @@ const ALL_SUBJECTS = [
 function getSubject(id) { return ALL_SUBJECTS.find(s => s.id === id); }
 
 /* ---- localStorage helpers ---- */
-function getComments() {
-  try { return JSON.parse(localStorage.getItem('utme_comments') || '[]'); }
+function getResults() {
+  try { return JSON.parse(localStorage.getItem('utme_results') || '[]'); }
   catch(e) { return []; }
 }
-function saveComments(comments) {
-  localStorage.setItem('utme_comments', JSON.stringify(comments));
+function saveResults(results) {
+  localStorage.setItem('utme_results', JSON.stringify(results));
 }
-function getCurrentUser() {
-  try { return JSON.parse(localStorage.getItem('utme_user') || 'null'); }
-  catch(e) { return null; }
+function getBookmarks() {
+  try { return JSON.parse(localStorage.getItem('utme_bookmarks') || '[]'); }
+  catch(e) { return []; }
 }
-
-/* ---- Check login state ---- */
-const currentUser = getCurrentUser();
-const isLoggedIn = !!currentUser;
-
-/* ---- Show/hide comment form based on login ---- */
-if (isLoggedIn) {
-  document.getElementById('commentForm').style.display = 'block';
-  document.getElementById('loginPrompt').style.display = 'none';
-} else {
-  document.getElementById('commentForm').style.display = 'none';
-  document.getElementById('loginPrompt').style.display = 'block';
+function saveBookmarks(bmarks) {
+  localStorage.setItem('utme_bookmarks', JSON.stringify(bmarks));
 }
 
-/* ---- Populate subject dropdown and tabs ---- */
-function populateSubjects() {
-  const select = document.getElementById('commentSubject');
-  const tabs = document.getElementById('discTabs');
-
-  ALL_SUBJECTS.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.id;
-    opt.textContent = s.name;
-    select.appendChild(opt);
-
-    const tab = document.createElement('button');
-    tab.className = 'disc-tab';
-    tab.dataset.filter = s.id;
-    tab.textContent = s.name;
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.disc-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      currentFilter = s.id;
-      renderComments();
-    });
-    tabs.appendChild(tab);
-  });
+/* ---- Format helpers ---- */
+function formatTime(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
 }
-
-/* ---- Format time ago ---- */
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 function timeAgo(iso) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -99,206 +76,256 @@ function timeAgo(iso) {
   if (mins < 60) return `${mins}m ago`;
   if (hrs < 24) return `${hrs}h ago`;
   if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' });
-}
-
-/* ---- Avatar color from initials ---- */
-function avatarColor(name) {
-  const colors = ['#1F5FBF','#0C8C58','#C0392B','#6C3FBF','#A6760A','#0B2545','#E2531F'];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
-}
-
-function initials(name) {
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  return formatDate(iso);
 }
 
 /* ============================================================
-   COMMENTS RENDERING
+   TABS
    ============================================================ */
-let currentFilter = 'all';
+let activeTab = 'history';
 
-function renderComments() {
-  const list = document.getElementById('commentsList');
-  let comments = getComments();
+document.querySelectorAll('.dash-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeTab = tab.dataset.tab;
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(activeTab + 'Tab').classList.add('active');
+  });
+});
+
+/* ============================================================
+   RESULT HISTORY
+   ============================================================ */
+let historySort = 'date'; // 'date' | 'score'
+let historyFilter = 'all';
+
+function populateSubjectFilters() {
+  const historySel = document.getElementById('historyFilter');
+  const bookmarkSel = document.getElementById('bookmarkFilter');
+  ALL_SUBJECTS.forEach(s => {
+    const opt1 = document.createElement('option');
+    opt1.value = s.id; opt1.textContent = s.name;
+    historySel.appendChild(opt1);
+    const opt2 = document.createElement('option');
+    opt2.value = s.id; opt2.textContent = s.name;
+    bookmarkSel.appendChild(opt2);
+  });
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  let results = getResults();
 
   // Filter
-  if (currentFilter !== 'all') {
-    comments = comments.filter(c => c.subjectId === currentFilter);
+  if (historyFilter !== 'all') {
+    results = results.filter(r => r.subjects && r.subjects.includes(historyFilter));
   }
 
-  // Sort newest first
-  comments.sort((a, b) => new Date(b.date) - new Date(a.date));
+  // Sort
+  results.sort((a, b) => {
+    if (historySort === 'date') return new Date(b.date) - new Date(a.date);
+    const aPct = a.totalPossible > 0 ? a.totalScore / a.totalPossible : 0;
+    const bPct = b.totalPossible > 0 ? b.totalScore / b.totalPossible : 0;
+    return bPct - aPct;
+  });
 
-  if (comments.length === 0) {
+  if (results.length === 0) {
     list.innerHTML = `
       <div class="empty-state">
-        <div class="icon">💬</div>
-        <h3>No discussions yet</h3>
-        <p>Be the first to start a conversation about JAMB and admission topics.</p>
+        <div class="icon">📭</div>
+        <h3>No results yet</h3>
+        <p>Your practice results will appear here after you complete a session.</p>
+        <a href="select-subjects.html" class="btn btn-primary btn-sm">Start practicing</a>
       </div>
     `;
+    document.getElementById('deleteAllHistory').style.display = 'none';
     return;
   }
 
+  document.getElementById('deleteAllHistory').style.display = 'block';
   list.innerHTML = '';
-  comments.forEach(c => {
-    const s = getSubject(c.subjectId);
-    const commentEl = document.createElement('div');
-    commentEl.className = 'comment';
-    commentEl.dataset.id = c.id;
 
-    // Replies
-    let repliesHtml = '';
-    if (c.replies && c.replies.length > 0) {
-      repliesHtml = '<div class="replies">';
-      c.replies.forEach(r => {
-        repliesHtml += `
-          <div class="reply">
-            <div class="reply-head">
-              <div class="reply-avatar" style="background:${avatarColor(r.author)};">${initials(r.author)}</div>
-              <span class="reply-author">${r.author}</span>
-              <span class="reply-time">${timeAgo(r.date)}</span>
-            </div>
-            <div class="reply-body">${escapeHtml(r.body)}</div>
-          </div>
-        `;
-      });
-      repliesHtml += '</div>';
-    }
+  results.forEach((r, idx) => {
+    const pct = r.totalPossible > 0 ? Math.round((r.totalScore / r.totalPossible) * 100) : 0;
+    let badgeClass = 'green';
+    if (pct < 40) badgeClass = 'red';
+    else if (pct < 60) badgeClass = 'amber';
 
-    commentEl.innerHTML = `
-      <div class="comment-head">
-        <div class="comment-avatar" style="background:${avatarColor(c.author)};">${initials(c.author)}</div>
-        <div class="comment-meta">
-          <div class="comment-author">${escapeHtml(c.author)}</div>
-          <div class="comment-time">${timeAgo(c.date)}</div>
+    const subjNames = (r.subjects || []).map(sid => getSubject(sid)?.name || sid);
+    const modeLabel = r.mode === 'mock' ? 'Mock' : r.mode === 'study' ? 'Study' : 'Practice';
+
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="result-card-head">
+        <div class="result-card-num">${idx + 1}</div>
+        <div class="result-card-info">
+          <div class="result-card-title">${subjNames.join(', ')}</div>
+          <div class="result-card-meta">${formatDate(r.date)} · ${modeLabel} · ${formatTime(r.timeTaken || 0)}</div>
         </div>
-        <div class="comment-tag">${s?.name || 'General'}</div>
+        <div class="result-card-badge ${badgeClass}">${pct}%</div>
       </div>
-      <div class="comment-body">${escapeHtml(c.body)}</div>
-      <div class="comment-actions">
-        <button class="like-btn ${c.likedBy?.includes(currentUser?.email) ? 'liked' : ''}" data-like="${c.id}">
-          👍 ${c.likes || 0}
-        </button>
-        <button data-reply="${c.id}">💬 Reply</button>
-        <button data-report="${c.id}">🚩 Report</button>
+      <div class="result-card-scores">
+        ${Object.entries(r.subjectScores || {}).map(([sid, sc]) => {
+          const s = getSubject(sid);
+          return `<span>${s?.icon || '📚'} ${s?.name || sid}: ${sc.score}/${sc.possible}</span>`;
+        }).join('')}
       </div>
-      <div class="reply-form" id="reply-form-${c.id}">
-        <textarea placeholder="Write your reply..."></textarea>
-        <div class="reply-form-row">
-          <button class="btn btn-ghost btn-sm" data-cancel-reply="${c.id}">Cancel</button>
-          <button class="btn btn-primary btn-sm" data-post-reply="${c.id}">Reply</button>
-        </div>
+      <div class="result-card-actions">
+        <button class="primary" data-view="${r.id || idx}">View Result</button>
+        <button data-correct="${r.id || idx}">Correction</button>
+        <button data-expand="${r.id || idx}">▾ More</button>
       </div>
-      ${repliesHtml}
+      <div class="card-details" id="details-${r.id || idx}">
+        <button data-detail="${r.id || idx}">📋 View full details</button>
+        <button data-delete="${r.id || idx}">🗑 Delete this result</button>
+      </div>
     `;
-    list.appendChild(commentEl);
+    list.appendChild(card);
   });
 
-  // Wire like buttons
-  list.querySelectorAll('[data-like]').forEach(btn => {
+  // Wire buttons
+  list.querySelectorAll('[data-view]').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (!isLoggedIn) { showToast('Log in to like comments'); return; }
-      const id = btn.dataset.like;
-      let comments = getComments();
-      const c = comments.find(x => x.id === id);
-      if (c) {
-        if (!c.likedBy) c.likedBy = [];
-        if (c.likedBy.includes(currentUser.email)) {
-          c.likedBy = c.likedBy.filter(e => e !== currentUser.email);
-          c.likes = (c.likes || 1) - 1;
-        } else {
-          c.likedBy.push(currentUser.email);
-          c.likes = (c.likes || 0) + 1;
-        }
-        saveComments(comments);
-        renderComments();
+      const id = btn.dataset.view;
+      const results = getResults();
+      const r = results.find((x, i) => (x.id || String(i)) === id);
+      if (r) {
+        sessionStorage.setItem('utme_result', JSON.stringify(r));
+        window.location.href = 'results.html';
       }
     });
   });
 
-  // Wire reply buttons
-  list.querySelectorAll('[data-reply]').forEach(btn => {
+  list.querySelectorAll('[data-correct]').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (!isLoggedIn) { showToast('Log in to reply'); return; }
-      const id = btn.dataset.reply;
-      document.querySelectorAll('.reply-form').forEach(f => f.classList.remove('open'));
-      document.getElementById('reply-form-' + id).classList.add('open');
-    });
-  });
-
-  list.querySelectorAll('[data-cancel-reply]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.getElementById('reply-form-' + btn.dataset.cancelReply).classList.remove('open');
-    });
-  });
-
-  list.querySelectorAll('[data-post-reply]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.postReply;
-      const textarea = document.querySelector('#reply-form-' + id + ' textarea');
-      const body = textarea.value.trim();
-      if (!body) { showToast('Please write a reply'); return; }
-
-      let comments = getComments();
-      const c = comments.find(x => x.id === id);
-      if (c) {
-        if (!c.replies) c.replies = [];
-        c.replies.push({
-          author: currentUser.name || currentUser.email,
-          body,
-          date: new Date().toISOString()
-        });
-        saveComments(comments);
-        renderComments();
-        showToast('Reply posted');
+      const id = btn.dataset.correct;
+      const results = getResults();
+      const r = results.find((x, i) => (x.id || String(i)) === id);
+      if (r) {
+        sessionStorage.setItem('utme_result', JSON.stringify(r));
+        window.location.href = 'results.html?view=correction';
       }
     });
   });
 
-  // Wire report buttons
-  list.querySelectorAll('[data-report]').forEach(btn => {
+  list.querySelectorAll('[data-expand]').forEach(btn => {
     btn.addEventListener('click', () => {
-      showToast('Reported. Thank you for keeping the board clean.');
+      const id = btn.dataset.expand;
+      const details = document.getElementById('details-' + id);
+      details.classList.toggle('open');
+      btn.textContent = details.classList.contains('open') ? '▴ Less' : '▾ More';
     });
   });
-}
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  list.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.delete;
+      openConfirm('Delete Result', 'Are you sure you want to delete this result? This cannot be undone.', () => {
+        let results = getResults();
+        results = results.filter((x, i) => (x.id || String(i)) !== id);
+        saveResults(results);
+        renderHistory();
+        showToast('Result deleted');
+      });
+    });
+  });
 }
 
 /* ============================================================
-   POST COMMENT
+   BOOKMARKS
    ============================================================ */
-function postComment() {
-  if (!isLoggedIn) { showToast('Please log in first'); return; }
+let bookmarkFilter = 'all';
 
-  const body = document.getElementById('commentBody').value.trim();
-  const subjectId = document.getElementById('commentSubject').value;
+function renderBookmarks() {
+  const list = document.getElementById('bookmarkList');
+  let bmarks = getBookmarks();
 
-  if (!body) { showToast('Please write something'); return; }
+  if (bookmarkFilter !== 'all') {
+    bmarks = bmarks.filter(b => b.subjectId === bookmarkFilter);
+  }
 
-  const comments = getComments();
-  comments.push({
-    id: 'c_' + Date.now(),
-    author: currentUser.name || currentUser.email,
-    body,
-    subjectId,
-    date: new Date().toISOString(),
-    likes: 0,
-    likedBy: [],
-    replies: []
+  if (bmarks.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔖</div>
+        <h3>No bookmarks yet</h3>
+        <p>Bookmark questions during practice to revisit them here.</p>
+        <a href="select-subjects.html" class="btn btn-primary btn-sm">Start practicing</a>
+      </div>
+    `;
+    document.getElementById('deleteAllBookmarks').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('deleteAllBookmarks').style.display = 'block';
+  list.innerHTML = '';
+
+  bmarks.forEach((b, idx) => {
+    const s = getSubject(b.subjectId);
+    const card = document.createElement('div');
+    card.className = 'bookmark-card';
+    card.innerHTML = `
+      <div class="bookmark-card-head">
+        <div class="bookmark-card-icon" style="background:${s?.bg || '#eee'};color:${s?.fg || '#333'};">${s?.icon || '📚'}</div>
+        <div class="bookmark-card-info">
+          <div class="bookmark-card-subj">${s?.name || b.subjectId}</div>
+          <div class="bookmark-card-meta">${b.year || 'Random'} · ${timeAgo(b.date)}</div>
+        </div>
+      </div>
+      <div class="bookmark-card-text">${b.text || 'Question text unavailable'}</div>
+      <div class="bookmark-card-actions">
+        <button data-view="${idx}">View</button>
+        <button class="danger" data-remove="${idx}">Remove</button>
+      </div>
+    `;
+    list.appendChild(card);
   });
-  saveComments(comments);
 
-  document.getElementById('commentBody').value = '';
-  renderComments();
-  showToast('Comment posted');
+  list.querySelectorAll('[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.view);
+      const bmarks = getBookmarks();
+      const b = bmarks[idx];
+      if (b) {
+        // For now, show a simple alert with the question
+        alert(`${b.text || 'Question unavailable'}\\n\\nCorrect answer: ${b.correct || 'N/A'}\\n\\n${b.explanation || ''}`);
+      }
+    });
+  });
+
+  list.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.remove);
+      openConfirm('Remove Bookmark', 'Remove this bookmark?', () => {
+        let bmarks = getBookmarks();
+        bmarks.splice(idx, 1);
+        saveBookmarks(bmarks);
+        renderBookmarks();
+        showToast('Bookmark removed');
+      });
+    });
+  });
+}
+
+/* ============================================================
+   CONFIRM DIALOG
+   ============================================================ */
+let confirmCallback = null;
+
+function openConfirm(title, text, callback) {
+  confirmCallback = callback;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmText').textContent = text;
+  document.getElementById('confirmOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  confirmCallback = null;
 }
 
 /* ============================================================
@@ -315,25 +342,61 @@ function showToast(msg) {
    EVENT LISTENERS
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-  populateSubjects();
-  renderComments();
+  populateSubjectFilters();
+  renderHistory();
+  renderBookmarks();
 
-  // Filter tabs
-  document.querySelectorAll('.disc-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.disc-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      currentFilter = tab.dataset.filter;
-      renderComments();
+  // History filter
+  document.getElementById('historyFilter').addEventListener('change', e => {
+    historyFilter = e.target.value;
+    renderHistory();
+  });
+
+  // History sort
+  document.getElementById('historySort').addEventListener('click', () => {
+    historySort = historySort === 'date' ? 'score' : 'date';
+    document.getElementById('historySort').textContent =
+      historySort === 'date' ? 'Sort: Date ▾' : 'Sort: Score ▾';
+    renderHistory();
+  });
+
+  // Bookmark filter
+  document.getElementById('bookmarkFilter').addEventListener('change', e => {
+    bookmarkFilter = e.target.value;
+    renderBookmarks();
+  });
+
+  // Delete all history
+  document.getElementById('deleteAllHistory').addEventListener('click', () => {
+    openConfirm('Delete All History', 'Are you sure you want to delete ALL your result history? This cannot be undone.', () => {
+      saveResults([]);
+      renderHistory();
+      showToast('All history deleted');
     });
   });
 
-  // Post comment
-  document.getElementById('postCommentBtn').addEventListener('click', postComment);
+  // Delete all bookmarks
+  document.getElementById('deleteAllBookmarks').addEventListener('click', () => {
+    openConfirm('Delete All Bookmarks', 'Are you sure you want to remove ALL bookmarks?', () => {
+      saveBookmarks([]);
+      renderBookmarks();
+      showToast('All bookmarks removed');
+    });
+  });
+
+  // Confirm dialog
+  document.getElementById('confirmCancel').addEventListener('click', closeConfirm);
+  document.getElementById('confirmOk').addEventListener('click', () => {
+    if (confirmCallback) confirmCallback();
+    closeConfirm();
+  });
+  document.getElementById('confirmOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('confirmOverlay')) closeConfirm();
+  });
 });
 '''
 
-with open('/mnt/agents/output/discussion.js', 'w') as f:
-    f.write(discussion_js)
+with open('/mnt/agents/output/dashboard.js', 'w') as f:
+    f.write(dashboard_js)
 
-print(f"discussion.js written: {len(discussion_js)} chars")
+print(f"dashboard.js written: {len(dashboard_js)} chars")
