@@ -1,7 +1,4 @@
-
-# Build discussion.html - Student discussion board
-
-discussion_html = '''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -126,23 +123,6 @@ discussion_html = '''<!DOCTYPE html>
   .empty-state h3{font-size:15px; margin-bottom:6px;}
   .empty-state p{font-size:12.5px; color:var(--ink-soft); line-height:1.5;}
 
-  /* ===== Hamburger menu ===== */
-  .menu-overlay{position:fixed; inset:0; z-index:200; background:rgba(11,37,69,0.45); opacity:0; pointer-events:none; transition:opacity 0.2s ease;}
-  .menu-overlay.open{opacity:1; pointer-events:auto;}
-  .menu-panel{position:fixed; top:0; left:0; bottom:0; width:78%; max-width:300px; background:var(--white); z-index:201; transform:translateX(-100%); transition:transform 0.22s ease; display:flex; flex-direction:column; box-shadow:var(--shadow-lift);}
-  .menu-overlay.open .menu-panel{transform:translateX(0);}
-  .menu-head{background:var(--navy); color:#fff; padding:22px 18px; display:flex; align-items:center; gap:10px;}
-  .menu-head .appbar-mark{background:var(--gold); color:var(--navy);}
-  .menu-head-name{font-family:var(--font-display); font-weight:700; font-size:15px;}
-  .menu-head-sub{font-size:11px; color:#9FB0CB; margin-top:1px;}
-  .menu-list{padding:10px 8px; flex:1; overflow-y:auto;}
-  .menu-list a{display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:10px; font-size:14px; font-weight:600; color:var(--ink);}
-  .menu-list a:hover, .menu-list a.active{background:var(--paper-dim); color:var(--navy);}
-  .menu-list .menu-icon{width:20px; text-align:center; font-size:15px;}
-  .menu-divider{height:1px; background:var(--line); margin:8px 12px;}
-  .menu-foot{padding:14px 18px; border-top:1px solid var(--line);}
-  .menu-close{position:absolute; top:16px; right:-44px; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.15); color:#fff; border:none; font-size:18px;}
-
   /* ===== Toast ===== */
   .toast{
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
@@ -228,9 +208,4 @@ discussion_html = '''<!DOCTYPE html>
 <script src="shared.js"></script>
 <script src="discussion.js"></script>
 </body>
-</html>'''
-
-with open('/mnt/agents/output/discussion.html', 'w') as f:
-    f.write(discussion_html)
-
-print(f"discussion.html written: {len(discussion_html)} chars")
+</html>
