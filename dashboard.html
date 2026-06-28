@@ -1,8 +1,4 @@
-
-# Build dashboard.html - Result History + Bookmarks
-# This is a long file, so I'll build it in parts
-
-dashboard_html_part1 = '''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -248,7 +244,7 @@ dashboard_html_part1 = '''<!DOCTYPE html>
       <a href="https://wa.me/2347065732365" target="_blank" rel="noopener"><span class="menu-icon">💬</span> WhatsApp support</a>
     </nav>
     <div class="menu-foot">
-      <a href="#" class="btn btn-ghost btn-block btn-sm">Log out</a>
+      <a href="#" cllass="btn btn-ghost btn-block btn-sm">Log out</a>
     </div>
   </div>
 </div>
@@ -256,9 +252,4 @@ dashboard_html_part1 = '''<!DOCTYPE html>
 <script src="shared.js"></script>
 <script src="dashboard.js"></script>
 </body>
-</html>'''
-
-with open('/mnt/agents/output/dashboard.html', 'w') as f:
-    f.write(dashboard_html_part1)
-
-print(f"dashboard.html written: {len(dashboard_html_part1)} chars")
+</html>
