@@ -1,219 +1,185 @@
-
-# Build results.js - the results logic
-results_js = '''/* ============================================================
+/* ============================================================
    UTMESchools v2 — results.js
-   Displays score, subject breakdown, topic analysis, and
-   correction view. Reads result data from sessionStorage.
    ============================================================ */
 
 const ALL_SUBJECTS = [
-  { id: 'english',     name: 'English Language',       icon: '🔤', bg: '#E8F1FF', fg: '#1F5FBF' },
-  { id: 'accounts',    name: 'Accounts',               icon: '🧾', bg: '#E7F8EF', fg: '#0C8C58' },
-  { id: 'agriculture', name: 'Agriculture',            icon: '🌾', bg: '#E8F1FF', fg: '#1F5FBF' },
-  { id: 'biology',     name: 'Biology',                icon: '🧬', bg: '#F1EAFB', fg: '#6C3FBF' },
-  { id: 'chemistry',   name: 'Chemistry',              icon: '⚗️', bg: '#E7F8EF', fg: '#0C8C58' },
-  { id: 'commerce',    name: 'Commerce',               icon: '🛒', bg: '#FCE4E4', fg: '#C0392B' },
-  { id: 'computer',    name: 'Computer Studies',       icon: '💻', bg: '#E7F8EF', fg: '#0C8C58' },
-  { id: 'crk',         name: 'CRK',                    icon: '✝️', bg: '#E8F1FF', fg: '#1F5FBF' },
-  { id: 'economics',   name: 'Economics',              icon: '📈', bg: '#FFF4DC', fg: '#A6760A' },
-  { id: 'fineart',     name: 'Fine Art',               icon: '🎨', bg: '#FFF4DC', fg: '#A6760A' },
-  { id: 'french',      name: 'French',                 icon: '🇫🇷', bg: '#E7F8EF', fg: '#0C8C58' },
-  { id: 'geography',   name: 'Geography',              icon: '🌍', bg: '#FFF4DC', fg: '#A6760A' },
-  { id: 'government',  name: 'Government',             icon: '🏛️', bg: '#E8F1FF', fg: '#1F5FBF' },
-  { id: 'hausa',       name: 'Hausa',                  icon: '📜', bg: '#FCE4E4', fg: '#C0392B' },
-  { id: 'history',     name: 'History',                icon: '🏺', bg: '#FCE4E4', fg: '#C0392B' },
-  { id: 'homeec',      name: 'Home Economics',         icon: '🏠', bg: '#F1EAFB', fg: '#6C3FBF' },
-  { id: 'igbo',        name: 'Igbo',                   icon: '📖', bg: '#E8F1FF', fg: '#1F5FBF' },
-  { id: 'irk',         name: 'IRK',                    icon: '☪️', bg: '#F1EAFB', fg: '#6C3FBF' },
-  { id: 'literature',  name: 'Literature',             icon: '📚', bg: '#FCE4E4', fg: '#C0392B' },
-  { id: 'littext',     name: 'Literature Textbooks',   icon: '📗', bg: '#E7F8EF', fg: '#0C8C58' },
-  { id: 'mathematics', name: 'Mathematics',            icon: '📐', bg: '#FFF4DC', fg: '#A6760A' },
-  { id: 'music',       name: 'Music',                  icon: '🎵', bg: '#FCE4E4', fg: '#C0392B' },
-  { id: 'phe',         name: 'PHE',                    icon: '🏃', bg: '#E7F8EF', fg: '#0C8C58' },
-  { id: 'physics',     name: 'Physics',                icon: '⚛️', bg: '#FCE4E4', fg: '#C0392B' },
-  { id: 'lekki',       name: 'The Lekki Headmaster',   icon: '📕', bg: '#F1EAFB', fg: '#6C3FBF' },
-  { id: 'yoruba',      name: 'Yoruba',                 icon: '🌺', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'english',     name: 'English Language',  icon: '🔤', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'mathematics', name: 'Mathematics',        icon: '📐', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'physics',     name: 'Physics',            icon: '⚛️', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'chemistry',   name: 'Chemistry',          icon: '⚗️', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'biology',     name: 'Biology',            icon: '🧬', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'government',  name: 'Government',         icon: '🏛️', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'economics',   name: 'Economics',          icon: '📈', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'literature',  name: 'Literature',         icon: '📚', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'crk',         name: 'CRK',                icon: '✝️', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'irk',         name: 'IRK',                icon: '☪️', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'geography',   name: 'Geography',          icon: '🌍', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'commerce',    name: 'Commerce',           icon: '🛒', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'accounts',    name: 'Accounts',           icon: '🧾', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'agriculture', name: 'Agriculture',        icon: '🌾', bg: '#E8F1FF', fg: '#1F5FBF' },
+  { id: 'computer',    name: 'Computer Studies',   icon: '💻', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'fineart',     name: 'Fine Art',           icon: '🎨', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'french',      name: 'French',             icon: '🇫🇷', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'hausa',       name: 'Hausa',              icon: '📜', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'history',     name: 'History',            icon: '🏺', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'homeec',      name: 'Home Economics',     icon: '🏠', bg: '#FCE4E4', fg: '#C0392B' },
+  { id: 'igbo',        name: 'Igbo',               icon: '📖', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'music',       name: 'Music',              icon: '🎵', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'phe',         name: 'PHE',                icon: '🏃', bg: '#E7F8EF', fg: '#0C8C58' },
+  { id: 'lekki',       name: 'The Lekki Headmaster',icon: '📕', bg: '#F1EAFB', fg: '#6C3FBF' },
+  { id: 'yoruba',      name: 'Yoruba',             icon: '🌺', bg: '#FFF4DC', fg: '#A6760A' },
+  { id: 'littext',     name: 'Literature Textbooks',icon: '📗', bg: '#E7F8EF', fg: '#0C8C58' },
 ];
 
 function getSubject(id) { return ALL_SUBJECTS.find(s => s.id === id); }
 
-/* ---- Read result from sessionStorage ---- */
+/* ---- Read result ---- */
 let result = null;
 try {
   const raw = sessionStorage.getItem('utme_result');
   if (raw) result = JSON.parse(raw);
-} catch(e) { console.error('Failed to parse result:', e); }
+} catch(e) {}
 
-/* ---- No result state ---- */
 if (!result) {
   document.getElementById('resultMain').style.display = 'none';
-  document.getElementById('noResult').style.display = 'block';
+  document.getElementById('noResult').style.display   = 'block';
 }
 
-/* ---- Format helpers ---- */
 function formatTime(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+  if (h > 0) return h + 'h ' + m + 'm ' + s + 's';
+  if (m > 0) return m + 'm ' + s + 's';
+  return s + 's';
 }
 
 function formatDate(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-NG', { day:'numeric', month:'short', year:'numeric' });
 }
 
 /* ============================================================
-   RENDER RESULTS
+   RENDER
    ============================================================ */
 function renderResults() {
   if (!result) return;
 
-  const { totalScore, totalPossible, timeTaken, mode, subjects, subjectScores, date } = result;
-  const pct = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
+  var pct = result.totalPossible > 0
+    ? Math.round((result.totalScore / result.totalPossible) * 100) : 0;
 
-  // Score ring animation
-  const circumference = 2 * Math.PI * 60; // r=60
-  const offset = circumference - (pct / 100) * circumference;
-  setTimeout(() => {
-    const ring = document.getElementById('scoreRing');
+  /* Ring animation */
+  var circumference = 2 * Math.PI * 60;
+  var offset = circumference - (pct / 100) * circumference;
+  setTimeout(function() {
+    var ring = document.getElementById('scoreRing');
+    if (!ring) return;
     ring.style.strokeDashoffset = offset;
-    // Color based on score
-    if (pct < 40) ring.style.stroke = '#C0392B';
-    else if (pct < 60) ring.style.stroke = 'var(--gold)';
-    else ring.style.stroke = 'var(--green)';
+    if (pct < 40)      ring.style.stroke = '#C0392B';
+    else if (pct < 60) ring.style.stroke = '#FFD23F';
+    else               ring.style.stroke = '#0FA968';
   }, 100);
 
-  document.getElementById('scorePct').textContent = pct + '%';
+  document.getElementById('scorePct').textContent   = pct + '%';
+  var modeLabel = result.mode === 'mock' ? 'Mock Exam'
+                : result.mode === 'study' ? 'Study Session' : 'Practice Result';
+  document.getElementById('scoreTitle').textContent =
+    result.totalScore + '/' + result.totalPossible + ' — ' + modeLabel;
 
-  // Title
-  const modeLabel = mode === 'mock' ? 'Mock Exam' : mode === 'study' ? 'Study Session' : 'Practice Result';
-  document.getElementById('scoreTitle').textContent = `${totalScore}/${totalPossible} — ${modeLabel}`;
+  var subjNames = (result.subjects || []).map(function(sid) {
+    return (getSubject(sid) || {name: sid}).name;
+  }).join(', ');
 
-  // Meta
-  const subjNames = subjects.map(sid => getSubject(sid)?.name || sid).join(', ');
-  document.getElementById('metaSubjects').textContent = '📚 ' + (subjNames.length > 35 ? subjNames.slice(0, 35) + '…' : subjNames);
-  document.getElementById('metaDate').textContent = '📅 ' + formatDate(date || new Date().toISOString());
-  document.getElementById('metaTime').textContent = '⏱ ' + formatTime(timeTaken || 0);
-  document.getElementById('metaMode').textContent = '📝 ' + modeLabel;
+  document.getElementById('metaSubjects').textContent = '📚 ' + (subjNames.length > 35 ? subjNames.slice(0,35)+'…' : subjNames);
+  document.getElementById('metaDate').textContent     = '📅 ' + formatDate(result.date || new Date().toISOString());
+  document.getElementById('metaTime').textContent     = '⏱ ' + formatTime(result.timeTaken || 0);
+  document.getElementById('metaMode').textContent     = '📝 ' + modeLabel;
 
-  // Subject breakdown
-  const breakdown = document.getElementById('subjectBreakdown');
+  /* Subject bars */
+  var breakdown = document.getElementById('subjectBreakdown');
   breakdown.innerHTML = '';
-  subjects.forEach(sid => {
-    const s = getSubject(sid);
-    const sc = subjectScores[sid] || { score: 0, possible: 0 };
-    const subjPct = sc.possible > 0 ? Math.round((sc.score / sc.possible) * 100) : 0;
-
-    const row = document.createElement('div');
+  (result.subjects || []).forEach(function(sid) {
+    var s  = getSubject(sid) || { name: sid, icon: '📚', bg: '#eee', fg: '#333' };
+    var sc = (result.subjectScores || {})[sid] || { score:0, possible:0 };
+    var sp = sc.possible > 0 ? Math.round((sc.score / sc.possible) * 100) : 0;
+    var barClass = sp >= 60 ? 'green' : sp >= 40 ? 'amber' : 'red';
+    var row = document.createElement('div');
     row.className = 'subj-score';
-    let barColor = 'green';
-    if (subjPct < 40) barColor = 'red';
-    else if (subjPct < 60) barColor = 'amber';
-
-    row.innerHTML = `
-      <div class="subj-score-icon" style="background:${s?.bg || '#eee'};color:${s?.fg || '#333'};">${s?.icon || '📚'}</div>
-      <div class="subj-score-info">
-        <div class="subj-score-name">${s?.name || sid}</div>
-        <div class="subj-score-bar-wrap">
-          <div class="subj-score-bar ${barColor}" style="width:${subjPct}%"></div>
-        </div>
-      </div>
-      <div class="subj-score-val">${sc.score}/${sc.possible}</div>
-    `;
+    row.innerHTML =
+      '<div class="subj-score-icon" style="background:' + s.bg + ';color:' + s.fg + ';">' + s.icon + '</div>' +
+      '<div class="subj-score-info">' +
+        '<div class="subj-score-name">' + s.name + '</div>' +
+        '<div class="subj-score-bar-wrap"><div class="subj-score-bar ' + barClass + '" style="width:' + sp + '%"></div></div>' +
+      '</div>' +
+      '<div class="subj-score-val">' + sc.score + '/' + sc.possible + '</div>';
     breakdown.appendChild(row);
   });
 
-  // Topic performance table
-  const tbody = document.getElementById('topicTableBody');
+  /* Topic table */
+  var tbody = document.getElementById('topicTableBody');
   tbody.innerHTML = '';
-
-  // Aggregate by topic/subtopic
-  const topicMap = {};
-  if (result.questions) {
-    result.questions.forEach(q => {
-      const key = `${q.topic || 'General'} : ${q.subtopic || 'General'}`;
-      if (!topicMap[key]) topicMap[key] = { topic: q.topic || 'General', subtopic: q.subtopic || 'General', correct: 0, total: 0 };
-      topicMap[key].total++;
-      if (q.isCorrect) topicMap[key].correct++;
-    });
-  }
-
-  const topicRows = Object.values(topicMap).sort((a, b) => (a.correct / a.total) - (b.correct / b.total));
-  topicRows.forEach((row, idx) => {
-    const tr = document.createElement('tr');
-    const pctVal = row.total > 0 ? Math.round((row.correct / row.total) * 100) : 0;
-    let scoreClass = 'good';
-    if (pctVal < 40) scoreClass = 'bad';
-    else if (pctVal < 60) scoreClass = 'mid';
-
-    tr.innerHTML = `
-      <td class="rank">${idx + 1}</td>
-      <td><strong>${row.topic}</strong><br><span style="color:var(--ink-soft);font-size:11px;">${row.subtopic}</span></td>
-      <td class="score ${scoreClass}">${pctVal}%</td>
-      <td class="score">${row.correct}/${row.total}</td>
-    `;
-    tbody.appendChild(tr);
+  var topicMap = {};
+  (result.questions || []).forEach(function(q) {
+    var key = (q.topic || 'General') + ' : ' + (q.subtopic || 'General');
+    if (!topicMap[key]) topicMap[key] = { topic: q.topic||'General', subtopic: q.subtopic||'General', correct:0, total:0 };
+    topicMap[key].total++;
+    if (q.isCorrect) topicMap[key].correct++;
   });
 
-  if (topicRows.length === 0) {
+  var rows = Object.values(topicMap).sort(function(a,b){ return (a.correct/a.total)-(b.correct/b.total); });
+  if (rows.length === 0) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);padding:20px;">No topic data available</td></tr>';
   }
+  rows.forEach(function(r, idx) {
+    var p = r.total > 0 ? Math.round((r.correct/r.total)*100) : 0;
+    var cls = p >= 60 ? 'good' : p >= 40 ? 'mid' : 'bad';
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td class="rank">' + (idx+1) + '</td>' +
+      '<td><strong>' + r.topic + '</strong><br><span style="color:var(--ink-soft);font-size:11px;">' + r.subtopic + '</span></td>' +
+      '<td class="score ' + cls + '">' + p + '%</td>' +
+      '<td class="score">' + r.correct + '/' + r.total + '</td>';
+    tbody.appendChild(tr);
+  });
 }
 
 /* ============================================================
    CORRECTION VIEW
    ============================================================ */
 function openCorrection() {
-  const body = document.getElementById('correctionBody');
+  var body = document.getElementById('correctionBody');
   body.innerHTML = '';
 
-  if (!result || !result.questions) {
+  if (!result || !result.questions || result.questions.length === 0) {
     body.innerHTML = '<p style="text-align:center;color:var(--ink-soft);padding:40px;">No questions to display</p>';
   } else {
-    result.questions.forEach((q, idx) => {
-      const cq = document.createElement('div');
+    result.questions.forEach(function(q, idx) {
+      var s = getSubject(q.subjectId) || { name: q.subjectId, icon: '📚' };
+      var cq = document.createElement('div');
       cq.className = 'correction-q';
 
-      const s = getSubject(q.subjectId);
-      const userAns = q.userAnswer;
-      const correctAns = q.correct;
-
-      let optsHtml = '';
-      q.options.forEach((opt, oi) => {
-        const letter = String.fromCharCode(65 + oi);
-        let cls = 'neutral';
-        if (letter === correctAns) cls = 'correct';
-        else if (letter === userAns && letter !== correctAns) cls = 'wrong';
-
-        let dotContent = letter;
-        if (cls === 'correct') dotContent = '✓';
-        if (cls === 'wrong') dotContent = '✗';
-
-        optsHtml += `
-          <div class="cq-opt ${cls}">
-            <div class="dot">${dotContent}</div>
-            <div>${opt.replace(/^[A-D]\\.\\s*/, '')}</div>
-          </div>
-        `;
+      var optsHtml = '';
+      (q.options || []).forEach(function(opt, oi) {
+        var letter = String.fromCharCode(65 + oi);
+        var cls = letter === q.correct ? 'correct'
+                : (letter === q.userAnswer && letter !== q.correct) ? 'wrong' : 'neutral';
+        var dot = cls === 'correct' ? '✓' : cls === 'wrong' ? '✗' : letter;
+        optsHtml +=
+          '<div class="cq-opt ' + cls + '">' +
+            '<div class="dot">' + dot + '</div>' +
+            '<div>' + escHtml(opt.replace(/^[A-D]\.\s*/,'')) + '</div>' +
+          '</div>';
       });
 
-      cq.innerHTML = `
-        <div class="cq-meta">
-          <span>${s?.icon || '📚'} ${s?.name || q.subjectId}</span>
-          <span>Q${idx + 1}</span>
-          <span>${q.topic || 'General'}</span>
-          <span style="color:${q.isCorrect ? 'var(--green)' : '#C0392B'};">${q.isCorrect ? '✓ Correct' : '✗ Wrong'}</span>
-        </div>
-        <div class="cq-text">${q.text}</div>
-        ${optsHtml}
-        <div class="cq-ex">
-          <div class="cq-ex-label">Explanation</div>
-          <div>${q.explanation || 'No explanation available.'}</div>
-        </div>
-      `;
+      cq.innerHTML =
+        '<div class="cq-meta">' +
+          '<span>' + s.icon + ' ' + s.name + '</span>' +
+          '<span>Q' + (idx+1) + '</span>' +
+          '<span>' + (q.topic||'General') + '</span>' +
+          '<span style="color:' + (q.isCorrect ? 'var(--green)' : '#C0392B') + ';">' + (q.isCorrect ? '✓ Correct' : '✗ Wrong') + '</span>' +
+        '</div>' +
+        '<div class="cq-text">' + escHtml(q.text||'') + '</div>' +
+        optsHtml +
+        '<div class="cq-ex"><div class="cq-ex-label">Explanation</div><div>' + escHtml(q.explanation||'No explanation available.') + '</div></div>';
       body.appendChild(cq);
     });
   }
@@ -232,23 +198,19 @@ function closeCorrection() {
    ============================================================ */
 function openShare() {
   if (!result) return;
-  const { totalScore, totalPossible, mode, subjects } = result;
-  const pct = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0;
-  const subjNames = subjects.map(sid => getSubject(sid)?.name || sid).join(', ');
-  const modeLabel = mode === 'mock' ? 'Mock Exam' : mode === 'study' ? 'Study Session' : 'Practice';
-
-  const text = `🎓 My UTMESchools Result 🎓
-📚 ${subjNames}
-📝 ${modeLabel}
-✅ Score: ${totalScore}/${totalPossible} (${pct}%)
-⏱ Time: ${formatTime(result.timeTaken || 0)}
-
-Practice JAMB past questions at UTMESchools!`;
+  var pct = result.totalPossible > 0 ? Math.round((result.totalScore/result.totalPossible)*100) : 0;
+  var subjNames = (result.subjects||[]).map(function(s){ return (getSubject(s)||{name:s}).name; }).join(', ');
+  var modeLabel = result.mode === 'mock' ? 'Mock Exam' : result.mode === 'study' ? 'Study Session' : 'Practice';
+  var text =
+    '🎓 My UTMESchools Result 🎓\n' +
+    '📚 ' + subjNames + '\n' +
+    '📝 ' + modeLabel + '\n' +
+    '✅ Score: ' + result.totalScore + '/' + result.totalPossible + ' (' + pct + '%)\n' +
+    '⏱ Time: ' + formatTime(result.timeTaken||0) + '\n\n' +
+    'Practice JAMB past questions at UTMESchools!';
 
   document.getElementById('shareText').textContent = text;
-  document.getElementById('shareWaBtn').href =
-    `https://wa.me/?text=${encodeURIComponent(text)}`;
-
+  document.getElementById('shareWaBtn').href = 'https://wa.me/?text=' + encodeURIComponent(text);
   document.getElementById('shareOverlay').classList.add('open');
 }
 
@@ -256,48 +218,47 @@ function closeShare() {
   document.getElementById('shareOverlay').classList.remove('open');
 }
 
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
 function showToast(msg) {
-  const toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2000);
+  var t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2000);
 }
 
 /* ============================================================
-   EVENT LISTENERS
+   INIT
    ============================================================ */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
   renderResults();
 
-  document.getElementById('backBtn').addEventListener('click', () => {
+  document.getElementById('backBtn').addEventListener('click', function() {
     window.location.href = 'select-subjects.html';
   });
 
   document.getElementById('viewCorrectionBtn').addEventListener('click', openCorrection);
   document.getElementById('correctionBack').addEventListener('click', closeCorrection);
-
-  document.getElementById('tryAgainBtn').addEventListener('click', () => {
+  document.getElementById('tryAgainBtn').addEventListener('click', function() {
     window.location.href = 'select-subjects.html';
   });
-
   document.getElementById('shareBtn').addEventListener('click', openShare);
   document.getElementById('shareCloseBtn').addEventListener('click', closeShare);
-  document.getElementById('shareOverlay').addEventListener('click', e => {
+  document.getElementById('shareOverlay').addEventListener('click', function(e) {
     if (e.target === document.getElementById('shareOverlay')) closeShare();
   });
-  document.getElementById('shareCopyBtn').addEventListener('click', () => {
-    const text = document.getElementById('shareText').textContent;
-    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!'))
-      .catch(() => showToast('Copy failed'));
+  document.getElementById('shareCopyBtn').addEventListener('click', function() {
+    var text = document.getElementById('shareText').textContent;
+    navigator.clipboard.writeText(text)
+      .then(function(){ showToast('Copied!'); })
+      .catch(function(){ showToast('Copy failed'); });
   });
-
-  document.getElementById('dashboardBtn').addEventListener('click', () => {
+  document.getElementById('dashboardBtn').addEventListener('click', function() {
     window.location.href = 'dashboard.html';
   });
 });
-'''
-
-with open('/mnt/agents/output/results.js', 'w') as f:
-    f.write(results_js)
-
-print(f"results.js written: {len(results_js)} chars")
+       
