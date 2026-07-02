@@ -76,6 +76,12 @@
   }
   .auth-footer a{color:var(--navy); font-weight:600;}
 
+  .forgot-link{
+    font-size:12px; color:var(--navy); font-weight:600; cursor:pointer;
+    background:none; border:none; text-decoration:underline;
+  }
+  .forgot-link:hover{color:var(--orange);}
+
   /* ===== Toast ===== */
   .toast{
     position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
@@ -114,7 +120,7 @@
       <div class="error">Password is required</div>
     </div>
     <div style="text-align:right; margin-bottom:12px;">
-      <a href="#" style="font-size:12px; color:var(--navy); font-weight:600;">Forgot password?</a>
+      <button type="button" class="forgot-link" id="forgotPasswordBtn">Forgot password?</button>
     </div>
     <button type="submit" class="auth-submit" id="loginBtn">Log In</button>
   </form>
