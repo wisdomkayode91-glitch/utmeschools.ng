@@ -28,6 +28,11 @@ function setCurrentUser(user) {
   localStorage.setItem('utme_user', JSON.stringify(user));
 }
 
+/* ---- Forgot Password ---- */
+document.getElementById('forgotPasswordBtn').addEventListener('click', function() {
+  showToast('📧 Contact support at wisdomkayode91@gmail.com to reset your password.');
+});
+
 /* ---- Sign up ---- */
 document.getElementById('signupForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -47,7 +52,7 @@ document.getElementById('signupForm').addEventListener('submit', e => {
     document.getElementById('signupEmail').closest('.form-group').classList.add('has-error');
     hasError = true;
   }
-  if (password.length < 6) {
+  if (password.length < 8) {
     document.getElementById('signupPassword').closest('.form-group').classList.add('has-error');
     hasError = true;
   }
@@ -117,6 +122,5 @@ function showToast(msg) {
   if (!toast) return;
   toast.textContent = msg;
   toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2500);
+  setTimeout(() => toast.classList.remove('show'), 3500);
 }
-   
