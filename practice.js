@@ -1,7 +1,3 @@
-/* ============================================================
-   UTMESchools v2 — practice.js (PART 1)
-   ============================================================ */
-
 var params = new URLSearchParams(window.location.search);
 var subjectIds = (params.get('subjects') || 'english').split(',');
 var mode = params.get('mode') || 'practice';
@@ -401,10 +397,7 @@ var calcJustEvaled = false;
 function openCalc() { document.getElementById('calcOverlay').classList.add('open'); updateCalcDisplay(); }
 function closeCalc() { document.getElementById('calcOverlay').classList.remove('open'); }
 function updateCalcDisplay() { document.getElementById('calcDisplay').textContent = calcDisplay; }/* ============================================================
-   UTMESchools v2 — practice.js (PART 2)
-   ============================================================ */
-
-function calcPress(val) {
+   function calcPress(val) {
   if (val === 'C') {
     calcDisplay = '0'; calcExpr = ''; calcJustEvaled = false;
   } else if (val === 'DEL') {
