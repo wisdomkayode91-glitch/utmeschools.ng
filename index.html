@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>UTMESchools — Practice JAMB. Pass JAMB.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .home-hero{
+    background:var(--navy); position:relative; overflow:hidden;
+    padding:28px 16px 22px; text-align:center;
+  }
+  .home-hero::before{
+    content:""; position:absolute; top:-120px; right:-100px;
+    width:280px; height:280px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,107,53,0.22), transparent 65%);
+  }
+  .home-hero h1{
+    color:#fff; font-size:24px; line-height:1.25; font-weight:800;
+    position:relative; z-index:1;
+  }
+  .home-hero .accent{color:var(--gold);}
+  .home-hero p{
+    color:#C7D2E3; font-size:13px; margin:10px auto 0; max-width:320px; line-height:1.55;
+    position:relative; z-index:1;
+  }
+  .home-hero-cta{margin-top:16px; display:flex; gap:8px; justify-content:center; position:relative; z-index:1;}
+
+  .carousel{
+    margin:16px 0 4px; overflow:hidden; position:relative;
+    cursor:grab; user-select:none;
+  }
+  .carousel-track{
+    display:flex; width:max-content; will-change:transform;
+  }
+  .carousel-card{
+    width:200px; flex-shrink:0; margin-right:10px;
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius-md);
+    padding:14px; pointer-events:none;
+  }
+  .carousel-card .cc-tag{
+    display:inline-block; font-family:var(--font-mono); font-size:10px; font-weight:700;
+    padding:3px 9px; border-radius:99px; margin-bottom:8px; letter-spacing:0.04em;
+  }
+  .carousel-card h4{font-size:13.5px; margin-bottom:4px;}
+  .carousel-card p{font-size:11.5px; color:var(--ink-soft); line-height:1.45;}
+
+  .sec{padding:26px 16px;}
+  .sec-head{margin-bottom:14px;}
+  .sec-head h2{font-size:19px; line-height:1.3;}
+  .sec-head p{font-size:12.5px; color:var(--ink-soft); margin-top:4px;}
+
+  .stat-row{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:16px;}
+  .stat{text-align:center;}
+  .stat-num{font-family:var(--font-mono); font-weight:700; font-size:18px; color:var(--navy);}
+  .stat-label{font-size:10px; color:var(--ink-soft); margin-top:2px; line-height:1.3;}
+
+  .mode-grid{display:flex; flex-direction:column; gap:10px;}
+  .mode-card{background:#fff; border:1px solid var(--line); border-radius:var(--radius-md); padding:14px;}
+  .mode-tag{display:inline-block; font-family:var(--font-mono); font-size:10px; font-weight:700; padding:3px 9px; border-radius:99px; margin-bottom:8px;}
+  .mode-card h3{font-size:14.5px; margin-bottom:4px;}
+  .mode-card p{font-size:12px; color:var(--ink-soft); line-height:1.5;}
+
+  .subject-strip{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .subject-pill{
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm);
+    padding:10px 6px; text-align:center;
+  }
+  .subject-pill .sp-icon{
+    width:32px; height:32px; border-radius:9px; margin:0 auto 6px;
+    display:flex; align-items:center; justify-content:center; font-size:15px;
+  }
+  .subject-pill .sp-name{font-size:11px; font-weight:700; color:var(--navy); line-height:1.25;}
+
+  .price-row{display:flex; flex-direction:column; gap:10px;}
+  .price-card{background:#fff; border:1.5px solid var(--line); border-radius:var(--radius-lg); padding:16px;}
+  .price-card.featured{background:var(--navy); border-color:var(--navy);}
+  .price-card h3{font-size:13.5px;}
+  .price-card.featured h3{color:#fff;}
+  .price-amount{font-weight:800; font-size:26px; color:var(--navy); margin-top:4px;}
+  .price-card.featured .price-amount{color:#fff;}
+  .price-sub{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+  .price-card.featured .price-sub{color:#9FB0CB;}
+  .price-list{margin:12px 0 14px; display:flex; flex-direction:column; gap:6px;}
+  .price-list li{display:flex; gap:7px; font-size:12px; align-items:flex-start;}
+  .price-card.featured .price-list li{color:#E4E9F2;}
+  .price-list .ok{color:var(--green); font-weight:700;}
+  .price-card.featured .price-list .ok{color:var(--gold);}
+  .price-badge{
+    display:inline-block; background:var(--orange); color:#fff; font-family:var(--font-mono);
+    font-size:9.5px; font-weight:700; padding:3px 9px; border-radius:99px; margin-bottom:8px;
+  }
+
+  .reviews-empty{
+    background:#fff; border:1.5px dashed var(--line); border-radius:var(--radius-lg);
+    padding:30px 18px; text-align:center;
+  }
+  .reviews-empty-icon{
+    width:38px; height:38px; border-radius:50%; background:var(--paper-dim); color:var(--gold);
+    display:flex; align-items:center; justify-content:center; font-size:17px; margin:0 auto 10px;
+  }
+  .reviews-empty h3{font-size:14.5px;}
+  .reviews-empty p{font-size:12px; color:var(--ink-soft); line-height:1.5; margin:7px 0 14px;}
+
+  .footer{background:var(--navy); color:#9FB0CB; padding:24px 16px;}
+  .footer-name{color:#fff; font-family:var(--font-display); font-weight:700; font-size:14px; display:flex; align-items:center; gap:7px;}
+  .footer p{font-size:11.5px; margin-top:8px; line-height:1.6;}
+  .footer-links{margin-top:14px; display:flex; flex-direction:column; gap:8px;}
+  .footer-links a{font-size:12.5px; color:#C7D2E3;}
+  .footer-bottom{margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.1); font-size:10.5px; color:#7388A8;}
+
+  .wa-float{
+    position:fixed; bottom:18px; right:16px; z-index:90;
+    width:48px; height:48px; border-radius:50%;
+    background:#25D366; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 18px -4px rgba(37,211,102,0.55);
+  }
+
+  @media (min-width:640px){
+    .home-hero h1{font-size:30px;}
+    .stat-row, .subject-strip{grid-template-columns:repeat(4,1fr);}
+    .mode-grid{flex-direction:row;}
+    .mode-card{flex:1;}
+    .price-row{flex-direction:row;}
+    .price-card{flex:1;}
+  }
+  @media (min-width:980px){
+    .sec, .home-hero{padding-left:calc(50% - 310px); padding-right:calc(50% - 310px);}
+  }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <button class="appbar-burger" id="menuOpenBtn" aria-label="Open menu">☰</button>
+  <div class="appbar-brand">
+    <span class="appbar-mark">U</span>
+    <span class="appbar-name">UTME<em>Schools</em></span>
+  </div>
+  <div class="appbar-actions">
+    <a href="select-subjects.html" class="btn btn-primary btn-sm">Start</a>
+  </div>
+</header>
+
+<main>
+  <section class="home-hero">
+    <h1>Practice like it's<br><span class="accent">exam day.</span></h1>
+    <p>Real JAMB past questions, 1992 to date. Instant scoring, full explanations, your own pace.</p>
+    <div class="home-hero-cta">
+      <a href="select-subjects.html" class="btn btn-primary">Start practicing free</a>
+    </div>
+  </section>
+
+  <div class="carousel" aria-hidden="false">
+    <div class="carousel-track" id="carouselTrack"></div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat"><div class="stat-num">27</div><div class="stat-label">JAMB subjects</div></div>
+    <div class="stat"><div class="stat-num">1992+</div><div class="stat-label">Years covered</div></div>
+    <div class="stat"><div class="stat-num">100%</div><div class="stat-label">Explained</div></div>
+    <div class="stat"><div class="stat-num">₦2,500</div><div class="stat-label">Full access</div></div>
+  </div>
+
+  <section class="sec">
+    <div class="sec-head">
+      <h2>Three ways to practice</h2>
+      <p>Pick subjects, set your own timer, or skip the clock entirely.</p>
+    </div>
+    <div class="mode-grid">
+      <div class="mode-card">
+        <span class="mode-tag" style="background:#E8F1FF;color:#1F5FBF;">PRACTICE</span>
+        <h3>Your subjects, your pace</h3>
+        <p>Pick any subjects, any year from 1992 to date, your own question count and timer.</p>
+      </div>
+      <div class="mode-card">
+        <span class="mode-tag" style="background:#FFEFE6;color:#E2531F;">RANDOM</span>
+        <h3>Years mix themselves</h3>
+        <p>Pull questions from every year at once. Reshuffles fresh, every single time.</p>
+      </div>
+      <div class="mode-card">
+        <span class="mode-tag" style="background:#E7F8EF;color:#0C8C58;">STUDY</span>
+        <h3>No clock, just answers</h3>
+        <p>Same questions, zero pressure. Tap Show for the full explanation instantly.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" style="background:var(--paper-dim);">
+    <div class="sec-head">
+      <h2>All JAMB subjects</h2>
+      <p>Tap any subject to start, or select up to 4 at once.</p>
+    </div>
+    <div class="subject-strip" id="subjectStrip"></div>
+    <div style="margin-top:14px; text-align:center;">
+      <a href="select-subjects.html" class="btn btn-ghost btn-sm">See all subjects</a>
+    </div>
+  </section>
+
+  <section class="sec" id="pricing">
+    <div class="sec-head">
+      <h2>Try free. Pay once it's worth it.</h2>
+    </div>
+    <div class="price-row">
+      <div class="price-card">
+        <h3>Free preview</h3>
+        <div class="price-amount">₦0</div>
+        <ul class="price-list">
+          <li><span class="ok">✓</span> 5 questions per subject, per year</li>
+          <li><span class="ok">✓</span> Practice &amp; Study mode</li>
+          <li><span class="ok">✓</span> Instant scoring &amp; history</li>
+        </ul>
+        <a href="select-subjects.html" class="btn btn-ghost btn-block btn-sm">Start free</a>
+      </div>
+      <div class="price-card featured">
+        <span class="price-badge">Most students choose this</span>
+        <h3>Full access</h3>
+        <div class="price-amount">₦2,500</div>
+        <div class="price-sub">Full access through the 2027 admission season</div>
+        <ul class="price-list">
+          <li><span class="ok">✓</span> Every question, every year, every subject</li>
+          <li><span class="ok">✓</span> Custom-timed mock exams</li>
+          <li><span class="ok">✓</span> Random mode, full analysis</li>
+          <li><span class="ok">✓</span> Unlimited bookmarks &amp; history</li>
+        </ul>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <a href="payment.html?method=paystack" class="btn btn-primary btn-block btn-sm">⚡ Pay instantly (Paystack)</a>
+          <a href="payment.html?method=manual" class="btn btn-block btn-sm" style="background:rgba(255,255,255,0.15);color:#fff;border:1.5px solid rgba(255,255,255,0.3);">🏦 Bank transfer + WhatsApp</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" style="background:var(--paper-dim);">
+    <div class="sec-head"><h2>What candidates are saying</h2></div>
+    <div class="reviews-empty">
+      <div class="reviews-empty-icon">★</div>
+      <h3>Reviews open at launch</h3>
+      <p>Be one of the first to practice — your review shows up here first, alongside real Google reviews as they come in.</p>
+      <a href="select-subjects.html" class="btn btn-primary btn-sm">Start practicing free</a>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-name"><span class="appbar-mark">U</span> UTME<em>Schools</em></div>
+  <p>Real JAMB past questions, 1992 to date. Built for Nigerian candidates.</p>
+  <div class="footer-links">
+    <a href="https://wa.me/2347065732365" target="_blank" rel="noopener">WhatsApp: 0706 573 2365</a>
+    <a href="mailto:wisdomkayode91@gmail.com">wisdomkayode91@gmail.com</a>
+  </div>
+  <div class="footer-bottom">© <span id="year"></span> UTMESchools. Not affiliated with JAMB.</div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/2347065732365?text=Hi%2C%20I%20need%20help%20with%20UTMESchools" target="_blank" rel="noopener" aria-label="WhatsApp">
+  <svg viewBox="0 0 32 32" width="22" height="22" fill="currentColor"><path d="M16.001 3C9.373 3 4 8.373 4 15.001c0 2.487.737 4.799 2.001 6.732L4 29l7.46-1.957a11.93 11.93 0 0 0 4.541.892h.005c6.627 0 12-5.373 12-12.001C28.006 8.373 22.633 3 16.001 3zm0 21.6a9.56 9.56 0 0 1-4.875-1.335l-.35-.207-3.527.925.94-3.44-.228-.353a9.57 9.57 0 0 1-1.46-5.09c0-5.293 4.307-9.6 9.6-9.6 5.292 0 9.6 4.307 9.6 9.6 0 5.293-4.308 9.5-9.7 9.5zm5.262-7.184c-.288-.144-1.706-.84-1.97-.937-.264-.096-.456-.144-.648.144-.192.288-.744.937-.912 1.13-.168.192-.336.216-.624.072-.288-.144-1.215-.448-2.314-1.428-.856-.763-1.434-1.705-1.602-1.993-.168-.288-.018-.444.126-.587.13-.13.288-.336.432-.504.144-.168.192-.288.288-.48.096-.192.048-.36-.024-.504-.072-.144-.648-1.562-.888-2.14-.234-.563-.472-.487-.648-.496l-.552-.01c-.192 0-.504.072-.768.36-.264.288-1.008.985-1.008 2.403 0 1.418 1.032 2.787 1.176 2.98.144.192 2.03 3.1 4.92 4.347.687.297 1.224.474 1.642.606.69.22 1.318.189 1.814.115.553-.083 1.706-.697 1.946-1.37.24-.673.24-1.25.168-1.37-.072-.12-.264-.192-.552-.336z"/></svg>
+</a>
+
+<div class="menu-overlay" id="menuOverlay">
+  <div class="menu-panel">
+    <button class="menu-close" id="menuCloseBtn" aria-label="Close menu">×</button>
+    <div class="menu-head">
+      <div class="appbar-mark">U</div>
+      <div>
+        <div class="menu-head-name">UTMESchools</div>
+        <div class="menu-head-sub">JAMB · UTME Practice</div>
+      </div>
+    </div>
+    <nav class="menu-list">
+      <a href="index.html" class="active"><span class="menu-icon">🏠</span> Home</a>
+      <a href="select-subjects.html"><span class="menu-icon">📚</span> Practice for UTME</a>
+      <a href="dashboard.html"><span class="menu-icon">📊</span> Result History</a>
+      <a href="bookmarks.html"><span class="menu-icon">🔖</span> Bookmarks</a>
+      <a href="discussion.html"><span class="menu-icon">💬</span> Discussion</a>
+      <div class="menu-divider"></div>
+      <a href="account.html"><span class="menu-icon">👤</span> My account</a>
+      <a href="#pricing"><span class="menu-icon">🔓</span> Unlock full access</a>
+      <div class="menu-divider"></div>
+      <a href="https://wa.me/2347065732365" target="_blank" rel="noopener"><span class="menu-icon">💬</span> WhatsApp support</a>
+    </nav>
+    <div class="menu-foot">
+      <a href="auth.html" class="btn btn-ghost btn-block btn-sm">Log in / Sign up</a>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script src="script.js"></script>
+</body>
+                                                                        </html>
