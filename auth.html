@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Log In — UTMESchools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .auth-wrap{
+    min-height:100vh; display:flex; flex-direction:column;
+    background:var(--paper);
+  }
+  .auth-header{
+    padding:24px 16px 10px; text-align:center;
+  }
+  .auth-header .logo{
+    width:48px; height:48px; border-radius:12px;
+    background:var(--navy); color:var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-size:22px; font-weight:800;
+    margin:0 auto 12px;
+  }
+  .auth-header h1{font-size:20px; margin-bottom:4px;}
+  .auth-header p{font-size:13px; color:var(--ink-soft);}
+
+  .auth-tabs{
+    display:flex; padding:0 16px; gap:8px; margin-bottom:16px;
+  }
+  .auth-tab{
+    flex:1; padding:10px; text-align:center; font-size:13px; font-weight:700;
+    color:var(--ink-soft); background:var(--white); border:1.5px solid var(--line);
+    border-radius:10px; cursor:pointer;
+  }
+  .auth-tab.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+
+  .auth-form{padding:0 16px 24px; flex:1;}
+  .form-group{margin-bottom:14px;}
+  .form-group label{
+    display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;
+  }
+  .form-group input{
+    width:100%; padding:11px 13px; border:1.5px solid var(--line); border-radius:10px;
+    font-size:14px; font-family:inherit; background:var(--white); color:var(--ink);
+  }
+  .form-group input:focus{outline:none; border-color:var(--navy);}
+  .form-group .hint{font-size:11px; color:var(--ink-soft); margin-top:4px;}
+  .form-group .error{font-size:11px; color:#C0392B; margin-top:4px; display:none;}
+  .form-group.has-error input{border-color:#C0392B;}
+  .form-group.has-error .error{display:block;}
+
+  .auth-submit{
+    width:100%; padding:12px; background:var(--orange); color:#fff;
+    border:none; border-radius:99px; font-family:var(--font-display);
+    font-weight:700; font-size:14px; cursor:pointer; margin-top:4px;
+  }
+  .auth-submit:disabled{background:#C9D3DE; cursor:not-allowed;}
+
+  .auth-divider{
+    display:flex; align-items:center; gap:10px; margin:18px 16px;
+    color:var(--ink-soft); font-size:12px;
+  }
+  .auth-divider::before, .auth-divider::after{
+    content:""; flex:1; height:1px; background:var(--line);
+  }
+
+  .auth-guest{
+    text-align:center; padding:0 16px 30px;
+  }
+  .auth-guest p{font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin-bottom:10px;}
+
+  .auth-footer{
+    text-align:center; padding:16px; border-top:1px solid var(--line);
+    font-size:12px; color:var(--ink-soft);
+  }
+  .auth-footer a{color:var(--navy); font-weight:600;}
+
+  .forgot-link{
+    font-size:12px; color:var(--navy); font-weight:600; cursor:pointer;
+    background:none; border:none; text-decoration:underline;
+  }
+  .forgot-link:hover{color:var(--orange);}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--navy); color:#fff; padding:10px 18px; border-radius:99px;
+    font-size:12.5px; font-weight:600; z-index:400;
+    opacity:0; pointer-events:none; transition:opacity 0.25s ease, transform 0.25s ease;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-header">
+    <div class="logo">U</div>
+    <h1>Welcome to UTMESchools</h1>
+    <p>Practice JAMB past questions and track your progress</p>
+  </div>
+
+  <div class="auth-tabs">
+    <button class="auth-tab active" data-form="login">Log In</button>
+    <button class="auth-tab" data-form="signup">Sign Up</button>
+  </div>
+
+  <form class="auth-form" id="loginForm">
+    <div class="form-group">
+      <label for="loginEmail">Email address</label>
+      <input type="email" id="loginEmail" placeholder="you@example.com" required>
+      <div class="error">Please enter a valid email</div>
+    </div>
+    <div class="form-group">
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" placeholder="Enter your password" required>
+      <div class="error">Password is required</div>
+    </div>
+    <div style="text-align:right; margin-bottom:12px;">
+      <button type="button" class="forgot-link" id="forgotPasswordBtn">Forgot password?</button>
+    </div>
+    <button type="submit" class="auth-submit" id="loginBtn">Log In</button>
+  </form>
+
+  <form class="auth-form" id="signupForm" style="display:none;">
+    <div class="form-group">
+      <label for="signupName">Full name</label>
+      <input type="text" id="signupName" placeholder="John Doe" required>
+      <div class="error">Please enter your full name</div>
+    </div>
+    <div class="form-group">
+      <label for="signupEmail">Email address</label>
+      <input type="email" id="signupEmail" placeholder="you@example.com" required>
+      <div class="error">Please enter a valid email</div>
+    </div>
+    <div class="form-group">
+      <label for="signupPassword">Password</label>
+      <input type="password" id="signupPassword" placeholder="Min 8 characters" required minlength="8">
+      <div class="hint">Must be at least 8 characters</div>
+      <div class="error">Password must be at least 8 characters</div>
+    </div>
+    <button type="submit" class="auth-submit" id="signupBtn">Create Account</button>
+  </form>
+
+  <div class="auth-divider">or</div>
+
+  <div class="auth-guest">
+    <p>You can practice up to 5 free questions per subject without an account.</p>
+    <a href="select-subjects.html" class="btn btn-ghost btn-block btn-sm">Continue as guest</a>
+  </div>
+
+  <div class="auth-footer">
+    By continuing, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="auth.js"></script>
+</body>
+      </html>
