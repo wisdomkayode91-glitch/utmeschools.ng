@@ -1,7 +1,3 @@
-/* ============================================================
-   UTMESchools v2 — select-subjects.js (PART 1)
-   ============================================================ */
-
 var ALL_SUBJECTS = [
   { id: 'english',     name: 'English Language',       icon: '🔤', bg: '#E8F1FF', fg: '#1F5FBF', max: 100 },
   { id: 'accounts',    name: 'Accounts',               icon: '🧾', bg: '#E7F8EF', fg: '#0C8C58', max: 60  },
@@ -387,11 +383,7 @@ function closeCalc() {
 
 function updateCalcDisplay() {
   document.getElementById('calcDisplay').textContent = calcDisplay;
-   }/* ============================================================
-   UTMESchools v2 — select-subjects.js (PART 2)
-   ============================================================ */
-
-function calcPress(val) {
+   }/*function calcPress(val) {
   if (val === 'C') {
     calcDisplay = '0'; calcExpr = ''; calcJustEvaled = false;
   } else if (val === 'DEL') {
