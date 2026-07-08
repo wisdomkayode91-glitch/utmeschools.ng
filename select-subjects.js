@@ -472,9 +472,7 @@ function closeCalc() {
 
 function updateCalcDisplay() {
   document.getElementById('calcDisplay').textContent = calcDisplay;
-}
-
-function calcPress(val) {
+   }function calcPress(val) {
   if (val === 'C') {
     calcDisplay = '0'; calcExpr = ''; calcJustEvaled = false;
   } else if (val === 'DEL') {
@@ -482,8 +480,9 @@ function calcPress(val) {
     calcExpr    = calcExpr.length > 1    ? calcExpr.slice(0, -1)    : '';
   } else if (val === '=') {
     try {
-      const safe   = calcExpr
-        .replace(/×/g, '*').replace(/÷/g, '/')
+      const safe = calcExpr
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
         .replace(/[^0-9+\-*/.()%]/g, '');
       const result = Function('"use strict"; return (' + safe + ')')();
       calcDisplay  = isFinite(result) ? String(parseFloat(result.toFixed(8))) : 'Error';
@@ -536,6 +535,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const calcOpenBtn = document.getElementById('calcOpenBtn');
   if (calcOpenBtn) calcOpenBtn.addEventListener('click', openCalc);
+
+  /* Calc overlay tap-outside */
+  document.getElementById('calcOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('calcOverlay')) closeCalc();
+  });
 
   /* Initial render — English already selected */
   renderConfigList();
