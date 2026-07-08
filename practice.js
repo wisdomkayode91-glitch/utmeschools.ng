@@ -98,7 +98,7 @@ subjectIds.forEach(sid => {
   const cfg   = subjectConfig[sid];
   const count = Math.min(cfg.count, 5); // demo: max 5 per subject
   const subjQs = PLACEHOLDER_QUESTIONS.filter(q => q.subjectId === sid);
-
+  
   if (subjQs.length === 0) {
     for (let i = 0; i < Math.min(count, 3); i++) {
       allQuestions.push({
@@ -446,9 +446,7 @@ function closeCalc() { document.getElementById('calcOverlay').classList.remove('
 
 function updateCalcDisplay() {
   document.getElementById('calcDisplay').textContent = calcDisplay;
-}
-
-function calcPress(val) {
+     }function calcPress(val) {
   if (val === 'C') {
     calcDisplay = '0'; calcExpr = ''; calcJustEvaled = false;
   } else if (val === 'DEL') {
@@ -456,15 +454,21 @@ function calcPress(val) {
     calcExpr    = calcExpr.length > 1    ? calcExpr.slice(0, -1)    : '';
   } else if (val === '=') {
     try {
-      const safe   = calcExpr.replace(/×/g, '*').replace(/÷/g, '/').replace(/[^0-9+\-*/.()%]/g, '');
+      const safe = calcExpr
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/[^0-9+\-*/.()%]/g, '');
       const result = Function('"use strict"; return (' + safe + ')')();
       calcDisplay  = isFinite(result) ? String(parseFloat(result.toFixed(8))) : 'Error';
       calcExpr     = calcDisplay;
       calcJustEvaled = true;
-    } catch (e) { calcDisplay = 'Error'; calcExpr = ''; }
+    } catch (e) {
+      calcDisplay = 'Error'; calcExpr = '';
+    }
   } else if (['+', '-', '×', '÷', '%'].includes(val)) {
     const opMap = { '×': '*', '÷': '/' };
-    calcExpr   += (opMap[val] || val);
+    const op    = opMap[val] || val;
+    calcExpr   += op;
     calcDisplay = calcExpr;
     calcJustEvaled = false;
   } else {
