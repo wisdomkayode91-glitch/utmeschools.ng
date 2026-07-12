@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bookmarks — UTMESchools</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: var(--appbar-h);
+  z-index: 80;
+  align-items: center;
+}
+.bk-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 10px;
+}
+.bk-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.bk-icon {
+  width: 34px; height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--paper-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.bk-body { flex: 1; min-width: 0; }
+.bk-question {
+  font-size: 14px; font-weight: 500;
+  line-height: 1.5; color: var(--ink);
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bk-meta { font-size: 12px; color: var(--ink-soft); }
+.bk-actions {
+  display: flex; gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.options-preview {
+  display: flex; flex-direction: column; gap: 4px;
+  margin: 8px 0;
+}
+.opt-line {
+  display: flex; gap: 8px;
+  font-size: 13px; color: var(--ink-soft);
+  padding: 4px 0;
+}
+.opt-line.is-correct {
+  color: var(--green); font-weight: 600;
+}
+.opt-letter {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.expl-box {
+  background: #FFF8E6;
+  border: 1px solid #F0D58C;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin-top: 8px;
+  display: none;
+}
+.expl-box.open { display: block; }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <a href="dashboard.html" class="appbar-back">←</a>
+  <div class="appbar-title">My Bookmarks</div>
+  <button class="appbar-burger" id="menuOpenBtn">☰</button>
+</header>
+
+<!-- HAMBURGER MENU -->
+<div class="menu-overlay" id="menuOverlay">
+  <nav class="menu-panel">
+    <div class="menu-header" style="position:relative;">
+      <div class="menu-brand">UTME<span>Schools</span></div>
+      <div class="menu-tagline">Practice like it's exam day.</div>
+      <button class="menu-close" id="menuCloseBtn">×</button>
+    </div>
+    <div class="menu-nav">
+      <a href="index.html" class="menu-item"><div class="menu-item-icon">🏠</div>Home</a>
+      <a href="select-subjects.html" class="menu-item"><div class="menu-item-icon">📚</div>Practice</a>
+      <a href="dashboard.html" class="menu-item"><div class="menu-item-icon">📊</div>My Dashboard</a>
+      <a href="bookmarks.html" class="menu-item"><div class="menu-item-icon">🔖</div>Bookmarks</a>
+      <a href="discussion.html" class="menu-item"><div class="menu-item-icon">💬</div>Discussion</a>
+      <div class="menu-divider"></div>
+      <a href="auth.html" class="menu-item" id="menuLoginItem"><div class="menu-item-icon">👤</div>Log In / Sign Up</a>
+      <div class="menu-item" id="menuLogoutItem" style="display:none;cursor:pointer;">
+        <div class="menu-item-icon">🚪</div><span id="menuLogoutBtn">Log Out</span>
+      </div>
+    </div>
+    <div class="menu-footer">Not affiliated with JAMB. © 2026 UTMESchools</div>
+  </nav>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <select class="cr-select" id="subjectFilter" style="flex:1;">
+    <option value="">All subjects</option>
+  </select>
+  <button class="btn btn-ghost btn-sm" id="clearAllBtn">Clear All</button>
+</div>
+
+<!-- COUNT BAR -->
+<div style="padding:10px 14px; font-size:13px; color:var(--ink-soft); background:var(--paper); border-bottom:1px solid var(--line);">
+  <span id="bkCount">0</span> bookmarks saved
+</div>
+
+<!-- BOOKMARK LIST -->
+<div class="page-body" id="bookmarkList" style="padding-top:14px;">
+  <!-- filled by JS -->
+</div>
+
+<!-- CLEAR ALL DIALOG -->
+<div class="dialog-overlay" id="clearDialog">
+  <div class="dialog">
+    <div class="dialog-title">Clear all bookmarks?</div>
+    <div class="dialog-body">All saved bookmarks will be permanently deleted. This cannot be undone.</div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="clearCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="clearConfirmBtn" style="background:var(--red);">Clear All</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script src="bookmarks.js"></script>
+</body>
+</html>

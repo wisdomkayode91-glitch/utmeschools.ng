@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In — UTMESchools</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--paper);
+}
+.auth-logo {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--navy);
+  margin-bottom: 4px;
+  text-align: center;
+}
+.auth-logo span { color: var(--orange); }
+.auth-tagline { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 28px; text-align: center; }
+.auth-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: var(--shadow-card);
+}
+.auth-tabs { display: flex; border-bottom: 2px solid var(--line); margin-bottom: 20px; }
+.auth-tab {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.auth-tab.active { color: var(--navy); border-bottom-color: var(--orange); }
+.auth-form { display: flex; flex-direction: column; gap: 14px; }
+.forgot-link { font-size: 12.5px; color: var(--ink-soft); text-align: right; margin-top: -8px; }
+.guest-link { text-align: center; margin-top: 16px; font-size: 13px; color: var(--ink-soft); }
+.guest-link a { color: var(--navy); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-logo">UTME<span>Schools</span></div>
+  <div class="auth-tagline">Welcome! Practice JAMB. Pass JAMB.</div>
+
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <div class="auth-tab active" data-form="login">Log In</div>
+      <div class="auth-tab" data-form="signup">Sign Up</div>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <form class="auth-form" id="loginForm">
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input class="form-input" type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+        <div class="form-error">Enter a valid email address</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password">
+        <div class="form-error">Password is required</div>
+      </div>
+      <div class="forgot-link"><a href="#" style="color:var(--navy);">Forgot password?</a></div>
+      <button type="submit" class="btn btn-primary btn-block">Log In</button>
+    </form>
+
+    <!-- SIGNUP FORM -->
+    <form class="auth-form" id="signupForm" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Full name</label>
+        <input class="form-input" type="text" id="signupName" placeholder="Your full name" autocomplete="name">
+        <div class="form-error">Enter your full name</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input class="form-input" type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email">
+        <div class="form-error">Enter a valid email address</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password (min 6 characters)</label>
+        <input class="form-input" type="password" id="signupPassword" placeholder="Create a password" autocomplete="new-password">
+        <div class="form-error">Password must be at least 6 characters</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+    </form>
+
+    <div class="guest-link">
+      <a href="select-subjects.html">Continue as guest →</a>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script src="auth.js"></script>
+</body>
+</html>

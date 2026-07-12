@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — UTMESchools</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.admin-login { max-width:360px; margin:60px auto; padding:20px; }
+.stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:14px; }
+.stat-box { background:var(--white); border:1px solid var(--line); border-radius:var(--radius-md); padding:14px; text-align:center; }
+.stat-box-num { font-family:var(--font-mono); font-size:24px; font-weight:700; color:var(--navy); }
+.stat-box-label { font-size:12px; color:var(--ink-soft); margin-top:2px; }
+.student-row { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); background:var(--white); }
+.student-avatar { width:36px; height:36px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; flex-shrink:0; }
+.student-info { flex:1; min-width:0; }
+.student-name { font-size:13.5px; font-weight:600; color:var(--ink); }
+.student-email { font-size:12px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <a href="index.html" class="appbar-back">←</a>
+  <div class="appbar-title">Admin Panel</div>
+  <button class="appbar-burger" id="menuOpenBtn">☰</button>
+</header>
+
+<div class="menu-overlay" id="menuOverlay">
+  <nav class="menu-panel">
+    <div class="menu-header" style="position:relative;">
+      <div class="menu-brand">UTME<span>Schools</span></div>
+      <button class="menu-close" id="menuCloseBtn">×</button>
+    </div>
+    <div class="menu-nav">
+      <a href="index.html" class="menu-item"><div class="menu-item-icon">🏠</div>Home</a>
+      <a href="dashboard.html" class="menu-item"><div class="menu-item-icon">📊</div>Dashboard</a>
+      <div class="menu-divider"></div>
+      <a href="auth.html" class="menu-item" id="menuLoginItem"><div class="menu-item-icon">👤</div>Log In</a>
+      <div class="menu-item" id="menuLogoutItem" style="display:none;cursor:pointer;"><div class="menu-item-icon">🚪</div><span id="menuLogoutBtn">Log Out</span></div>
+    </div>
+    <div class="menu-footer">Not affiliated with JAMB. © 2026 UTMESchools</div>
+  </nav>
+</div>
+
+<!-- PASSWORD GATE -->
+<div id="adminGate" style="display:none;">
+  <div class="admin-login">
+    <div class="card">
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:700;margin-bottom:14px;">🔐 Admin Login</div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <input class="form-input" type="password" id="adminPass" placeholder="Enter admin password">
+      </div>
+      <button class="btn btn-primary btn-block" id="adminLoginBtn">Enter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN CONTENT -->
+<div id="adminContent" style="display:none;">
+
+  <!-- Stats -->
+  <div class="stat-grid">
+    <div class="stat-box"><div class="stat-box-num" id="statTotal">0</div><div class="stat-box-label">Total Users</div></div>
+    <div class="stat-box"><div class="stat-box-num" id="statPaid">0</div><div class="stat-box-label">Paid Users</div></div>
+    <div class="stat-box"><div class="stat-box-num" id="statAttempts">0</div><div class="stat-box-label">Attempts</div></div>
+  </div>
+
+  <!-- Season date -->
+  <div class="page-body" style="padding-bottom:0;">
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px;">📅 Season end date</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="date" id="seasonDate" class="form-input" style="flex:1;">
+        <button class="btn btn-navy btn-sm" id="saveSeasonBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="page-body" style="padding-bottom:0;">
+    <div class="form-group">
+      <input class="form-input" type="text" id="studentSearch" placeholder="🔍 Search by name or email...">
+    </div>
+  </div>
+
+  <!-- Student list -->
+  <div style="margin-top:10px; background:var(--white); border-top:1px solid var(--line);">
+    <div id="studentList"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Dashboard — UTMESchools</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.dash-tab-content { display: none; }
+.dash-tab-content.active { display: block; }
+.hist-card {
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius-md); padding: 14px;
+  box-shadow: var(--shadow-card); margin-bottom: 10px;
+}
+.hist-head { display: flex; align-items: center; gap: 8px; }
+.hist-pct {
+  font-family: var(--font-mono); font-size: 20px; font-weight: 700;
+}
+.hist-info { flex: 1; }
+.hist-subjects { font-size: 12.5px; color: var(--ink-soft); }
+.hist-date { font-size: 11.5px; color: var(--ink-soft); }
+.hist-expand-btn {
+  font-size: 18px; color: var(--ink-soft);
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--paper-dim);
+}
+.hist-actions {
+  display: none; flex-wrap: wrap; gap: 8px;
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.hist-actions.open { display: flex; }
+
+.bk-card {
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius-md); padding: 14px;
+  box-shadow: var(--shadow-card); margin-bottom: 10px;
+}
+.bk-head { display: flex; align-items: flex-start; gap: 10px; }
+.bk-icon {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  background: var(--paper-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.bk-text {
+  font-size: 14px; font-weight: 500; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.bk-meta { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+.bk-actions { display: flex; gap: 8px; margin-top: 10px; }
+.filter-row {
+  display: flex; gap: 8px; padding: 10px 14px;
+  background: var(--white); border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+</style>
+</head>
+<body>
+
+<!-- APP BAR -->
+<header class="appbar">
+  <a href="index.html" class="appbar-back">←</a>
+  <div class="appbar-title">My Dashboard</div>
+  <button class="appbar-burger" id="menuOpenBtn">☰</button>
+</header>
+
+<!-- HAMBURGER MENU -->
+<div class="menu-overlay" id="menuOverlay">
+  <nav class="menu-panel">
+    <div class="menu-header" style="position:relative;">
+      <div class="menu-brand">UTME<span>Schools</span></div>
+      <div class="menu-tagline">Practice like it's exam day.</div>
+      <button class="menu-close" id="menuCloseBtn">×</button>
+    </div>
+    <div class="menu-nav">
+      <a href="index.html" class="menu-item"><div class="menu-item-icon">🏠</div>Home</a>
+      <a href="select-subjects.html" class="menu-item"><div class="menu-item-icon">📚</div>Practice</a>
+      <a href="dashboard.html" class="menu-item"><div class="menu-item-icon">📊</div>My Dashboard</a>
+      <a href="dashboard.html#bookmarks" class="menu-item"><div class="menu-item-icon">🔖</div>Bookmarks</a>
+      <a href="discussion.html" class="menu-item"><div class="menu-item-icon">💬</div>Discussion</a>
+      <div class="menu-divider"></div>
+      <a href="auth.html" class="menu-item" id="menuLoginItem"><div class="menu-item-icon">👤</div>Log In / Sign Up</a>
+      <div class="menu-item" id="menuLogoutItem" style="display:none;cursor:pointer;"><div class="menu-item-icon">🚪</div><span id="menuLogoutBtn">Log Out</span></div>
+    </div>
+    <div class="menu-footer">Not affiliated with JAMB. © 2026 UTMESchools</div>
+  </nav>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" data-tab="history">📊 Result History</div>
+  <div class="tab" data-tab="bookmarks">🔖 Bookmarks</div>
+</div>
+
+<!-- ---- HISTORY TAB ---- -->
+<div id="tab-history" class="dash-tab-content active">
+  <div class="filter-row">
+    <select class="cr-select" id="histFilter" style="flex:1;">
+      <option value="">All subjects</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" id="deleteAllHistBtn">Delete All</button>
+  </div>
+  <div class="page-body" id="historyList">
+    <div class="empty-state">
+      <div class="empty-state-icon">📊</div>
+      <div class="empty-state-title">No results yet</div>
+      <div class="empty-state-body">Complete a practice session and your results will appear here.</div>
+      <a href="select-subjects.html" class="btn btn-primary" style="margin-top:16px;">Start practising →</a>
+    </div>
+  </div>
+</div>
+
+<!-- ---- BOOKMARKS TAB ---- -->
+<div id="tab-bookmarks" class="dash-tab-content">
+  <div class="filter-row">
+    <select class="cr-select" id="bkFilter" style="flex:1;">
+      <option value="">All subjects</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" id="deleteAllBkBtn">Delete All</button>
+  </div>
+  <div class="page-body" id="bookmarkList">
+    <div class="empty-state">
+      <div class="empty-state-icon">🔖</div>
+      <div class="empty-state-title">No bookmarks yet</div>
+      <div class="empty-state-body">Tap the 🔖 button while practising to save questions here.</div>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM DIALOG -->
+<div class="dialog-overlay" id="deleteDialog">
+  <div class="dialog">
+    <div class="dialog-title">Delete all?</div>
+    <div class="dialog-body" id="deleteDialogBody">This cannot be undone.</div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="deleteCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="deleteConfirmBtn" style="background:var(--red);">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

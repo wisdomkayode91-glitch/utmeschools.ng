@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Select Subjects — UTMESchools</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: var(--appbar-h);
+  z-index: 80;
+}
+.picked-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--navy);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+.config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+.config-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+}
+.config-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.config-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.config-name {
+  flex: 1;
+  font-weight: 600;
+  font-size: 14px;
+}
+.config-remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #FFF0EB;
+  color: var(--red);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.cr-label { font-size: 13px; color: var(--ink-soft); font-weight: 500; }
+.cr-val { font-size: 13px; font-weight: 600; color: var(--navy); }
+.topic-edit { cursor: pointer; }
+.options-card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin: 0 14px 14px;
+  box-shadow: var(--shadow-card);
+}
+.options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.options-row:last-child { border-bottom: none; }
+.options-label { font-size: 14px; font-weight: 500; color: var(--ink); }
+.timer-inputs { display: flex; align-items: center; gap: 6px; }
+.timer-input {
+  width: 52px;
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+}
+.timer-section { padding: 10px 0; border-bottom: 1px solid var(--line); }
+#timerSection { display: block; }
+</style>
+</head>
+<body>
+
+<!-- APP BAR -->
+<header class="appbar">
+  <a href="index.html" class="appbar-back" aria-label="Back">←</a>
+  <div class="appbar-title">Select Subjects</div>
+  <button class="appbar-burger" id="menuOpenBtn" aria-label="Menu">☰</button>
+</header>
+
+<!-- HAMBURGER MENU -->
+<div class="menu-overlay" id="menuOverlay">
+  <nav class="menu-panel">
+    <div class="menu-header" style="position:relative;">
+      <div class="menu-brand">UTME<span>Schools</span></div>
+      <div class="menu-tagline">Practice like it's exam day.</div>
+      <button class="menu-close" id="menuCloseBtn">×</button>
+    </div>
+    <div class="menu-nav">
+      <a href="index.html" class="menu-item"><div class="menu-item-icon">🏠</div>Home</a>
+      <a href="select-subjects.html" class="menu-item"><div class="menu-item-icon">📚</div>Practice</a>
+      <a href="dashboard.html" class="menu-item"><div class="menu-item-icon">📊</div>My Dashboard</a>
+      <a href="dashboard.html#bookmarks" class="menu-item"><div class="menu-item-icon">🔖</div>Bookmarks</a>
+      <a href="discussion.html" class="menu-item"><div class="menu-item-icon">💬</div>Discussion</a>
+      <div class="menu-divider"></div>
+      <a href="auth.html" class="menu-item" id="menuLoginItem"><div class="menu-item-icon">👤</div>Log In / Sign Up</a>
+      <div class="menu-item" id="menuLogoutItem" style="display:none; cursor:pointer;">
+        <div class="menu-item-icon">🚪</div><span id="menuLogoutBtn">Log Out</span>
+      </div>
+    </div>
+    <div class="menu-footer">Not affiliated with JAMB. © 2026 UTMESchools</div>
+  </nav>
+</div>
+
+<!-- ACTIONS BAR -->
+<div class="actions-bar">
+  <button class="btn btn-ghost btn-sm" id="pickSubjectsBtn" style="flex:1;">
+    📚 Select Subjects <span class="picked-count" id="pickedCount">1</span>
+  </button>
+  <button class="btn btn-green" id="startBtn" style="min-width:90px;">Start ▶</button>
+</div>
+
+<!-- EMPTY STATE -->
+<div class="empty-state" id="emptyState" style="display:none;">
+  <div class="empty-state-icon">📚</div>
+  <div class="empty-state-title">No subjects selected</div>
+  <div class="empty-state-body">Tap "Select Subjects" above to choose which subjects you want to practise.</div>
+</div>
+
+<!-- CONFIG CARDS -->
+<div class="config-list" id="configList"></div>
+
+<!-- OPTIONS CARD -->
+<div class="options-card" id="optionsCard" style="display:none;">
+  <div style="font-family:var(--font-display); font-size:14px; font-weight:700; margin-bottom:10px;">Session options</div>
+
+  <div class="options-row">
+    <div class="options-label">📋 Mode</div>
+    <div class="mode-toggle">
+      <button class="active" data-mode="practice">Practice</button>
+      <button data-mode="mock">Mock</button>
+      <button data-mode="study">Study</button>
+    </div>
+  </div>
+
+  <div class="options-row" id="timerSection">
+    <div class="options-label">⏱ Timer</div>
+    <div class="timer-inputs">
+      <input class="timer-input" type="number" id="timerH" value="2" min="0" max="9" maxlength="1">
+      <span style="font-size:13px;color:var(--ink-soft);">h</span>
+      <input class="timer-input" type="number" id="timerM" value="0" min="0" max="59" maxlength="2">
+      <span style="font-size:13px;color:var(--ink-soft);">m</span>
+    </div>
+  </div>
+
+  <div class="options-row">
+    <div class="options-label">🔀 Shuffle questions</div>
+    <div class="switch on" id="shuffleQSwitch"></div>
+  </div>
+
+  <div class="options-row">
+    <div class="options-label">🔀 Shuffle options</div>
+    <div class="switch" id="shuffleOSwitch"></div>
+  </div>
+
+  <div class="options-row" style="border-bottom:none;">
+    <div class="options-label">🧮 Calculator</div>
+    <button class="btn btn-ghost btn-sm" id="calcOpenBtn">Open</button>
+  </div>
+</div>
+
+<!-- SUBJECT PICKER SHEET -->
+<div class="sheet-overlay" id="sheetOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Pick subjects to practise</div>
+    <div class="sheet-search">
+      <input type="text" id="sheetSearch" placeholder="🔍 Search subjects..." autocomplete="off">
+    </div>
+    <div class="sheet-body" id="sheetList"></div>
+    <div class="sheet-footer">
+      <button class="btn btn-ghost" id="sheetCancelBtn">Cancel</button>
+      <button class="btn btn-navy" id="sheetSelectAllBtn">Select All</button>
+      <button class="btn btn-primary" id="sheetOkBtn">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOPIC PICKER SHEET -->
+<div class="sheet-overlay" id="topicSheetOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="topicSheetTitle">Select Topics</div>
+    <div class="sheet-body" id="topicSheetList"></div>
+    <div class="sheet-footer">
+      <button class="btn btn-ghost" id="topicSheetCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="topicSheetOkBtn">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- CALCULATOR OVERLAY -->
+<div class="calc-overlay" id="calcOverlay">
+  <div class="calc-panel">
+    <div class="calc-top">
+      <div class="calc-top-title">🧮 Calculator</div>
+      <button class="calc-close-btn" id="calcCloseBtn">×</button>
+    </div>
+    <div class="calc-display" id="calcDisplay">0</div>
+    <div class="calc-grid">
+      <button class="calc-btn clr" data-val="C">C</button>
+      <button class="calc-btn fn" data-val="√">√</button>
+      <button class="calc-btn fn" data-val="%">%</button>
+      <button class="calc-btn del" data-val="DEL">⌫</button>
+      <button class="calc-btn" data-val="7">7</button>
+      <button class="calc-btn" data-val="8">8</button>
+      <button class="calc-btn" data-val="9">9</button>
+      <button class="calc-btn op" data-val="÷">÷</button>
+      <button class="calc-btn" data-val="4">4</button>
+      <button class="calc-btn" data-val="5">5</button>
+      <button class="calc-btn" data-val="6">6</button>
+      <button class="calc-btn op" data-val="×">×</button>
+      <button class="calc-btn" data-val="1">1</button>
+      <button class="calc-btn" data-val="2">2</button>
+      <button class="calc-btn" data-val="3">3</button>
+      <button class="calc-btn op" data-val="-">−</button>
+      <button class="calc-btn" data-val="0" style="grid-column:span 2;">0</button>
+      <button class="calc-btn" data-val=".">.</button>
+      <button class="calc-btn op" data-val="+">+</button>
+      <button class="calc-btn eq" data-val="=" style="grid-column:span 4;">=</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script src="select-subjects.js"></script>
+</body>
+</html>

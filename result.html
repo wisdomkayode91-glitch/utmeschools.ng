@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Result — UTMESchools</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+.score-hero {
+  background: var(--navy);
+  padding: 28px 20px 24px;
+  text-align: center;
+  color: #fff;
+}
+.score-ring-wrap {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 110px; height: 110px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  border: 4px solid rgba(255,255,255,0.2);
+  margin-bottom: 12px;
+  position: relative;
+}
+.score-pct {
+  font-family: var(--font-mono);
+  font-size: 28px; font-weight: 700; color: var(--gold);
+}
+.score-label { font-size: 13px; opacity: 0.7; margin-top: 2px; }
+.hero-meta { font-size: 12.5px; opacity: 0.6; margin-top: 8px; }
+
+/* Subject bars */
+.subj-bar-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+}
+.subj-bar-row:last-child { border-bottom: none; }
+.subj-bar-icon {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  background: var(--paper-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.subj-bar-info { flex: 1; min-width: 0; }
+.subj-bar-name { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subj-bar-score { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); }
+.subj-bar-track { flex: 2; }
+
+/* Topic table */
+.topic-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.topic-table th { text-align: left; padding: 8px 6px; color: var(--ink-soft); font-size: 12px; font-weight: 600; border-bottom: 2px solid var(--line); }
+.topic-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); }
+.topic-table tr:last-child td { border-bottom: none; }
+.topic-pct { font-family: var(--font-mono); font-weight: 700; }
+
+/* Action buttons */
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 14px;
+}
+.action-btn {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px 10px;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s;
+  text-decoration: none;
+  display: block;
+}
+.action-btn:hover { background: var(--paper-dim); }
+.action-btn-icon { font-size: 24px; margin-bottom: 4px; }
+.action-btn-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+
+/* Correction panel */
+.correction-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: var(--paper);
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+.correction-overlay.open { transform: translateX(0); }
+.correction-appbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--navy);
+  height: 52px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+.correction-list { padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.correction-item {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  box-shadow: var(--shadow-card);
+}
+.corr-num { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+.corr-text { font-size: 14px; font-weight: 500; margin-bottom: 10px; line-height: 1.5; }
+.corr-options { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.corr-opt {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 7px 10px; border-radius: var(--radius-sm);
+  font-size: 13.5px;
+}
+.corr-opt.correct { background: #E8F8F1; color: #0A6B40; font-weight: 600; }
+.corr-opt.wrong   { background: #FDECEA; color: var(--red); }
+.corr-opt.neutral { background: var(--paper-dim); color: var(--ink-soft); }
+.corr-opt-letter { font-family: var(--font-mono); font-weight: 700; flex-shrink: 0; }
+.corr-expl {
+  background: #FFF8E6; border: 1px solid #F0D58C;
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  font-size: 13px; line-height: 1.55; color: var(--ink);
+}
+
+/* Share sheet */
+.share-text-box {
+  background: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px; font-size: 13.5px;
+  line-height: 1.6; color: var(--ink);
+  white-space: pre-wrap; word-break: break-word;
+  margin-bottom: 12px;
+}
+</style>
+</head>
+<body>
+
+<!-- APP BAR -->
+<header class="appbar">
+  <a href="select-subjects.html" class="appbar-back" aria-label="Back">←</a>
+  <div class="appbar-title">Your Result</div>
+  <button class="appbar-burger" id="menuOpenBtn" aria-label="Menu">☰</button>
+</header>
+
+<!-- HAMBURGER MENU -->
+<div class="menu-overlay" id="menuOverlay">
+  <nav class="menu-panel">
+    <div class="menu-header" style="position:relative;">
+      <div class="menu-brand">UTME<span>Schools</span></div>
+      <div class="menu-tagline">Practice like it's exam day.</div>
+      <button class="menu-close" id="menuCloseBtn">×</button>
+    </div>
+    <div class="menu-nav">
+      <a href="index.html" class="menu-item"><div class="menu-item-icon">🏠</div>Home</a>
+      <a href="select-subjects.html" class="menu-item"><div class="menu-item-icon">📚</div>Practice</a>
+      <a href="dashboard.html" class="menu-item"><div class="menu-item-icon">📊</div>My Dashboard</a>
+      <a href="dashboard.html#bookmarks" class="menu-item"><div class="menu-item-icon">🔖</div>Bookmarks</a>
+      <a href="discussion.html" class="menu-item"><div class="menu-item-icon">💬</div>Discussion</a>
+      <div class="menu-divider"></div>
+      <a href="auth.html" class="menu-item" id="menuLoginItem"><div class="menu-item-icon">👤</div>Log In / Sign Up</a>
+      <div class="menu-item" id="menuLogoutItem" style="display:none;cursor:pointer;"><div class="menu-item-icon">🚪</div><span id="menuLogoutBtn">Log Out</span></div>
+    </div>
+    <div class="menu-footer">Not affiliated with JAMB. © 2026 UTMESchools</div>
+  </nav>
+</div>
+
+<!-- SCORE HERO -->
+<div class="score-hero">
+  <div class="score-ring-wrap">
+    <div>
+      <div class="score-pct" id="scorePct">—%</div>
+      <div class="score-label" id="scoreRaw">— / —</div>
+    </div>
+  </div>
+  <div style="font-family:var(--font-display); font-size:16px; font-weight:700;" id="scoreTitle">Result</div>
+  <div class="hero-meta" id="heroMeta"></div>
+</div>
+
+<!-- SUBJECT BREAKDOWN -->
+<div class="page-body" style="padding-bottom:0;">
+  <div class="section-title" style="margin-bottom:8px;">Subject breakdown</div>
+  <div class="card">
+    <div id="subjectBars"></div>
+  </div>
+</div>
+
+<!-- TOPIC PERFORMANCE -->
+<div class="page-body" style="padding-bottom:0;">
+  <div class="section-title" style="margin-bottom:8px;">Topic performance <span style="font-size:12px;font-weight:400;color:var(--ink-soft);">(weakest first)</span></div>
+  <div class="card" style="overflow:auto;">
+    <table class="topic-table" id="topicTable">
+      <thead>
+        <tr><th>#</th><th>Topic</th><th>%</th><th>Q</th></tr>
+      </thead>
+      <tbody id="topicTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- COACH MODE -->
+<div class="page-body" style="padding-bottom:0;">
+  <div class="card" style="background:linear-gradient(135deg,var(--navy),var(--navy-light)); color:#fff; border:none;">
+    <div style="font-family:var(--font-display); font-size:15px; font-weight:700; margin-bottom:8px;">🎯 Coach Mode</div>
+    <div id="coachText" style="font-size:13.5px; opacity:.9; line-height:1.6;"></div>
+  </div>
+</div>
+
+<!-- ACTION BUTTONS -->
+<div class="action-grid">
+  <div class="action-btn" id="viewCorrectionBtn">
+    <div class="action-btn-icon">📖</div>
+    <div class="action-btn-label">View Corrections</div>
+  </div>
+  <a href="select-subjects.html" class="action-btn">
+    <div class="action-btn-icon">🔄</div>
+    <div class="action-btn-label">Try Again</div>
+  </a>
+  <div class="action-btn" id="shareBtn">
+    <div class="action-btn-icon">📤</div>
+    <div class="action-btn-label">Share Result</div>
+  </div>
+  <a href="dashboard.html" class="action-btn">
+    <div class="action-btn-icon">📊</div>
+    <div class="action-btn-label">Dashboard</div>
+  </a>
+</div>
+
+<div style="height:20px;"></div>
+
+<!-- CORRECTION OVERLAY -->
+<div class="correction-overlay" id="correctionOverlay">
+  <div class="correction-appbar">
+    <button class="appbar-back" id="corrCloseBtn" style="background:rgba(255,255,255,0.1);">←</button>
+    <div class="appbar-title">View Corrections</div>
+  </div>
+  <div class="correction-list" id="correctionList"></div>
+</div>
+
+<!-- SHARE SHEET -->
+<div class="sheet-overlay" id="shareOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Share your result</div>
+    <div class="sheet-body" style="padding:16px;">
+      <div class="share-text-box" id="shareTextBox"></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-ghost" id="copyShareBtn" style="flex:1;">📋 Copy</button>
+        <a id="waShareBtn" href="#" target="_blank" class="btn btn-green" style="flex:1;">💬 WhatsApp</a>
+      </div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-navy btn-block" id="shareCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="shared.js"></script>
+<script src="result.js"></script>
+</body>
+</html>

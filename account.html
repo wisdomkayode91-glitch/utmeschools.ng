@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>My Account — UTMESchools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .profile-hero{
+    background:var(--navy); padding:28px 16px 22px; text-align:center; position:relative; overflow:hidden;
+  }
+  .profile-hero::before{
+    content:""; position:absolute; top:-80px; right:-60px;
+    width:200px; height:200px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,107,53,0.18), transparent 65%);
+  }
+  .profile-avatar{
+    width:72px; height:72px; border-radius:50%; margin:0 auto 12px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-size:28px; font-weight:800; color:#fff;
+    position:relative; z-index:1;
+  }
+  .profile-name{color:#fff; font-size:18px; font-weight:700; position:relative; z-index:1; margin-bottom:4px;}
+  .profile-email{color:#9FB0CB; font-size:12.5px; position:relative; z-index:1;}
+  .profile-badge{
+    display:inline-flex; align-items:center; gap:5px;
+    margin-top:10px; padding:5px 14px; border-radius:99px;
+    font-family:var(--font-mono); font-size:11px; font-weight:700;
+    position:relative; z-index:1;
+  }
+  .profile-badge.paid{background:var(--gold); color:var(--navy);}
+  .profile-badge.free{background:rgba(255,255,255,0.12); color:#C7D2E3;}
+
+  .account-stats{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:1px;
+    background:var(--line); border-bottom:1px solid var(--line);
+  }
+  .account-stat{
+    background:var(--white); padding:14px 8px; text-align:center;
+  }
+  .account-stat-num{
+    font-family:var(--font-mono); font-size:20px; font-weight:700; color:var(--navy);
+  }
+  .account-stat-label{font-size:10px; color:var(--ink-soft); margin-top:3px; line-height:1.3;}
+
+  .account-sec{padding:18px 14px 0;}
+  .account-sec-title{
+    font-size:11px; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.07em; color:var(--ink-soft); margin-bottom:10px;
+  }
+
+  .account-menu{
+    background:var(--white); border:1px solid var(--line); border-radius:var(--radius-md);
+    overflow:hidden; margin-bottom:14px;
+  }
+  .account-row{
+    display:flex; align-items:center; gap:12px;
+    padding:13px 14px; border-bottom:1px solid var(--line); cursor:pointer;
+    transition:background 0.1s;
+  }
+  .account-row:last-child{border-bottom:none;}
+  .account-row:active{background:var(--paper-dim);}
+  .account-row-icon{
+    width:32px; height:32px; border-radius:9px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:15px;
+  }
+  .account-row-info{flex:1; min-width:0;}
+  .account-row-label{font-size:13.5px; font-weight:600; color:var(--ink);}
+  .account-row-sub{font-size:11.5px; color:var(--ink-soft); margin-top:1px;}
+  .account-row-arrow{color:var(--ink-soft); font-size:14px; flex-shrink:0;}
+  .account-row-value{
+    font-family:var(--font-mono); font-size:11px; font-weight:700;
+    color:var(--ink-soft); flex-shrink:0;
+  }
+
+  .access-card{
+    background:var(--navy); border-radius:var(--radius-md); padding:16px; margin-bottom:14px;
+  }
+  .access-card h3{color:var(--gold); font-size:14px; margin-bottom:4px;}
+  .access-card p{color:#C7D2E3; font-size:12.5px; line-height:1.5; margin-bottom:12px;}
+  .access-card .btn{background:var(--orange); color:#fff; border:none;}
+
+  .paid-card{
+    background:#E7F8EF; border:1.5px solid #A8DFC0; border-radius:var(--radius-md);
+    padding:14px; margin-bottom:14px; display:flex; align-items:center; gap:12px;
+  }
+  .paid-card-icon{font-size:28px; flex-shrink:0;}
+  .paid-card-info h4{font-size:13.5px; color:#0C8C58; margin-bottom:3px;}
+  .paid-card-info p{font-size:12px; color:#0C8C58; opacity:0.8; line-height:1.4;}
+
+  .modal-overlay{
+    position:fixed; inset:0; z-index:300;
+    background:rgba(11,37,69,0.55);
+    display:flex; align-items:flex-end; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 0.2s ease;
+  }
+  .modal-overlay.open{opacity:1; pointer-events:auto;}
+  .modal-panel{
+    background:#fff; width:100%; max-width:460px;
+    border-radius:18px 18px 0 0; padding:20px 16px 32px;
+    transform:translateY(100%); transition:transform 0.22s ease;
+  }
+  .modal-overlay.open .modal-panel{transform:translateY(0);}
+  .modal-head{
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;
+  }
+  .modal-head h3{font-size:15px;}
+  .modal-head button{background:none; border:none; font-size:22px; color:var(--ink-soft); cursor:pointer;}
+  .modal-field{margin-bottom:12px;}
+  .modal-field label{
+    display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;
+  }
+  .modal-field input{
+    width:100%; padding:11px 13px; border:1.5px solid var(--line); border-radius:10px;
+    font-size:14px; font-family:inherit; background:var(--paper); color:var(--ink);
+  }
+  .modal-field input:focus{outline:none; border-color:var(--navy);}
+
+  .danger-row{
+    display:flex; align-items:center; gap:12px;
+    padding:13px 14px; border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .danger-row:last-child{border-bottom:none;}
+  .danger-row .account-row-label{color:#C0392B;}
+  .danger-row .account-row-icon{background:#FCE4E4;}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--navy); color:#fff; padding:10px 18px; border-radius:99px;
+    font-size:12.5px; font-weight:600; z-index:400;
+    opacity:0; pointer-events:none; transition:opacity 0.25s ease, transform 0.25s ease;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .bottom-spacer{height:30px;}
+
+  .menu-overlay{position:fixed; inset:0; z-index:200; background:rgba(11,37,69,0.45); opacity:0; pointer-events:none; transition:opacity 0.2s ease;}
+  .menu-overlay.open{opacity:1; pointer-events:auto;}
+  .menu-panel{position:fixed; top:0; left:0; bottom:0; width:78%; max-width:300px; background:var(--white); z-index:201; transform:translateX(-100%); transition:transform 0.22s ease; display:flex; flex-direction:column; box-shadow:var(--shadow-lift);}
+  .menu-overlay.open .menu-panel{transform:translateX(0);}
+  .menu-head{background:var(--navy); color:#fff; padding:22px 18px; display:flex; align-items:center; gap:10px;}
+  .menu-head .appbar-mark{background:var(--gold); color:var(--navy);}
+  .menu-head-name{font-family:var(--font-display); font-weight:700; font-size:15px;}
+  .menu-head-sub{font-size:11px; color:#9FB0CB; margin-top:1px;}
+  .menu-list{padding:10px 8px; flex:1; overflow-y:auto;}
+  .menu-list a{display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:10px; font-size:14px; font-weight:600; color:var(--ink);}
+  .menu-list a:hover, .menu-list a.active{background:var(--paper-dim); color:var(--navy);}
+  .menu-list .menu-icon{width:20px; text-align:center; font-size:15px;}
+  .menu-divider{height:1px; background:var(--line); margin:8px 12px;}
+  .menu-foot{padding:14px 18px; border-top:1px solid var(--line);}
+  .menu-close{position:absolute; top:16px; right:-44px; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,0.15); color:#fff; border:none; font-size:18px;}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <button class="appbar-back" onclick="window.location.href='index.html'" aria-label="Back">←</button>
+  <span class="appbar-title">My Account</span>
+  <button class="appbar-burger" id="menuOpenBtn" aria-label="Open menu">☰</button>
+</header>
+
+<main id="accountMain">
+  <div class="profile-hero">
+    <div class="profile-avatar" id="profileAvatar">?</div>
+    <div class="profile-name" id="profileName">Guest User</div>
+    <div class="profile-email" id="profileEmail">Not logged in</div>
+    <div class="profile-badge free" id="profileBadge">🔓 Free Plan</div>
+  </div>
+
+  <div class="account-stats">
+    <div class="account-stat">
+      <div class="account-stat-num" id="statAttempts">0</div>
+      <div class="account-stat-label">Practice sessions</div>
+    </div>
+    <div class="account-stat">
+      <div class="account-stat-num" id="statBookmarks">0</div>
+      <div class="account-stat-label">Bookmarks saved</div>
+    </div>
+    <div class="account-stat">
+      <div class="account-stat-num" id="statAvgScore">—</div>
+      <div class="account-stat-label">Average score</div>
+    </div>
+  </div>
+
+  <div class="account-sec">
+    <div class="account-sec-title">Access</div>
+    <div id="accessBlock"></div>
+  </div>
+
+  <div class="account-sec">
+    <div class="account-sec-title">Account Details</div>
+    <div class="account-menu">
+      <div class="account-row" id="editNameRow">
+        <div class="account-row-icon" style="background:#E8F1FF;">👤</div>
+        <div class="account-row-info">
+          <div class="account-row-label">Full name</div>
+          <div class="account-row-sub" id="displayName">—</div>
+        </div>
+        <div class="account-row-arrow">✎</div>
+      </div>
+      <div class="account-row" id="editEmailRow">
+        <div class="account-row-icon" style="background:#FFF4DC;">✉️</div>
+        <div class="account-row-info">
+          <div class="account-row-label">Email address</div>
+          <div class="account-row-sub" id="displayEmail">—</div>
+        </div>
+        <div class="account-row-arrow">✎</div>
+      </div>
+      <div class="account-row" id="editPasswordRow">
+        <div class="account-row-icon" style="background:#F1EAFB;">🔑</div>
+        <div class="account-row-info">
+          <div class="account-row-label">Password</div>
+          <div class="account-row-sub">Change your password</div>
+        </div>
+        <div class="account-row-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="account-sec">
+    <div class="account-sec-title">Activity</div>
+    <div class="account-menu">
+      <div class="account-row" onclick="window.location.href='dashboard.html'">
+        <div class="account-row-icon" style="background:#E8F1FF;">📊</div>
+        <div class="account-row-info">
+          <div class="account-row-label">Result History</div>
+          <div class="account-row-sub">View all your past sessions</div>
+        </div>
+        <div class="account-row-arrow">›</div>
+      </div>
+      <div class="account-row" onclick="window.location.href='bookmarks.html'">
+        <div class="account-row-icon" style="background:#FFF4DC;">🔖</div>
+        <div class="account-row-info">
+          <div class="account-row-label">Bookmarks</div>
+          <div class="account-row-sub" id="bookmarkCount">0 questions saved</div>
+        </div>
+        <div class="account-row-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="account-sec">
+    <div class="account-sec-title">Support</div>
+    <div class="account-menu">
+      <div class="account-row" onclick="window.open('https://wa.me/2347065732365','_blank')">
+        <div class="account-row-icon" style="background:#E7F8EF;">💬</div>
+        <div class="account-row-info">
+          <div class="account-row-label">WhatsApp Support</div>
+          <div class="account-row-sub">0706 573 2365 — we reply fast</div>
+        </div>
+        <div class="account-row-arrow">›</div>
+      </div>
+      <div class="account-row" onclick="window.location.href='mailto:wisdomkayode91@gmail.com'">
+        <div class="account-row-icon" style="background:#E8F1FF;">📧</div>
+        <div class="account-row-info">
+          <div class="account-row-label">Email Support</div>
+          <div class="account-row-sub">wisdomkayode91@gmail.com</div>
+        </div>
+        <div class="account-row-arrow">›</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="account-sec">
+    <div class="account-sec-title">Account Actions</div>
+    <div class="account-menu">
+      <div class="danger-row" id="logoutBtn">
+        <div class="account-row-icon" style="background:#FCE4E4;">🚪</div>
+        <div class="account-row-info">
+          <div class="account-row-label" style="color:#C0392B;">Log out</div>
+          <div class="account-row-sub">Sign out of your account</div>
+        </div>
+      </div>
+      <div class="danger-row" id="deleteAccountBtn">
+        <div class="account-row-icon" style="background:#FCE4E4;">🗑️</div>
+        <div class="account-row-info">
+          <div class="account-row-label" style="color:#C0392B;">Delete account</div>
+          <div class="account-row-sub">Permanently remove all your data</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-spacer"></div>
+</main>
+
+<div id="guestMain" style="display:none; padding:50px 24px; text-align:center;">
+  <div style="font-size:48px; margin-bottom:16px;">👤</div>
+  <h3 style="font-size:17px; margin-bottom:8px;">You're not logged in</h3>
+  <p style="font-size:13px; color:var(--ink-soft); line-height:1.6; margin-bottom:20px;">
+    Create a free account to save your results, bookmark questions, and track your progress.
+  </p>
+  <a href="auth.html" class="btn btn-primary btn-block" style="max-width:300px; margin:0 auto;">Log in or Sign up</a>
+</div>
+
+<div class="modal-overlay" id="editNameModal">
+  <div class="modal-panel">
+    <div class="modal-head"><h3>Edit Name</h3><button id="closeNameModal">×</button></div>
+    <div class="modal-field"><label>Full name</label><input type="text" id="newNameInput" placeholder="Your full name"></div>
+    <button class="btn btn-primary btn-block" id="saveNameBtn">Save Name</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editEmailModal">
+  <div class="modal-panel">
+    <div class="modal-head"><h3>Edit Email</h3><button id="closeEmailModal">×</button></div>
+    <div class="modal-field"><label>Email address</label><input type="email" id="newEmailInput" placeholder="your@email.com"></div>
+    <button class="btn btn-primary btn-block" id="saveEmailBtn">Save Email</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editPasswordModal">
+  <div class="modal-panel">
+    <div class="modal-head"><h3>Change Password</h3><button id="closePasswordModal">×</button></div>
+    <div class="modal-field"><label>Current password</label><input type="password" id="currentPasswordInput" placeholder="Enter current password"></div>
+    <div class="modal-field"><label>New password</label><input type="password" id="newPasswordInput" placeholder="Min 8 characters"></div>
+    <button class="btn btn-primary btn-block" id="savePasswordBtn">Change Password</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="menu-overlay" id="menuOverlay">
+  <div class="menu-panel">
+    <button class="menu-close" id="menuCloseBtn">×</button>
+    <div class="menu-head">
+      <div class="appbar-mark">U</div>
+      <div>
+        <div class="menu-head-name">UTMESchools</div>
+        <div class="menu-head-sub">JAMB · UTME Practice</div>
+      </div>
+    </div>
+    <nav class="menu-list">
+      <a href="index.html"><span class="menu-icon">🏠</span> Home</a>
+      <a href="select-subjects.html"><span class="menu-icon">📚</span> Practice for UTME</a>
+      <a href="dashboard.html"><span class="menu-icon">📊</span> Result History</a>
+      <a href="bookmarks.html"><span class="menu-icon">🔖</span> Bookmarks</a>
+      <a href="discussion.html"><span class="menu-icon">💬</span> Discussion</a>
+      <div class="menu-divider"></div>
+      <a href="account.html" class="active"><span class="menu-icon">👤</span> My account</a>
+      <a href="index.html#pricing"><span class="menu-icon">🔓</span> Unlock full access</a>
+      <div class="menu-divider"></div>
+      <a href="https://wa.me/2347065732365" target="_blank" rel="noopener"><span class="menu-icon">💬</span> WhatsApp support</a>
+    </nav>
+    <div class="menu-foot">
+      <a href="auth.html" class="btn btn-ghost btn-block btn-sm">Log in / Sign up</a>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script src="account.js"></script>
+</body>
+</html>
