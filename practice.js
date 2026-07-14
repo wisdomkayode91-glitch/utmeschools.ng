@@ -133,7 +133,7 @@ let answers         = {};   // { qId: 'A'|'B'|'C'|'D'|'E' } — can always be ch
 let bookmarks       = {};
 let showExplanation = false;
 
-const FREE_LIMIT = 5;
+const FREE_LIMIT = 9999;
 try { bookmarks = JSON.parse(localStorage.getItem('utme_bookmarks') || '{}'); } catch(e) {}
 
 /* ================================================================
