@@ -8,6 +8,12 @@
 <meta property="og:title" content="UTMESchools — Practice JAMB. Pass JAMB.">
 <meta property="og:description" content="Practice JAMB past questions from 1992 to 2025. Free for 5 questions per subject. Full access ₦2,500.">
 <link rel="stylesheet" href="shared.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B2545">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="UTMESchools">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
 /* ---- Homepage specific ---- */
 .hero {
@@ -438,6 +444,16 @@
 <div class="toast" id="toast"></div>
 
 <script src="shared.js"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js")
+      .then(reg => console.log("UTMESchools SW registered:", reg.scope))
+      .catch(err => console.log("SW registration failed:", err));
+  });
+}
+</script>
 <script src="script.js"></script>
 </body>
-</html>
+    </html>
+        
