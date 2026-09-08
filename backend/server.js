@@ -27,7 +27,6 @@ app.get("/api/question", async (req, res) => {
   try {
     const { subject, year } = req.query;
 
-    // Check subject
     if (!subject) {
       return res.status(400).json({
         error: "Subject is required"
@@ -43,13 +42,12 @@ app.get("/api/question", async (req, res) => {
     });
 
 
-    // Add year when a specific year was selected
     if (year && year !== "Random") {
       params.set("year", year);
     }
 
 
-    // Request question from SdashAPI
+    // Ask SdashAPI for a question
     const response = await fetch(
       `https://sdashapi.com/api/v1/q?${params.toString()}`,
       {
@@ -73,32 +71,53 @@ app.get("/api/question", async (req, res) => {
     }
 
 
-    // Read SdashAPI response
-    const data = await response.json();
+    // Read the response
+    const result = await response.json();
 
-    console.log("SdashAPI response received");
+    console.log("SdashAPI status:", result.status);
 
 
-    // Make sure a question exists
-    if (!data.data) {
+    // Make sure data exists
+    if (!result.data) {
       return res.status(404).json({
         error: "No question found",
-        details: data.message || "SdashAPI returned no question"
+        details: result.message || "SdashAPI returned no question"
       });
     }
 
 
-    // The actual question is inside data.data
-    const q = data.data;
+    // SdashAPI may return either:
+    //
+    // data: { question object }
+    //
+    // OR
+    //
+    // data: [question object]
+    //
+    // We handle BOTH.
+
+    const q = Array.isArray(result.data)
+      ? result.data[0]
+      : result.data;
+
+
+    // Make sure we actually received a question
+    if (!q || !q.id) {
+      return res.status(404).json({
+        error: "Invalid question response",
+        details: "SdashAPI returned data, but no valid question was found"
+      });
+    }
 
 
     // ─────────────────────────────────────────
-    // IMPORTANT:
-    // We intentionally DO NOT return q.solution.
+    // IMPORTANT SECURITY RULE
     //
-    // SdashAPI solution stays on the backend.
-    // Later, OpenAI will generate the
-    // UTMESchools explanation.
+    // We DO NOT send SdashAPI's "solution"
+    // to the frontend.
+    //
+    // Later, UTMESchools will generate its
+    // own explanation using OpenAI.
     // ─────────────────────────────────────────
 
     const cleanedQuestion = {
@@ -114,7 +133,7 @@ app.get("/api/question", async (req, res) => {
     };
 
 
-    // Send clean question to frontend
+    // Send the clean question to UTMESchools
     res.json(cleanedQuestion);
 
   } catch (error) {
