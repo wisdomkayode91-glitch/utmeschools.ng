@@ -2,14 +2,37 @@ import express from "express";
 
 const app = express();
 
-app.use(express.json());
-
 const PORT = process.env.PORT || 3000;
 
+/* ================================================================
+   CORS
+   Allows the UTMESchools Cloudflare frontend to communicate
+   with this Render backend.
+   ================================================================ */
 
-// ─────────────────────────────────────────────
-// HOME / HEALTH CHECK
-// ─────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PUT,DELETE,OPTIONS"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, AccessToken"
+  );
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+app.use(express.json());
+
+/* ================================================================
+   HOME / HEALTH CHECK
+   ================================================================ */
 
 app.get("/", (req, res) => {
   res.json({
@@ -18,17 +41,17 @@ app.get("/", (req, res) => {
   });
 });
 
-
-// ─────────────────────────────────────────────
-// GET JAMB QUESTION(S)
-// ─────────────────────────────────────────────
+/* ================================================================
+   GET JAMB QUESTIONS
+   ================================================================ */
 
 app.get("/api/question", async (req, res) => {
   try {
     const { subject, year } = req.query;
 
-    const requestedCount = parseInt(req.query.count || "1", 10);
-    const count = Math.min(Math.max(requestedCount, 1), 50);
+    /* ------------------------------------------------------------
+       Validate subject
+       ------------------------------------------------------------ */
 
     if (!subject) {
       return res.status(400).json({
@@ -36,21 +59,39 @@ app.get("/api/question", async (req, res) => {
       });
     }
 
+    /* ------------------------------------------------------------
+       Get requested question count
 
-    // Build SdashAPI request
+       SdashAPI allows a maximum of 50 questions per request.
+       ------------------------------------------------------------ */
+
+    const requestedCount = parseInt(req.query.count || "1", 10);
+
+    const count = Math.min(
+      Math.max(requestedCount, 1),
+      50
+    );
+
+    /* ------------------------------------------------------------
+       Build SdashAPI request
+       ------------------------------------------------------------ */
+
     const params = new URLSearchParams({
       subject: subject,
       type: "utme",
       limit: String(count)
     });
 
+    /* Only add year when a specific year was selected */
 
     if (year && year !== "Random") {
       params.set("year", year);
     }
 
+    /* ------------------------------------------------------------
+       Request authentic JAMB questions from SdashAPI
+       ------------------------------------------------------------ */
 
-    // Ask SdashAPI for authentic JAMB question(s)
     const response = await fetch(
       `https://sdashapi.com/api/v1/q?${params.toString()}`,
       {
@@ -60,12 +101,17 @@ app.get("/api/question", async (req, res) => {
       }
     );
 
+    /* ------------------------------------------------------------
+       Handle SdashAPI errors
+       ------------------------------------------------------------ */
 
-    // Handle SdashAPI errors
     if (!response.ok) {
       const errorText = await response.text();
 
-      console.error("SdashAPI error:", errorText);
+      console.error(
+        "SdashAPI error:",
+        errorText
+      );
 
       return res.status(response.status).json({
         error: "SdashAPI request failed",
@@ -73,27 +119,50 @@ app.get("/api/question", async (req, res) => {
       });
     }
 
+    /* ------------------------------------------------------------
+       Read response
+       ------------------------------------------------------------ */
 
-    // Read the response
     const result = await response.json();
 
-    console.log("SdashAPI status:", result.status);
+    console.log(
+      "SdashAPI status:",
+      result.status
+    );
 
+    /* ------------------------------------------------------------
+       Make sure questions were returned
+       ------------------------------------------------------------ */
 
-    // Make sure data exists
     if (!result.data) {
       return res.status(404).json({
         error: "No question found",
-        details: result.message || "SdashAPI returned no question"
+        details:
+          result.message ||
+          "SdashAPI returned no question"
       });
     }
 
+    /* ------------------------------------------------------------
+       SdashAPI returns:
 
-    // SdashAPI can return either an object or an array.
+       - an object when limit = 1
+       - an array when limit > 1
+
+       Convert both into one consistent array.
+       ------------------------------------------------------------ */
+
     const rawQuestions = Array.isArray(result.data)
       ? result.data
       : [result.data];
 
+    /* ------------------------------------------------------------
+       Convert SdashAPI response into the UTMESchools format.
+
+       IMPORTANT:
+       We deliberately DO NOT return SdashAPI's "solution".
+       UTMESchools will eventually generate its own explanations.
+       ------------------------------------------------------------ */
 
     const questions = rawQuestions
       .filter(q => q && q.id)
@@ -109,18 +178,21 @@ app.get("/api/question", async (req, res) => {
         university: q.university
       }));
 
+    /* ------------------------------------------------------------
+       Make sure at least one valid question exists
+       ------------------------------------------------------------ */
 
     if (questions.length === 0) {
       return res.status(404).json({
         error: "Invalid question response",
-        details: "SdashAPI returned data, but no valid questions were found"
+        details:
+          "SdashAPI returned data, but no valid questions were found"
       });
     }
 
-
-    // IMPORTANT:
-    // SdashAPI's "solution" is deliberately NOT included.
-    // UTMESchools will generate its own explanation with OpenAI later.
+    /* ------------------------------------------------------------
+       Return one question or an array depending on count
+       ------------------------------------------------------------ */
 
     if (count === 1) {
       return res.json(questions[0]);
@@ -129,20 +201,27 @@ app.get("/api/question", async (req, res) => {
     return res.json(questions);
 
   } catch (error) {
+    /* ------------------------------------------------------------
+       Catch unexpected backend errors
+       ------------------------------------------------------------ */
 
-    console.error("Backend error:", error);
+    console.error(
+      "Backend error:",
+      error
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       error: "Backend error"
     });
   }
 });
 
-
-// ─────────────────────────────────────────────
-// START SERVER
-// ─────────────────────────────────────────────
+/* ================================================================
+   START SERVER
+   ================================================================ */
 
 app.listen(PORT, () => {
-  console.log(`UTMESchools Backend running on port ${PORT}`);
+  console.log(
+    `UTMESchools Backend running on port ${PORT}`
+  );
 });
