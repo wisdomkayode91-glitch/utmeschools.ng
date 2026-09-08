@@ -25,7 +25,8 @@ app.get("/api/question", async (req, res) => {
 
     const params = new URLSearchParams({
       subject,
-      type: "utme"
+      type: "utme",
+      limit: "1"
     });
 
     if (year && year !== "Random") {
@@ -52,7 +53,23 @@ app.get("/api/question", async (req, res) => {
 
     const data = await response.json();
 
-    res.json(data);
+    // Only return the fields UTMESchools needs.
+    // SdashAPI's original "solution" is intentionally NOT sent.
+    const questions = Array.isArray(data) ? data : [data];
+
+    const cleanedQuestions = questions.map((q) => ({
+      id: q.id,
+      question: q.question,
+      section: q.section,
+      option: q.option,
+      answer: q.answer,
+      image: q.image,
+      examtype: q.examtype,
+      examyear: q.examyear,
+      university: q.university
+    }));
+
+    res.json(cleanedQuestions);
 
   } catch (error) {
     console.error(error);
