@@ -1,17 +1,15 @@
 /* ============================================================
    UTMESchools v2 — practice.js
-   Connected to Supabase. Correct mode behaviour.
+   Gets authentic JAMB questions from the UTMESchools backend
+   Backend → SdashAPI. SdashAPI credentials stay server-side.
    ============================================================ */
-
-const SUPABASE_URL = 'https://jlwmqtcbhdxkiiscrsbe.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impsd21xdGNiaGR4a2lpc2Nyc2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4ODEyNDAsImV4cCI6MjA5OTQ1NzI0MH0.DCkX3rrBqwO6qhaQIypU_hknLBTmCjMJ2HSZIwK0vrg';
 
 /* ================================================================
    MODE RULES
    practice : no answers shown during session. Submit → result saved.
    mock     : no answers shown during session. Submit → analysis only, NOT saved.
-   study    : click "Show Answer" to reveal. No submit. NOT saved.
-   All modes: can freely change selected answer anytime before submit.
+   study    : click "Show Answer" to reveal. No submit button. NOT saved.
+   All modes: can freely change selected answer anytime.
    ================================================================ */
 
 const urlP       = new URLSearchParams(window.location.search);
@@ -22,106 +20,80 @@ const timerM     = parseInt(urlP.get('m') || '0', 10);
 const shuffleQ   = urlP.get('shuffleQ') !== '0';
 
 /* ================================================================
-   FETCH FROM SUPABASE
+   FETCH QUESTIONS FROM BACKEND
    ================================================================ */
-async function fetchQuestionsFromSupabase(subjectId, year, count, topicsParam) {
+async function fetchQuestionsFromJSON(subjectId, year, count, topicsParam) {
   try {
-    let url = `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&select=*`;
-    if (year && year !== 'Random') url += `&year=eq.${year}`;
-    url += `&limit=${count}`;
-
-    const res = await fetch(url, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Content-Type': 'application/json'
-      }
+    /* UTMESchools now gets authentic JAMB questions from our backend.
+       The backend keeps the SdashAPI AccessToken private. */
+    const params = new URLSearchParams({
+      subject: subjectId,
+      count: String(Math.min(Math.max(count, 1), 50))
     });
-    if (!res.ok) return [];
 
-    let questions = await res.json();
-
-    if (topicsParam) {
-      const allowed = topicsParam.split('||');
-      questions = questions.filter(q =>
-        allowed.some(t => q.topic === t || (q.topic + ' : ' + q.subtopic) === t)
-      );
+    if (year && year !== 'Random') {
+      params.set('year', year);
     }
 
-    return questions.map(q => ({
-      id:          String(q.id),
-      subjectId:   q.subject_id,
-      year:        q.year,
-      topic:       q.topic || '',
-      subtopic:    q.subtopic || '',
-      difficulty:  q.difficulty || 'Intermediate',
-      text:        q.text,
-      options:     [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
-      correct:     q.correct,
-      explanation: q.explanation || '',
-      svg_code:    q.svg_code || '',
-      image_file:  q.image_file || '',
-      passage:     q.passage || '',
-    }));
+    const res = await fetch(
+      `https://utmeschools-ng.onrender.com/api/question?${params.toString()}`
+    );
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Backend question error:', errorText);
+      return [];
+    }
+
+    const result = await res.json();
+    const rawQuestions = Array.isArray(result) ? result : [result];
+
+    /* Convert SdashAPI's field names into the exact format used by the
+       existing UTMESchools practice interface. */
+    return rawQuestions
+      .filter(q => q && q.id)
+      .map(q => {
+        const opt = q.option || {};
+
+        return {
+          id:          String(q.id),
+          subjectId:   subjectId,
+          year:        q.examyear || year || '',
+          topic:       q.topic || '',
+          subtopic:    q.subtopic || '',
+          difficulty:  q.difficulty || 'Intermediate',
+          text:        q.question || '',
+          options:     [opt.a, opt.b, opt.c, opt.d, opt.e].filter(Boolean),
+          correct:     String(q.answer || '').trim().toUpperCase(),
+          explanation: '',
+          svg_code:    '',
+          image_file:  '',
+          image_url:   q.image || '',
+          passage:     q.passage || ''
+        };
+      });
+
   } catch(e) {
-    console.error('Supabase fetch error:', e);
+    console.error(`Error loading ${subjectId} questions:`, e);
     return [];
   }
 }
 
 /* ================================================================
-   DEMO QUESTIONS (fallback when database is empty)
+   DEMO QUESTIONS — shown only when JSON file has no questions
    ================================================================ */
 function getDemoQuestions(subjectId) {
-  const demos = {
-    english: [
-      { id:'e1', subjectId:'english', year:2020, topic:'LEXIS AND STRUCTURE', subtopic:'Antonyms', difficulty:'Basic',
-        text:'Choose the word most nearly OPPOSITE in meaning to FRUGALITY.',
-        options:['Extravagance','Thriftiness','Prudence','Economy'], correct:'A',
-        explanation:'Frugality means being economical. Its opposite is Extravagance. Thriftiness, Prudence and Economy are synonyms of frugality.' },
-      { id:'e2', subjectId:'english', year:2019, topic:'LEXIS AND STRUCTURE', subtopic:'Synonyms', difficulty:'Basic',
-        text:'Choose the word CLOSEST in meaning to BENEVOLENT.',
-        options:['Hostile','Generous','Greedy','Malicious'], correct:'B',
-        explanation:'Benevolent means kind and generous. Hostile and Malicious are opposites. Greedy is unrelated.' },
-      { id:'e3', subjectId:'english', year:2018, topic:'ORAL FORMS', subtopic:'Stress Pattern', difficulty:'Intermediate',
-        text:'Which word has its primary stress on the SECOND syllable?',
-        options:['PREsent (noun)','preSENT (verb)','ANswer','PROgress (noun)'], correct:'B',
-        explanation:'When "present" is a verb (preSENT), stress falls on the second syllable.' },
-      { id:'e4', subjectId:'english', year:2017, topic:'LEXIS AND STRUCTURE', subtopic:'Sentence Completion', difficulty:'Basic',
-        text:'The police warned the crowd to __________ from throwing stones.',
-        options:['prevent','refrain','restrain','restrict'], correct:'B',
-        explanation:'"Refrain from" is the correct collocation meaning to stop oneself from doing something.' },
-      { id:'e5', subjectId:'english', year:2016, topic:'COMPREHENSION PASSAGE', subtopic:'', difficulty:'Intermediate',
-        text:'According to the passage, education should primarily focus on _________.',
-        options:['memorising facts','developing critical thinking','passing examinations','technical skills'], correct:'B',
-        explanation:'The passage emphasises critical thinking over rote learning or exam technique.' },
-    ],
-    mathematics: [
-      { id:'m1', subjectId:'mathematics', year:2020, topic:'ALGEBRA', subtopic:'Equations', difficulty:'Basic',
-        text:'Solve for x: 2x + 5 = 13',
-        options:['x = 3','x = 4','x = 5','x = 9'], correct:'B',
-        explanation:'2x + 5 = 13 → 2x = 8 → x = 4.' },
-    ],
-    physics: [
-      { id:'p1', subjectId:'physics', year:2020, topic:'MECHANICS', subtopic:'Scalars and Vectors', difficulty:'Basic',
-        text:'Which of the following is a SCALAR quantity?',
-        options:['Velocity','Force','Temperature','Displacement'], correct:'C',
-        explanation:'Scalar quantities have magnitude only. Temperature is scalar. Velocity, Force and Displacement are vectors.' },
-    ],
-    chemistry: [
-      { id:'c1', subjectId:'chemistry', year:2020, topic:'ATOMIC STRUCTURE', subtopic:'Electronic Configuration', difficulty:'Basic',
-        text:'The electronic configuration of Sodium (Na, atomic number 11) is:',
-        options:['2,8,2','2,9','2,8,1','2,6,3'], correct:'C',
-        explanation:'Sodium: 2 in shell 1, 8 in shell 2, 1 in shell 3 = 2,8,1.' },
-    ],
-    biology: [
-      { id:'b1', subjectId:'biology', year:2020, topic:'NUTRITION', subtopic:'Vitamins and Deficiencies', difficulty:'Basic',
-        text:'Deficiency of Vitamin C causes which disease?',
-        options:['Rickets','Scurvy','Pellagra','Beri-beri'], correct:'B',
-        explanation:'Vitamin C → Scurvy. Vitamin A → Night blindness. Vitamin B1 → Beri-beri. Vitamin B3 → Pellagra. Vitamin D → Rickets.' },
-    ],
-  };
-  return (demos[subjectId] || demos['english']).map((q,i) => ({...q, qNum: i+1}));
+  return [
+    {
+      id: 'demo_1', subjectId: subjectId, year: 2024,
+      topic: 'DEMO', subtopic: '', difficulty: 'Basic',
+      text: 'This is a demo question. Real JAMB past questions will appear here once loaded.',
+      options: ['Option A', 'Option B', 'Option C', 'Option D'],
+      correct: 'A',
+      explanation: 'This is a demo. Real explanations will be detailed and educational.',
+      svg_code: '', image_file: '', passage: ''
+    }
+  ];
 }
 
 /* ================================================================
@@ -129,11 +101,11 @@ function getDemoQuestions(subjectId) {
    ================================================================ */
 let allQuestions    = [];
 let currentQIndex   = 0;
-let answers         = {};   // { qId: 'A'|'B'|'C'|'D'|'E' } — can always be changed
+let answers         = {};
 let bookmarks       = {};
 let showExplanation = false;
 
-const FREE_LIMIT = 9999;
+const FREE_LIMIT = 10;
 try { bookmarks = JSON.parse(localStorage.getItem('utme_bookmarks') || '{}'); } catch(e) {}
 
 /* ================================================================
@@ -148,7 +120,6 @@ function formatTime(s) {
 }
 
 function startTimer() {
-  /* No timer in study mode */
   if (mode === 'study') {
     document.getElementById('timerPill').style.display = 'none';
     return;
@@ -182,11 +153,11 @@ async function loadAllQuestions() {
       const count      = parseInt(urlP.get('count_' + sid) || '40', 10);
       const topicParam = urlP.get('topics_' + sid) || '';
 
-      let qs = await fetchQuestionsFromSupabase(sid, year, count, topicParam);
+      let qs = await fetchQuestionsFromJSON(sid, year, count, topicParam);
 
       if (qs.length === 0) {
         qs = getDemoQuestions(sid);
-        showToast('Demo questions loaded — add real questions to Supabase!');
+        showToast('No real questions were returned. Showing demo question.');
       }
 
       if (!hasPaid) qs = qs.slice(0, FREE_LIMIT);
@@ -195,11 +166,11 @@ async function loadAllQuestions() {
       qs.forEach((q, i) => { q.qNum = allQuestions.length + i + 1; q.subjectId = sid; });
       allQuestions.push(...qs);
     }
-  } catch(e) { console.error(e); }
+  } catch(e) { console.error('loadAllQuestions error:', e); }
 
   if (allQuestions.length === 0) allQuestions = getDemoQuestions(subjectIds[0]);
 
-  /* Study mode: hide submit button */
+  /* Hide submit button in study mode */
   if (mode === 'study') {
     document.getElementById('submitBtn').style.display = 'none';
   }
@@ -217,7 +188,7 @@ function showLoadingState(loading) {
       <div style="text-align:center;padding:40px 20px;">
         <div style="font-size:32px;margin-bottom:12px;">⏳</div>
         <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;">Loading questions...</div>
-        <div style="font-size:13px;color:var(--ink-soft);">Fetching from database</div>
+        <div style="font-size:13px;color:var(--ink-soft);">Please wait</div>
       </div>`;
     document.getElementById('optionsList').innerHTML = '';
   }
@@ -263,7 +234,6 @@ function renderQuestion() {
   const q = allQuestions[currentQIndex];
   if (!q) return;
 
-  /* Restore card if loading replaced it */
   const qCard = document.getElementById('qCard');
   if (!qCard.querySelector('#qMeta')) {
     qCard.innerHTML = `
@@ -274,7 +244,6 @@ function renderQuestion() {
 
   document.getElementById('qLabel').textContent = `Q ${currentQIndex + 1} / ${allQuestions.length}`;
 
-  /* Meta */
   const metaEl = document.getElementById('qMeta');
   metaEl.innerHTML = '';
   if (q.topic)      metaEl.innerHTML += `<span class="q-meta-tag">${q.topic}</span>`;
@@ -283,10 +252,10 @@ function renderQuestion() {
 
   document.getElementById('qText').textContent = q.text;
 
-  /* Diagram */
   const svgEl = document.getElementById('qSvg');
-  if (q.svg_code)     svgEl.innerHTML = q.svg_code;
-  else if (q.image_file) svgEl.innerHTML = `<img src="images/${q.image_file}" alt="Diagram" style="max-width:100%;border-radius:8px;margin-top:8px;">`;
+  if (q.svg_code)      svgEl.innerHTML = q.svg_code;
+  else if (q.image_url) svgEl.innerHTML = `<img src="${q.image_url}" alt="Question diagram" style="max-width:100%;border-radius:8px;margin-top:8px;">`;
+   else if (q.image_file) svgEl.innerHTML = `<img src="images/${q.image_file}" alt="Diagram" style="max-width:100%;border-radius:8px;margin-top:8px;">`;
   else svgEl.innerHTML = '';
 
   /* Passage */
@@ -298,21 +267,13 @@ function renderQuestion() {
     passCard.classList.remove('visible');
   }
 
-  /* Render options based on mode */
   renderOptions(q);
 
-  /* Nav */
   document.getElementById('prevBtn').disabled = currentQIndex === 0;
   document.getElementById('nextBtn').disabled = currentQIndex === allQuestions.length - 1;
-
-  /* Bookmark colour */
   document.getElementById('bookmarkBtn').style.color = bookmarks[q.id] ? 'var(--gold)' : '';
 
-  /* Study mode: show/hide answer button and explanation */
-  const studyActions = document.getElementById('studyActions');
-  const explanBox    = document.getElementById('explanationBox');
-
-  if (mode === 'study') {
+  const studyActions = document.getElementById('studyActions');  if (mode === 'study') {
     studyActions.classList.add('visible');
     document.getElementById('showAnswerBtn').textContent = showExplanation ? '🙈 Hide Answer' : '👁 Show Answer';
     if (showExplanation) {
@@ -322,12 +283,11 @@ function renderQuestion() {
       explanBox.classList.remove('visible');
     }
   } else {
-    /* Practice and Mock: NEVER show answer or explanation during session */
+    /* Practice and Mock: NEVER show answer during session */
     studyActions.classList.remove('visible');
     explanBox.classList.remove('visible');
   }
 
-  /* Bottom bar count */
   document.getElementById('answeredCount').textContent = Object.keys(answers).length;
   document.getElementById('totalCount').textContent    = allQuestions.length;
 
@@ -336,11 +296,9 @@ function renderQuestion() {
 
 /* ================================================================
    RENDER OPTIONS
-   Rules:
-   - Practice/Mock: show selection highlight only. NO correct/wrong colours.
-   - Study + showExplanation: show correct in green, others dimmed.
-   - Study without showExplanation: show selection only.
-   - ALL modes: clicking an option ALWAYS updates the answer (changeable).
+   Practice/Mock: highlight selection only. No correct/wrong colours.
+   Study + showExplanation: green = correct, red = wrong.
+   ALL modes: clicking always updates answer (freely changeable).
    ================================================================ */
 function renderOptions(q) {
   const list    = document.getElementById('optionsList');
@@ -354,22 +312,18 @@ function renderOptions(q) {
     row.className = 'option-row';
 
     if (mode === 'study' && showExplanation) {
-      /* Study reveal: green = correct, dimmed = others */
-      if (letter === q.correct)      row.classList.add('correct');
-      else if (letter === userAns)   row.classList.add('wrong');
-      else                           row.classList.add('dimmed');
+      if (letter === q.correct)    row.classList.add('correct');
+      else if (letter === userAns) row.classList.add('wrong');
+      else                         row.classList.add('dimmed');
     } else {
-      /* Practice / Mock / Study (before reveal): just highlight selected */
-      if (letter === userAns) row.classList.add('selected');
+      if (userAns === letter) row.classList.add('selected');
     }
 
     row.innerHTML = `
       <div class="option-letter">${letter}</div>
       <div class="option-text">${opt}</div>`;
 
-    /* ALWAYS allow clicking to change answer */
     row.addEventListener('click', () => selectAnswer(q, letter));
-
     list.appendChild(row);
   });
 }
@@ -378,20 +332,8 @@ function renderOptions(q) {
    SELECT ANSWER — always changeable
    ================================================================ */
 function selectAnswer(q, letter) {
-  /* In study mode after reveal, reset explanation when changing answer */
-  if (mode === 'study' && showExplanation && answers[q.id] === letter) return;
-
-  answers[q.id] = letter;
-
-  /* Study mode: if already showing explanation, re-render to update colours */
-  /* Practice/Mock: just highlight selection, never reveal answer */
-  if (mode === 'study') {
-    showExplanation = false; /* reset until they tap show again */
-    renderQuestion();
-    return;
-  }
-
-  /* Practice/Mock: highlight only, then auto-advance in study mode */
+  answers[q.id]   = letter;
+  showExplanation = false;
   renderQuestion();
 }
 
@@ -429,7 +371,7 @@ function toggleBookmark() {
 }
 
 /* ================================================================
-   GRID
+   QUESTION GRID
    ================================================================ */
 function openGrid() {
   const grid = document.getElementById('gridNums');
@@ -448,7 +390,7 @@ function openGrid() {
 function closeGrid() { document.getElementById('gridOverlay').classList.remove('open'); }
 
 /* ================================================================
-   SUBMIT / FINISH
+   SUBMIT
    ================================================================ */
 function openSubmitDialog() {
   const answered = Object.keys(answers).length;
@@ -460,9 +402,8 @@ function openSubmitDialog() {
 }
 function closeSubmitDialog() { document.getElementById('dialogOverlay').classList.remove('open'); }
 
-function submitExam() {
+function buildResult(saveToHistory) {
   if (timerInterval) clearInterval(timerInterval);
-
   const subjectResults = {};
   subjectIds.forEach(sid => {
     const subjQs = allQuestions.filter(q => q.subjectId === sid);
@@ -472,7 +413,8 @@ function submitExam() {
       const isCorrect = userAns === q.correct;
       if (userAns) { attempted++; if (isCorrect) correct++; }
       return {
-        id: q.id, num: q.qNum, text: q.text,options: q.options, correct: q.correct,
+        id: q.id, num: q.qNum, text: q.text,
+        options: q.options, correct: q.correct,
         userAnswer: userAns, topic: q.topic,
         subtopic: q.subtopic, year: q.year,
         explanation: q.explanation, difficulty: q.difficulty,
@@ -489,57 +431,20 @@ function submitExam() {
     date: new Date().toISOString(),
   };
 
-  /* Save to sessionStorage for result page (all modes) */
   try { sessionStorage.setItem('utme_result', JSON.stringify(result)); } catch(e) {}
 
-  /* Save to history ONLY in practice mode */
-  if (mode === 'practice') {
+  if (saveToHistory) {
     try {
       const history = JSON.parse(localStorage.getItem('utme_history') || '[]');
       history.unshift(result);
       localStorage.setItem('utme_history', JSON.stringify(history.slice(0, 100)));
     } catch(e) {}
   }
-
   window.location.href = 'result.html';
 }
 
-/* ================================================================
-   STUDY MODE FINISH — replaces submit button
-   ================================================================ */
-function finishStudy() {
-  if (timerInterval) clearInterval(timerInterval);
-
-  const subjectResults = {};
-  subjectIds.forEach(sid => {
-    const subjQs = allQuestions.filter(q => q.subjectId === sid);
-    let correct = 0, attempted = 0;
-    const questionDetails = subjQs.map(q => {
-      const userAns   = answers[q.id] || null;
-      const isCorrect = userAns === q.correct;
-      if (userAns) { attempted++; if (isCorrect) correct++; }
-      return {
-        id: q.id, num: q.qNum, text: q.text,
-        options: q.options, correct: q.correct,
-        userAnswer: userAns, topic: q.topic,
-        subtopic: q.subtopic, year: q.year,
-        explanation: q.explanation,
-      };
-    });
-    subjectResults[sid] = { total: subjQs.length, attempted, correct, questions: questionDetails };
-  });
-
-  const result = {
-    id: 'r_' + Date.now(), mode: 'study', subjectIds, subjectResults,
-    totalAnswered: Object.keys(answers).length,
-    totalQuestions: allQuestions.length,
-    timeTaken: 0, date: new Date().toISOString(),
-  };
-
-  /* NOT saved to history */
-  try { sessionStorage.setItem('utme_result', JSON.stringify(result)); } catch(e) {}
-  window.location.href = 'result.html';
-}
+function submitExam()  { buildResult(mode === 'practice'); }
+function finishStudy() { buildResult(false); }
 
 /* ================================================================
    CALCULATOR
@@ -618,14 +523,12 @@ document.addEventListener('keydown', e => {
    DOMContentLoaded
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-
   document.getElementById('backBtn').addEventListener('click', () => {
     if (confirm('Leave? Your progress will be lost.')) {
       if (timerInterval) clearInterval(timerInterval);
       window.location.href = 'select-subjects.html';
     }
   });
-
   document.getElementById('prevBtn').addEventListener('click', () => goToQuestion(currentQIndex - 1));
   document.getElementById('nextBtn').addEventListener('click', () => goToQuestion(currentQIndex + 1));
   document.getElementById('bookmarkBtn').addEventListener('click', toggleBookmark);
@@ -639,22 +542,14 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => calcPress(btn.dataset.val));
   });
   document.getElementById('speakerBtn').addEventListener('click', speakQuestion);
-
-  /* Show answer button — study mode only */
   document.getElementById('showAnswerBtn').addEventListener('click', () => {
     showExplanation = !showExplanation;
     renderQuestion();
   });
-
-  /* Submit button — practice and mock */
   document.getElementById('submitBtn').addEventListener('click', () => {
-    if (mode === 'study') {
-      finishStudy();
-    } else {
-      openSubmitDialog();
-    }
+    if (mode === 'study') finishStudy();
+    else openSubmitDialog();
   });
-
   document.getElementById('dialogCancel').addEventListener('click', closeSubmitDialog);
   document.getElementById('dialogOverlay').addEventListener('click', e => {
     if (e.target === document.getElementById('dialogOverlay')) closeSubmitDialog();
@@ -663,13 +558,12 @@ document.addEventListener('DOMContentLoaded', () => {
     closeSubmitDialog();
     submitExam();
   });
-
   document.getElementById('answeredPill').addEventListener('click', openGrid);
   document.getElementById('gridCloseBtn').addEventListener('click', closeGrid);
   document.getElementById('gridOverlay').addEventListener('click', e => {
     if (e.target === document.getElementById('gridOverlay')) closeGrid();
   });
 
-  /* Load questions */
   loadAllQuestions();
 });
+  const explanBox    = document.getElementById('explanationBox');
