@@ -20,12 +20,15 @@ app.get("/", (req, res) => {
 
 
 // ─────────────────────────────────────────────
-// GET JAMB QUESTION
+// GET JAMB QUESTION(S)
 // ─────────────────────────────────────────────
 
 app.get("/api/question", async (req, res) => {
   try {
     const { subject, year } = req.query;
+
+    const requestedCount = parseInt(req.query.count || "1", 10);
+    const count = Math.min(Math.max(requestedCount, 1), 50);
 
     if (!subject) {
       return res.status(400).json({
@@ -38,7 +41,7 @@ app.get("/api/question", async (req, res) => {
     const params = new URLSearchParams({
       subject: subject,
       type: "utme",
-      limit: "1"
+      limit: String(count)
     });
 
 
@@ -47,7 +50,7 @@ app.get("/api/question", async (req, res) => {
     }
 
 
-    // Ask SdashAPI for a question
+    // Ask SdashAPI for authentic JAMB question(s)
     const response = await fetch(
       `https://sdashapi.com/api/v1/q?${params.toString()}`,
       {
@@ -86,55 +89,44 @@ app.get("/api/question", async (req, res) => {
     }
 
 
-    // SdashAPI may return either:
-    //
-    // data: { question object }
-    //
-    // OR
-    //
-    // data: [question object]
-    //
-    // We handle BOTH.
-
-    const q = Array.isArray(result.data)
-      ? result.data[0]
-      : result.data;
+    // SdashAPI can return either an object or an array.
+    const rawQuestions = Array.isArray(result.data)
+      ? result.data
+      : [result.data];
 
 
-    // Make sure we actually received a question
-    if (!q || !q.id) {
+    const questions = rawQuestions
+      .filter(q => q && q.id)
+      .map(q => ({
+        id: q.id,
+        question: q.question,
+        section: q.section,
+        option: q.option,
+        answer: q.answer,
+        image: q.image,
+        examtype: q.examtype,
+        examyear: q.examyear,
+        university: q.university
+      }));
+
+
+    if (questions.length === 0) {
       return res.status(404).json({
         error: "Invalid question response",
-        details: "SdashAPI returned data, but no valid question was found"
+        details: "SdashAPI returned data, but no valid questions were found"
       });
     }
 
 
-    // ─────────────────────────────────────────
-    // IMPORTANT SECURITY RULE
-    //
-    // We DO NOT send SdashAPI's "solution"
-    // to the frontend.
-    //
-    // Later, UTMESchools will generate its
-    // own explanation using OpenAI.
-    // ─────────────────────────────────────────
+    // IMPORTANT:
+    // SdashAPI's "solution" is deliberately NOT included.
+    // UTMESchools will generate its own explanation with OpenAI later.
 
-    const cleanedQuestion = {
-      id: q.id,
-      question: q.question,
-      section: q.section,
-      option: q.option,
-      answer: q.answer,
-      image: q.image,
-      examtype: q.examtype,
-      examyear: q.examyear,
-      university: q.university
-    };
+    if (count === 1) {
+      return res.json(questions[0]);
+    }
 
-
-    // Send the clean question to UTMESchools
-    res.json(cleanedQuestion);
+    return res.json(questions);
 
   } catch (error) {
 
@@ -152,5 +144,5 @@ app.get("/api/question", async (req, res) => {
 // ─────────────────────────────────────────────
 
 app.listen(PORT, () => {
-  console.log(`UTMESchools backend running on port ${PORT}`);
+  console.log(`UTMESchools Backend running on port ${PORT}`);
 });
