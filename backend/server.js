@@ -2,14 +2,9 @@ import express from "express";
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+app.use(express.json());
 
-/* ================================================================
-   CORS
-   Allows the UTMESchools Cloudflare frontend to communicate
-   with this Render backend.
-   ================================================================ */
-
+// CORS
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
@@ -28,11 +23,14 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+const PORT = process.env.PORT || 3000;
 
-/* ================================================================
-   HOME / HEALTH CHECK
-   ================================================================ */
+const SDASH_BASE = "https://sdashapi.com/api/v1";
+
+
+// ================================
+// HOME
+// ================================
 
 app.get("/", (req, res) => {
   res.json({
@@ -41,59 +39,15 @@ app.get("/", (req, res) => {
   });
 });
 
-/* ================================================================
-   GET JAMB QUESTIONS
-   ================================================================ */
 
-app.get("/api/question", async (req, res) => {
+// ================================
+// GET AVAILABLE SUBJECTS
+// ================================
+
+app.get("/api/subjects", async (req, res) => {
   try {
-    const { subject, year } = req.query;
-
-    /* ------------------------------------------------------------
-       Validate subject
-       ------------------------------------------------------------ */
-
-    if (!subject) {
-      return res.status(400).json({
-        error: "Subject is required"
-      });
-    }
-
-    /* ------------------------------------------------------------
-       Get requested question count
-
-       SdashAPI allows a maximum of 50 questions per request.
-       ------------------------------------------------------------ */
-
-    const requestedCount = parseInt(req.query.count || "1", 10);
-
-    const count = Math.min(
-      Math.max(requestedCount, 1),
-      50
-    );
-
-    /* ------------------------------------------------------------
-       Build SdashAPI request
-       ------------------------------------------------------------ */
-
-    const params = new URLSearchParams({
-      subject: subject,
-      type: "utme",
-      limit: String(count)
-    });
-
-    /* Only add year when a specific year was selected */
-
-    if (year && year !== "Random") {
-      params.set("year", year);
-    }
-
-    /* ------------------------------------------------------------
-       Request authentic JAMB questions from SdashAPI
-       ------------------------------------------------------------ */
-
     const response = await fetch(
-      `https://sdashapi.com/api/v1/q?${params.toString()}`,
+      `${SDASH_BASE}/subjects`,
       {
         headers: {
           AccessToken: process.env.SDASH_API_KEY
@@ -101,15 +55,115 @@ app.get("/api/question", async (req, res) => {
       }
     );
 
-    /* ------------------------------------------------------------
-       Handle SdashAPI errors
-       ------------------------------------------------------------ */
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error("SdashAPI subjects error:", result);
+
+      return res.status(response.status).json({
+        error: "Failed to retrieve subjects",
+        details: result
+      });
+    }
+
+    return res.json(result);
+
+  } catch (error) {
+    console.error("Subjects endpoint error:", error);
+
+    return res.status(500).json({
+      error: "Backend error while retrieving subjects"
+    });
+  }
+});
+
+
+// ================================
+// GET AVAILABLE YEARS
+// ================================
+
+app.get("/api/years", async (req, res) => {
+  try {
+    const response = await fetch(
+      `${SDASH_BASE}/years`,
+      {
+        headers: {
+          AccessToken: process.env.SDASH_API_KEY
+        }
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error("SdashAPI years error:", result);
+
+      return res.status(response.status).json({
+        error: "Failed to retrieve years",
+        details: result
+      });
+    }
+
+    return res.json(result);
+
+  } catch (error) {
+    console.error("Years endpoint error:", error);
+
+    return res.status(500).json({
+      error: "Backend error while retrieving years"
+    });
+  }
+});
+
+
+// ================================
+// GET QUESTIONS
+// ================================
+
+app.get("/api/question", async (req, res) => {
+  try {
+    const { subject, year } = req.query;
+
+    const requestedCount = parseInt(
+      req.query.count || "1",
+      10
+    );
+
+    const count = Math.min(
+      Math.max(requestedCount, 1),
+      50
+    );
+
+    if (!subject) {
+      return res.status(400).json({
+        error: "Subject is required"
+      });
+    }
+
+    const params = new URLSearchParams({
+      subject: subject,
+      type: "utme",
+      limit: String(count)
+    });
+
+    if (year && year !== "Random") {
+      params.set("year", year);
+    }
+
+    const response = await fetch(
+      `${SDASH_BASE}/q?${params.toString()}`,
+      {
+        headers: {
+          AccessToken: process.env.SDASH_API_KEY
+        }
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
 
       console.error(
-        "SdashAPI error:",
+        "SdashAPI question error:",
         errorText
       );
 
@@ -119,20 +173,12 @@ app.get("/api/question", async (req, res) => {
       });
     }
 
-    /* ------------------------------------------------------------
-       Read response
-       ------------------------------------------------------------ */
-
     const result = await response.json();
 
     console.log(
-      "SdashAPI status:",
+      "SdashAPI question status:",
       result.status
     );
-
-    /* ------------------------------------------------------------
-       Make sure questions were returned
-       ------------------------------------------------------------ */
 
     if (!result.data) {
       return res.status(404).json({
@@ -143,26 +189,9 @@ app.get("/api/question", async (req, res) => {
       });
     }
 
-    /* ------------------------------------------------------------
-       SdashAPI returns:
-
-       - an object when limit = 1
-       - an array when limit > 1
-
-       Convert both into one consistent array.
-       ------------------------------------------------------------ */
-
     const rawQuestions = Array.isArray(result.data)
       ? result.data
       : [result.data];
-
-    /* ------------------------------------------------------------
-       Convert SdashAPI response into the UTMESchools format.
-
-       IMPORTANT:
-       We deliberately DO NOT return SdashAPI's "solution".
-       UTMESchools will eventually generate its own explanations.
-       ------------------------------------------------------------ */
 
     const questions = rawQuestions
       .filter(q => q && q.id)
@@ -178,10 +207,6 @@ app.get("/api/question", async (req, res) => {
         university: q.university
       }));
 
-    /* ------------------------------------------------------------
-       Make sure at least one valid question exists
-       ------------------------------------------------------------ */
-
     if (questions.length === 0) {
       return res.status(404).json({
         error: "Invalid question response",
@@ -190,10 +215,6 @@ app.get("/api/question", async (req, res) => {
       });
     }
 
-    /* ------------------------------------------------------------
-       Return one question or an array depending on count
-       ------------------------------------------------------------ */
-
     if (count === 1) {
       return res.json(questions[0]);
     }
@@ -201,14 +222,7 @@ app.get("/api/question", async (req, res) => {
     return res.json(questions);
 
   } catch (error) {
-    /* ------------------------------------------------------------
-       Catch unexpected backend errors
-       ------------------------------------------------------------ */
-
-    console.error(
-      "Backend error:",
-      error
-    );
+    console.error("Backend error:", error);
 
     return res.status(500).json({
       error: "Backend error"
@@ -216,9 +230,6 @@ app.get("/api/question", async (req, res) => {
   }
 });
 
-/* ================================================================
-   START SERVER
-   ================================================================ */
 
 app.listen(PORT, () => {
   console.log(
