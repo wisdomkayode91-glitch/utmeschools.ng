@@ -1,10 +1,39 @@
 import express from "express";
+import { createClient } from "@supabase/supabase-js";
 
 const app = express();
 
 app.use(express.json());
 
+// --------------------------------------------------
+// SUPABASE SERVER CONNECTION
+// --------------------------------------------------
+
+if (
+  !process.env.SUPABASE_URL ||
+  !process.env.SUPABASE_SECRET_KEY
+) {
+  throw new Error(
+    "Missing SUPABASE_URL or SUPABASE_SECRET_KEY"
+  );
+}
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SECRET_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  }
+);
+
+// --------------------------------------------------
 // CORS
+// --------------------------------------------------
+
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
@@ -27,10 +56,9 @@ const PORT = process.env.PORT || 3000;
 
 const SDASH_BASE = "https://sdashapi.com/api/v1";
 
-
-// ================================
+// --------------------------------------------------
 // HOME
-// ================================
+// --------------------------------------------------
 
 app.get("/", (req, res) => {
   res.json({
@@ -39,10 +67,47 @@ app.get("/", (req, res) => {
   });
 });
 
+// --------------------------------------------------
+// TEMPORARY SUPABASE CONNECTION TEST
+// --------------------------------------------------
 
-// ================================
+app.get("/api/supabase-test", async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("questions")
+      .select("id")
+      .limit(1);
+
+    if (error) {
+      console.error("Supabase test error:", error);
+
+      return res.status(500).json({
+        ok: false,
+        connected: false,
+        error: error.message
+      });
+    }
+
+    return res.json({
+      ok: true,
+      connected: true,
+      rows: data?.length ?? 0
+    });
+
+  } catch (error) {
+    console.error("Supabase connection error:", error);
+
+    return res.status(500).json({
+      ok: false,
+      connected: false,
+      error: error.message
+    });
+  }
+});
+
+// --------------------------------------------------
 // GET AVAILABLE SUBJECTS
-// ================================
+// --------------------------------------------------
 
 app.get("/api/subjects", async (req, res) => {
   try {
@@ -58,7 +123,10 @@ app.get("/api/subjects", async (req, res) => {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("SdashAPI subjects error:", result);
+      console.error(
+        "SdashAPI subjects error:",
+        result
+      );
 
       return res.status(response.status).json({
         error: "Failed to retrieve subjects",
@@ -69,7 +137,10 @@ app.get("/api/subjects", async (req, res) => {
     return res.json(result);
 
   } catch (error) {
-    console.error("Subjects endpoint error:", error);
+    console.error(
+      "Subjects endpoint error:",
+      error
+    );
 
     return res.status(500).json({
       error: "Backend error while retrieving subjects"
@@ -77,10 +148,9 @@ app.get("/api/subjects", async (req, res) => {
   }
 });
 
-
-// ================================
+// --------------------------------------------------
 // GET AVAILABLE YEARS
-// ================================
+// --------------------------------------------------
 
 app.get("/api/years", async (req, res) => {
   try {
@@ -96,7 +166,10 @@ app.get("/api/years", async (req, res) => {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("SdashAPI years error:", result);
+      console.error(
+        "SdashAPI years error:",
+        result
+      );
 
       return res.status(response.status).json({
         error: "Failed to retrieve years",
@@ -107,7 +180,10 @@ app.get("/api/years", async (req, res) => {
     return res.json(result);
 
   } catch (error) {
-    console.error("Years endpoint error:", error);
+    console.error(
+      "Years endpoint error:",
+      error
+    );
 
     return res.status(500).json({
       error: "Backend error while retrieving years"
@@ -115,10 +191,9 @@ app.get("/api/years", async (req, res) => {
   }
 });
 
-
-// ================================
-// GET QUESTIONS
-// ================================
+// --------------------------------------------------
+// GET QUESTIONS FROM SDASHAPI
+// --------------------------------------------------
 
 app.get("/api/question", async (req, res) => {
   try {
@@ -222,7 +297,10 @@ app.get("/api/question", async (req, res) => {
     return res.json(questions);
 
   } catch (error) {
-    console.error("Backend error:", error);
+    console.error(
+      "Backend error:",
+      error
+    );
 
     return res.status(500).json({
       error: "Backend error"
@@ -230,6 +308,9 @@ app.get("/api/question", async (req, res) => {
   }
 });
 
+// --------------------------------------------------
+// START SERVER
+// --------------------------------------------------
 
 app.listen(PORT, () => {
   console.log(
