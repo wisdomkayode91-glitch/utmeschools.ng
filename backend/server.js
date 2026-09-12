@@ -3,41 +3,106 @@ import { createClient } from "@supabase/supabase-js";
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
+const SDASH_BASE = "https://sdashapi.com/api/v1";
 
-// ─────────────────────────────────────────────
-// ENVIRONMENT VARIABLES
-// ─────────────────────────────────────────────
+/* ============================================================
+   CORS
+   Allows the GitHub Pages frontend to communicate with Render.
+   ============================================================ */
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
-const SDASH_API_KEY = process.env.SDASH_API_KEY;
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+  );
 
-if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
-  console.error("Missing Supabase environment variables.");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+/* ============================================================
+   ENVIRONMENT VARIABLES
+   ============================================================ */
+
+if (!process.env.SUPABASE_URL) {
+  throw new Error("SUPABASE_URL is missing");
 }
 
+if (!process.env.SUPABASE_SECRET_KEY) {
+  throw new Error("SUPABASE_SECRET_KEY is missing");
+}
+
+if (!process.env.SDASH_API_KEY) {
+  throw new Error("SDASH_API_KEY is missing");
+}
+
+/* ============================================================
+   SUPABASE SERVER CLIENT
+   ============================================================ */
+
 const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_SECRET_KEY
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SECRET_KEY,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    }
+  }
 );
 
-// ─────────────────────────────────────────────
-// HOME / HEALTH CHECK
-// ─────────────────────────────────────────────
+/* ============================================================
+   HELPERS
+   ============================================================ */
+
+function getLimit(value, fallback = 20, max = 100) {
+  const parsed = parseInt(value || String(fallback), 10);
+
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(Math.max(parsed, 1), max);
+}
+
+function shuffle(array) {
+  const copy = [...array];
+
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+
+  return copy;
+}
+
+/* ============================================================
+   HEALTH CHECK
+   ============================================================ */
 
 app.get("/", (req, res) => {
   res.json({
-    status: "online",
-    app: "UTMESchools Backend"
+    ok: true,
+    service: "UTMESchools Backend",
+    status: "running"
   });
 });
 
-// ─────────────────────────────────────────────
-// SUPABASE CONNECTION TEST
-// ─────────────────────────────────────────────
+/* ============================================================
+   SUPABASE CONNECTION TEST
+   ============================================================ */
 
 app.get("/api/supabase-test", async (req, res) => {
   try {
@@ -59,7 +124,7 @@ app.get("/api/supabase-test", async (req, res) => {
     return res.json({
       ok: true,
       connected: true,
-      rows: data?.length || 0
+      rows: data ? data.length : 0
     });
   } catch (error) {
     console.error("Supabase connection error:", error);
@@ -67,57 +132,25 @@ app.get("/api/supabase-test", async (req, res) => {
     return res.status(500).json({
       ok: false,
       connected: false,
-      error: "Supabase connection failed"
+      error: error.message
     });
   }
 });
 
-// ─────────────────────────────────────────────
-// GET QUESTIONS FROM SUPABASE
-// ─────────────────────────────────────────────
-//
-// This is now the main student question endpoint.
-//
-// Flow:
-// Select Subjects
-//      ↓
-// Practice
-//      ↓
-// Render Backend
-//      ↓
-// Supabase questions table
-//
-// SdashAPI is NOT used here.
-// ─────────────────────────────────────────────
+/* ============================================================
+   GET QUESTIONS FROM SUPABASE
+   THIS IS THE MAIN STUDENT QUESTION API.
+   ============================================================ */
 
-app.get("/api/question", async (req, res) => {
+app.get("/api/questions", async (req, res) => {
   try {
-    const {
-      subject,
-      year,
-      topic,
-      subtopic
-    } = req.query;
-
-    const requestedCount = parseInt(
-      req.query.count || "1",
-      10
-    );
-
-    const count = Math.min(
-      Math.max(requestedCount, 1),
-      100
-    );
-
-    if (!subject) {
-      return res.status(400).json({
-        error: "Subject is required"
-      });
-    }
-
-    // ─────────────────────────────────────────
-    // BUILD SUPABASE QUERY
-    // ─────────────────────────────────────────
+    const subject = req.query.subject || "";
+    const year = req.query.year || "";
+    const topic = req.query.topic || "";
+    const subtopic = req.query.subtopic || "";
+    const difficulty = req.query.difficulty || "";
+    const limit = getLimit(req.query.limit, 20, 100);
+    const shuffleQuestions = req.query.shuffle !== "0";
 
     let query = supabase
       .from("questions")
@@ -126,7 +159,6 @@ app.get("/api/question", async (req, res) => {
         question,
         exam_body,
         exam_type,
-        subject_id,
         subject_name,
         subject_slug,
         exam_year,
@@ -140,225 +172,740 @@ app.get("/api/question", async (req, res) => {
         syllabus_objective,
         difficulty,
         explanation,
+        ai_explanation,
         source,
-        source_id,
-        university
-      `)
-      .eq("exam_body", "JAMB")
-      .eq("subject_slug", subject);
+        source_id
+      `);
 
-    // ─────────────────────────────────────────
-    // YEAR FILTER
-    // ─────────────────────────────────────────
-
-    if (year && year !== "Random" && year !== "random") {
-      const parsedYear = parseInt(year, 10);
-
-      if (!Number.isNaN(parsedYear)) {
-        query = query.eq("exam_year", parsedYear);
-      }
+    if (subject) {
+      query = query.eq("subject_slug", subject);
     }
 
-    // ─────────────────────────────────────────
-    // TOPIC FILTER
-    // ─────────────────────────────────────────
+    if (year && year !== "Random") {
+      query = query.eq("exam_year", Number(year));
+    }
 
-    if (
-      topic &&
-      topic !== "__none__" &&
-      topic !== "Random" &&
-      topic !== "random"
-    ) {
+    if (topic) {
       query = query.eq("topic", topic);
     }
 
-    // ─────────────────────────────────────────
-    // SUBTOPIC FILTER
-    // ─────────────────────────────────────────
-
-    if (
-      subtopic &&
-      subtopic !== "__none__" &&
-      subtopic !== "Random" &&
-      subtopic !== "random"
-    ) {
+    if (subtopic) {
       query = query.eq("subtopic", subtopic);
     }
 
-    // ─────────────────────────────────────────
-    // FETCH QUESTIONS
-    // ─────────────────────────────────────────
+    if (difficulty) {
+      query = query.eq("difficulty", difficulty);
+    }
 
-    const { data, error } = await query.limit(count);
+    const { data, error } = await query.limit(limit);
 
     if (error) {
-      console.error("Supabase question error:", error);
+      console.error("Question retrieval error:", error);
 
       return res.status(500).json({
-        error: "Failed to load questions",
+        ok: false,
+        error: "Failed to retrieve questions",
         details: error.message
       });
     }
 
-    if (!data || data.length === 0) {
-      return res.status(404).json({
-        error: "No questions found",
-        details: {
-          subject,
-          year: year || null,
-          topic: topic || null,
-          subtopic: subtopic || null
-        }
-      });
-    }
+    const questions = shuffleQuestions
+      ? shuffle(data || [])
+      : (data || []);
 
-    // ─────────────────────────────────────────
-    // RETURN QUESTIONS
-    // ─────────────────────────────────────────
-
-    if (count === 1) {
-      return res.json(data[0]);
-    }
-
-    return res.json(data);
+    return res.json({
+      ok: true,
+      count: questions.length,
+      source: "Supabase",
+      data: questions
+    });
 
   } catch (error) {
-    console.error("Question endpoint error:", error);
+    console.error("Questions API error:", error);
 
     return res.status(500).json({
-      error: "Backend error"
+      ok: false,
+      error: "Questions request failed",
+      details: error.message
     });
   }
 });
 
-// ─────────────────────────────────────────────
-// GET AVAILABLE SUBJECTS FROM SUPABASE
-// ─────────────────────────────────────────────
+/* ============================================================
+   GET AVAILABLE SUBJECTS FROM OUR DATABASE
+   ============================================================ */
 
-app.get("/api/supabase-subjects", async (req, res) => {
+app.get("/api/database-subjects", async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("questions")
-      .select("subject_slug, subject_name")
-      .eq("exam_body", "JAMB");
+      .select("subject_name, subject_slug");
 
     if (error) {
-      console.error("Subjects error:", error);
-
       return res.status(500).json({
-        error: "Failed to load subjects",
-        details: error.message
+        ok: false,
+        error: error.message
       });
     }
 
-    const uniqueSubjects = [];
+    const unique = new Map();
 
     for (const row of data || []) {
-      if (!row.subject_slug) continue;
-
-      const exists = uniqueSubjects.some(
-        item => item.subject_slug === row.subject_slug
-      );
-
-      if (!exists) {
-        uniqueSubjects.push({
-          subject_slug: row.subject_slug,
-          subject_name: row.subject_name
+      if (row.subject_slug) {
+        unique.set(row.subject_slug, {
+          name: row.subject_name,
+          slug: row.subject_slug
         });
       }
     }
 
-    return res.json(uniqueSubjects);
+    return res.json({
+      ok: true,
+      subjects: Array.from(unique.values())
+    });
 
   } catch (error) {
-    console.error("Subject endpoint error:", error);
-
     return res.status(500).json({
-      error: "Backend error"
+      ok: false,
+      error: error.message
     });
   }
 });
 
-// ─────────────────────────────────────────────
-// GET AVAILABLE YEARS FROM SUPABASE
-// ─────────────────────────────────────────────
+/* ============================================================
+   GET AVAILABLE YEARS FOR A SUBJECT
+   ============================================================ */
 
-app.get("/api/supabase-years", async (req, res) => {
+app.get("/api/database-years", async (req, res) => {
   try {
-    const { subject } = req.query;
+    const subject = req.query.subject || "";
 
-    if (!subject) {
+    let query = supabase
+      .from("questions")
+      .select("exam_year");
+
+    if (subject) {
+      query = query.eq("subject_slug", subject);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return res.status(500).json({
+        ok: false,
+        error: error.message
+      });
+    }
+
+    const years = [...new Set(
+      (data || [])
+        .map(row => Number(row.exam_year))
+        .filter(Boolean)
+    )].sort((a, b) => b - a);
+
+    return res.json({
+      ok: true,
+      years
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
+/* ============================================================
+   CREATE PRACTICE SESSION
+   ============================================================ */
+
+app.post("/api/sessions", async (req, res) => {
+  try {
+    const {
+      user_id = null,
+      mode = "practice",
+      total_questions = 0,
+      subjects = []
+    } = req.body;
+
+    if (!["practice", "mock", "study"].includes(mode)) {
       return res.status(400).json({
-        error: "Subject is required"
+        ok: false,
+        error: "Invalid practice mode"
       });
     }
 
     const { data, error } = await supabase
-      .from("questions")
-      .select("exam_year")
-      .eq("exam_body", "JAMB")
-      .eq("subject_slug", subject);
+      .from("practice_sessions")
+      .insert({
+        user_id,
+        mode,
+        total_questions: Number(total_questions) || 0,
+        attempted_questions: 0,
+        correct_answers: 0,
+        total_score: 0,
+        total_possible: Number(total_questions) || 0,
+        time_taken_seconds: 0,
+        subjects: Array.isArray(subjects) ? subjects : []
+      })
+      .select()
+      .single();
 
     if (error) {
-      console.error("Years error:", error);
+      console.error("Session creation error:", error);
 
       return res.status(500).json({
-        error: "Failed to load years",
+        ok: false,
+        error: "Failed to create practice session",
         details: error.message
       });
     }
 
-    const years = [
-      ...new Set(
-        (data || [])
-          .map(row => row.exam_year)
-          .filter(year => year !== null)
-      )
-    ].sort((a, b) => b - a);
-
-    return res.json(years);
+    return res.status(201).json({
+      ok: true,
+      session: data
+    });
 
   } catch (error) {
-    console.error("Years endpoint error:", error);
-
     return res.status(500).json({
-      error: "Backend error"
+      ok: false,
+      error: error.message
     });
   }
 });
 
-// ─────────────────────────────────────────────
-// IMPORT QUESTIONS FROM SDASHAPI → SUPABASE
-// ─────────────────────────────────────────────
-//
-// IMPORTANT:
-// This route is for importing questions into our
-// own database.
-//
-// Students do NOT use this route.
-//
-// SdashAPI remains a content source.
-// Supabase becomes the student-facing database.
-// ─────────────────────────────────────────────
+/* ============================================================
+   SAVE QUESTION ATTEMPT
+   ============================================================ */
+
+app.post("/api/sessions/:sessionId/attempts", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    const {
+      user_id = null,
+      question_id,
+      subject_slug = null,
+      exam_year = null,
+      topic = null,
+      subtopic = null,
+      difficulty = null,
+      selected_answer = null,
+      correct_answer = null,
+      is_correct = false,
+      time_spent_seconds = 0
+    } = req.body;
+
+    if (!question_id) {
+      return res.status(400).json({
+        ok: false,
+        error: "question_id is required"
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("question_attempts")
+      .insert({
+        session_id: sessionId,
+        user_id,
+        question_id: String(question_id),
+        subject_slug,
+        exam_year: exam_year ? Number(exam_year) : null,
+        topic,
+        subtopic,
+        difficulty,
+        selected_answer,
+        correct_answer,
+        is_correct: Boolean(is_correct),
+        time_spent_seconds: Number(time_spent_seconds) || 0
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Attempt save error:", error);
+
+      return res.status(500).json({
+        ok: false,
+        error: "Failed to save question attempt",
+        details: error.message
+      });
+    }
+
+    return res.status(201).json({
+      ok: true,
+      attempt: data
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
+/* ============================================================
+   COMPLETE PRACTICE SESSION
+   ============================================================ */
+
+app.patch("/api/sessions/:sessionId", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    const {
+      attempted_questions,
+      correct_answers,
+      total_score,
+      total_possible,
+      time_taken_seconds
+    } = req.body;
+
+    const { data, error } = await supabase
+      .from("practice_sessions")
+      .update({
+        attempted_questions: Number(attempted_questions) || 0,
+        correct_answers: Number(correct_answers) || 0,
+        total_score: Number(total_score) || 0,
+        total_possible: Number(total_possible) || 0,
+        time_taken_seconds: Number(time_taken_seconds) || 0
+      })
+      .eq("id", sessionId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Session update error:", error);
+
+      return res.status(500).json({
+        ok: false,
+        error: "Failed to update practice session",
+        details: error.message
+      });
+    }
+
+    return res.json({
+      ok: true,
+      session: data
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
+/* ============================================================
+   GET SESSION + ATTEMPTS
+   USED BY RESULTS / CORRECTION
+   ============================================================ */
+
+app.get("/api/sessions/:sessionId", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    const { data: session, error: sessionError } = await supabase
+      .from("practice_sessions")
+      .select("*")
+      .eq("id", sessionId)
+      .single();
+
+    if (sessionError) {
+      return res.status(404).json({
+        ok: false,
+        error: "Practice session not found",
+        details: sessionError.message
+      });
+    }
+
+    const { data: attempts, error: attemptsError } = await supabase
+      .from("question_attempts")
+      .select("*")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+
+    if (attemptsError) {
+      return res.status(500).json({
+        ok: false,
+        error: "Failed to retrieve attempts",
+        details: attemptsError.message
+      });
+    }
+
+    return res.json({
+      ok: true,
+      session,
+      attempts: attempts || []
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
+/* ============================================================
+   COACH ANALYTICS
+   Calculates performance by subject/topic/subtopic.
+   ============================================================ */
+
+app.get("/api/coach/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const { data, error } = await supabase
+      .from("question_attempts")
+      .select(`
+        subject_slug,
+        topic,
+        subtopic,
+        difficulty,
+        is_correct,
+        created_at
+      `)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return res.status(500).json({
+        ok: false,
+        error: "Failed to retrieve coach data",
+        details: error.message
+      });
+    }
+
+    const groups = new Map();
+
+    for (const attempt of data || []) {
+      const key = [
+        attempt.subject_slug || "unknown",
+        attempt.topic || "Unclassified",
+        attempt.subtopic || "Unclassified"
+      ].join("|");
+
+      if (!groups.has(key)) {
+        groups.set(key, {
+          subject: attempt.subject_slug || "unknown",
+          topic: attempt.topic || "Unclassified",
+          subtopic: attempt.subtopic || "Unclassified",
+          questions: 0,
+          correct: 0
+        });
+      }
+
+      const group = groups.get(key);
+
+      group.questions += 1;
+
+      if (attempt.is_correct) {
+        group.correct += 1;
+      }
+    }
+
+    const performance = Array.from(groups.values())
+      .map(item => ({
+        ...item,
+        percentage: item.questions
+          ? Math.round((item.correct / item.questions) * 100)
+          : 0
+      }))
+      .sort((a, b) => a.percentage - b.percentage);
+
+    const weakest = performance.slice(0, 5);
+
+    return res.json({
+      ok: true,
+      user_id: userId,
+      total_attempts: (data || []).length,
+      performance,
+      weakest,
+      recommendation: weakest.length
+        ? `Prioritize ${weakest[0].topic} — ${weakest[0].subtopic}.`
+        : "Complete some practice questions so Coach Mode can analyze your performance."
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
+/* ============================================================
+   BOOKMARKS — GET
+   ============================================================ */
+
+app.get("/api/bookmarks/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const { data, error } = await supabase
+      .from("bookmarks")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return res.status(500).json({
+        ok: false,
+        error: "Failed to retrieve bookmarks",
+        details: error.message
+      });
+    }
+
+    return res.json({
+      ok: true,
+      bookmarks: data || []
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
+/* ============================================================
+   BOOKMARKS — ADD
+   ============================================================ */
+
+app.post("/api/bookmarks", async (req, res) => {
+  try {
+    const {
+      user_id,
+      question_id
+    } = req.body;
+
+    if (!user_id || !question_id) {
+      return res.status(400).json({
+        ok: false,
+        error: "user_id and question_id are required"
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("bookmarks")
+      .upsert(
+        {
+          user_id,
+          question_id: String(question_id)
+        },
+        {
+          onConflict: "user_id,question_id"
+        }
+      )
+      .select()
+      .single();
+
+    if (error) {
+      return res.status(500).json({
+        ok: false,
+        error: "Failed to save bookmark",
+        details: error.message
+      });
+    }
+
+    return res.status(201).json({
+      ok: true,
+      bookmark: data
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
+/* ============================================================
+   BOOKMARKS — REMOVE
+   ============================================================ */
+
+app.delete("/api/bookmarks", async (req, res) => {
+  try {
+    const {
+      user_id,
+      question_id
+    } = req.body;
+
+    if (!user_id || !question_id) {
+      return res.status(400).json({
+        ok: false,
+        error: "user_id and question_id are required"
+      });
+    }
+
+    const { error } = await supabase
+      .from("bookmarks")
+      .delete()
+      .eq("user_id", user_id)
+      .eq("question_id", String(question_id));
+
+    if (error) {
+      return res.status(500).json({
+        ok: false,
+        error: "Failed to remove bookmark",
+        details: error.message
+      });
+    }
+
+    return res.json({
+      ok: true,
+      removed: true
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
+/* ============================================================
+   SDASH SUBJECTS
+   ============================================================ */
+
+app.get("/api/subjects", async (req, res) => {
+  try {
+    const response = await fetch(`${SDASH_BASE}/subjects`, {
+      headers: {
+        AccessToken: process.env.SDASH_API_KEY
+      }
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        ok: false,
+        error: "SdashAPI subjects request failed",
+        details: result
+      });
+    }
+
+    return res.json(result);
+
+  } catch (error) {
+    console.error("Subjects error:", error);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Failed to get subjects",
+      details: error.message
+    });
+  }
+});
+
+/* ============================================================
+   SDASH YEARS
+   ============================================================ */
+
+app.get("/api/years", async (req, res) => {
+  try {
+    const response = await fetch(`${SDASH_BASE}/years`, {
+      headers: {
+        AccessToken: process.env.SDASH_API_KEY
+      }
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        ok: false,
+        error: "SdashAPI years request failed",
+        details: result
+      });
+    }
+
+    return res.json(result);
+
+  } catch (error) {
+    console.error("Years error:", error);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Failed to get years",
+      details: error.message
+    });
+  }
+});
+
+/* ============================================================
+   LIVE SDASH QUESTION TEST
+   DEVELOPMENT ONLY
+   ============================================================ */
+
+app.get("/api/question", async (req, res) => {
+  try {
+    const subject = req.query.subject || "chemistry";
+    const year = req.query.year || "";
+    const count = getLimit(req.query.count, 1, 50);
+
+    const params = new URLSearchParams({
+      subject,
+      type: "utme",
+      limit: String(count)
+    });
+
+    if (year) {
+      params.set("year", year);
+    }
+
+    const response = await fetch(
+      `${SDASH_BASE}/q?${params.toString()}`,
+      {
+        headers: {
+      AccessToken: process.env.SDASH_API_KEY
+        }
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        ok: false,
+        error: "SdashAPI request failed",
+        details: result
+      });
+    }
+
+    return res.json({
+      ok: true,
+      source: "SdashAPI",
+      data: result.data
+    });
+
+  } catch (error) {
+    console.error("Question request error:", error);
+
+    return res.status(500).json({
+      ok: false,
+      error: "Failed to get questions",
+      details: error.message
+    });
+  }
+});
+
+/* ============================================================
+   IMPORT QUESTIONS FROM SDASH → SUPABASE
+   TEMPORARY MAXIMUM: 5 PER REQUEST
+   ============================================================ */
 
 app.get("/api/import-questions", async (req, res) => {
   try {
-    if (!SDASH_API_KEY) {
-      return res.status(500).json({
-        error: "SDASH_API_KEY is not configured"
-      });
-    }
-
-    const {
-      subject,
-      year
-    } = req.query;
-
-    if (!subject) {
-      return res.status(400).json({
-        error: "Subject is required"
-      });
-    }
+    const subject = req.query.subject || "chemistry";
+    const year = req.query.year || "2025";
 
     const requestedCount = parseInt(
       req.query.count || "5",
@@ -367,32 +914,21 @@ app.get("/api/import-questions", async (req, res) => {
 
     const count = Math.min(
       Math.max(requestedCount, 1),
-      50
+      5
     );
-
-    // ─────────────────────────────────────────
-    // REQUEST SDASH QUESTIONS
-    // ─────────────────────────────────────────
 
     const params = new URLSearchParams({
       subject,
       type: "utme",
+      year,
       limit: String(count)
     });
 
-    if (
-      year &&
-      year !== "Random" &&
-      year !== "random"
-    ) {
-      params.set("year", year);
-    }
-
     const response = await fetch(
-      `https://sdashapi.com/api/v1/q?${params.toString()}`,
+      `${SDASH_BASE}/q?${params.toString()}`,
       {
         headers: {
-          AccessToken: SDASH_API_KEY
+          AccessToken: process.env.SDASH_API_KEY
         }
       }
     );
@@ -400,12 +936,8 @@ app.get("/api/import-questions", async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text();
 
-      console.error(
-        "SdashAPI import error:",
-        errorText
-      );
-
       return res.status(response.status).json({
+        ok: false,
         error: "SdashAPI request failed",
         details: errorText
       });
@@ -415,7 +947,8 @@ app.get("/api/import-questions", async (req, res) => {
 
     if (!result.data) {
       return res.status(404).json({
-        error: "SdashAPI returned no questions",
+        ok: false,
+        error: "No questions returned by SdashAPI",
         details: result.message || null
       });
     }
@@ -424,80 +957,60 @@ app.get("/api/import-questions", async (req, res) => {
       ? result.data
       : [result.data];
 
-    // ─────────────────────────────────────────
-    // MAP SDASH → OUR DATABASE STRUCTURE
-    // ─────────────────────────────────────────
-
     const questions = rawQuestions
       .filter(q => q && q.id && q.question)
       .map(q => ({
-        id: String(q.id),
-
+        id: `sdash_${q.id}`,
         question: q.question,
 
         exam_body: "JAMB",
+        exam_type: "UTME",
 
-        exam_type: q.examtype || "UTME",
-
-        subject_id: null,
-
-        subject_name: null,
-
+        subject_name: subject,
         subject_slug: subject,
 
-        exam_year: q.examyear
-          ? parseInt(q.examyear, 10)
-          : null,
+        exam_year:
+          Number(q.examyear) || Number(year),
 
-        options: q.option || null,
-
-        answer: q.answer || null,
+        options: q.option || {},
+        answer: q.answer,
 
         section: q.section || null,
-
         passage: null,
 
         image_url: q.image || null,
 
         topic: null,
-
         subtopic: null,
-
         syllabus_objective: null,
-
         difficulty: null,
 
-        // Deliberately do not use Sdash
-        // explanations as our final explanation.
-        explanation: null,
+        explanation: q.solution || null,
 
         source: "SdashAPI",
-
         source_id: String(q.id),
 
-        university: q.university || null,
-
-        imported_at: new Date().toISOString(),
-
-        updated_at: new Date().toISOString()
+        university: q.university || null
       }));
 
     if (questions.length === 0) {
       return res.status(404).json({
-        error: "No valid questions were returned by SdashAPI"
+        ok: false,
+        error: "No valid questions to import"
       });
     }
 
-    // ─────────────────────────────────────────
-    // SAVE INTO SUPABASE
-    // ─────────────────────────────────────────
-
     const { data, error } = await supabase
       .from("questions")
-      .upsert(questions, {
-        onConflict: "id"
-      })
-      .select();
+      .upsert(
+        questions,
+        {
+          onConflict: "id"
+        }
+      )
+      .select(
+        "id, source_id, subject_slug, exam_year"
+      );
 
     if (error) {
       console.error(
@@ -506,115 +1019,43 @@ app.get("/api/import-questions", async (req, res) => {
       );
 
       return res.status(500).json({
-        error: "Failed to save questions to Supabase",
+        ok: false,
+        error: "Supabase import failed",
         details: error.message
       });
     }
 
     return res.json({
       ok: true,
-      imported: data?.length || 0,
+      source: "SdashAPI",
+      subject,
+      year,
+      requested: count,
+      received: rawQuestions.length,
+      imported: data ? data.length : 0,
       questions: data || []
     });
 
   } catch (error) {
     console.error(
-      "Import endpoint error:",
-      error
-    );
-
-    return res.status(500).json({
-      error: "Import failed"
-    });
-  }
-});
-
-// ─────────────────────────────────────────────
-// TEMPORARY DATABASE WRITE TEST
-// ─────────────────────────────────────────────
-//
-// Kept temporarily because we previously used it
-// to verify that Render can write to Supabase.
-// We will remove this after the new database flow
-// is confirmed.
-// ─────────────────────────────────────────────
-
-app.get("/api/supabase-write-test", async (req, res) => {
-  try {
-    const testQuestion = {
-      id: "__utmeschools_write_test__",
-      question: "UTMESchools temporary database write test.",
-      source: "UTMESchools_TEST"
-    };
-
-    const { data, error } = await supabase
-      .from("questions")
-      .upsert(testQuestion, {
-        onConflict: "id"
-      })
-      .select();
-
-    if (error) {
-      console.error(
-        "Supabase write test error:",
-        error
-      );
-
-      return res.status(500).json({
-        ok: false,
-        written: false,
-        error: error.message
-      });
-    }
-
-    return res.json({
-      ok: true,
-      written: true,
-      data
-    });
-
-  } catch (error) {
-    console.error(
-      "Write test error:",
+      "Import route error:",
       error
     );
 
     return res.status(500).json({
       ok: false,
-      written: false,
-      error: "Write test failed"
+      error: "Import failed",
+      details: error.message
     });
   }
 });
 
-// ─────────────────────────────────────────────
-// 404 HANDLER
-// ─────────────────────────────────────────────
-
-app.use((req, res) => {
-  res.status(404).json({
-    error: "Route not found"
-  });
-});
-
-// ─────────────────────────────────────────────
-// ERROR HANDLER
-// ─────────────────────────────────────────────
-
-app.use((error, req, res, next) => {
-  console.error("Unhandled server error:", error);
-
-  res.status(500).json({
-    error: "Internal server error"
-  });
-});
-
-// ─────────────────────────────────────────────
-// START SERVER
-// ─────────────────────────────────────────────
+/* ============================================================
+   START SERVER
+   ============================================================ */
 
 app.listen(PORT, () => {
   console.log(
-    `UTMESchools backend running on port ${PORT}`
+    `UTMESchools Backend running on port ${PORT}`
   );
 });
