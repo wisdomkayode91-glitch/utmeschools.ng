@@ -441,64 +441,6 @@ app.get("/api/import-questions", async (req, res) => {
   }
 });
 // ============================================================
-// TEMPORARY SUPABASE WRITE TEST
-// ============================================================
-
-app.get("/api/supabase-write-test", async (req, res) => {
-  try {
-    const testQuestion = {
-      id: "__utmeschools_write_test__",
-      question: "UTMESchools temporary database write test.",
-      exam_body: "JAMB",
-      exam_type: "UTME",
-      subject_name: "Chemistry",
-      subject_slug: "chemistry",
-      exam_year: 2025,
-      options: {
-        A: "Option A",
-        B: "Option B",
-        C: "Option C",
-        D: "Option D"
-      },
-      answer: "A",
-      source: "UTMESchools_TEST",
-      source_id: "__write_test__"
-    };
-
-    const { data, error } = await supabase
-      .from("questions")
-      .upsert(testQuestion, {
-        onConflict: "id"
-      })
-      .select("id, question, source");
-
-    if (error) {
-      console.error("Supabase write test error:", error);
-
-      return res.status(500).json({
-        ok: false,
-        written: false,
-        error: error.message
-      });
-    }
-
-    return res.json({
-      ok: true,
-      written: true,
-      data
-    });
-
-  } catch (error) {
-    console.error("Supabase write test exception:", error);
-
-    return res.status(500).json({
-      ok: false,
-      written: false,
-      error: error.message
-    });
-  }
-});
-// ============================================================
 // START SERVER
 // ============================================================
 
