@@ -480,16 +480,8 @@ document.getElementById('nextCorrection').addEventListener(
 );
 
 document.getElementById('coachBtn').addEventListener('click', () => {
-  /*
-    Coach Mode is the next implementation block.
-    Keep the button visible now so Results already has the
-    correct architecture, but don't pretend Coach is finished.
-  */
-  alert(
-    'Coach Mode is being connected to your performance history.'
-  );
+  window.location.href = 'coach.html';
 });
-
 /* ================================================================
    START
 ================================================================ */
