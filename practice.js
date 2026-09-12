@@ -287,132 +287,159 @@ function startTimer() {
    LOAD QUESTIONS
    ================================================================ */
 async function loadAllQuestions() {
-
   showLoadingState(true);
 
   try {
+    const user    = JSON.parse(localStorage.getItem('utme_user') || 'null');
+    const hasPaid = user && user.has_paid;
+    const isCoachRecovery = urlP.get('coach') === '1';
 
-    const user =
-      JSON.parse(
-        localStorage.getItem('utme_user') || 'null'
-      );
+    /*
+      COACH RECOVERY
+      ------------------------------------------------------------
+      Coach Mode already selected the exact questions to practise.
+      Use that same set instead of requesting a new random set.
 
-    const hasPaid =
-      user && user.has_paid;
+      The student can enter this set as:
+        - Study
+        - Practice
+        - Mock
+
+      The same questions remain available when the student moves
+      between these learning modes from Coach Mode.
+    */
+    if (isCoachRecovery) {
+      let recoverySet = [];
+
+      try {
+        recoverySet = JSON.parse(
+          sessionStorage.getItem('coach_recovery_set') || '[]'
+        );
+      } catch (e) {
+        recoverySet = [];
+      }
+
+      if (Array.isArray(recoverySet) && recoverySet.length > 0) {
+        allQuestions = recoverySet
+          .filter(q =>
+            q &&
+            String(q.question || q.text || '').trim() &&
+            Array.isArray(q.options) &&
+            q.options.length >= 2
+          )
+          .map((q, index) => ({
+            id: String(q.id || `coach_${index + 1}`),
+            subjectId:
+              q.subject_slug ||
+              q.subjectId ||
+              q.subject_id ||
+              subjectIds[0] ||
+              'english',
+            year: q.exam_year ?? q.year ?? '',
+            topic: q.topic || '',
+            subtopic: q.subtopic || '',
+            difficulty: q.difficulty || 'Intermediate',
+            text: q.question || q.text || '',
+            options: q.options || [],
+            correct: q.answer || q.correct || '',
+            explanation: q.ai_explanation || q.explanation || '',
+            svg_code: q.svg_code || '',
+            image_file: q.image_file || '',
+            image_url: q.image_url || '',
+            passage: q.passage || q.section || '',
+            qNum: index + 1
+          }));
+
+        /*
+          IMPORTANT:
+          Coach recovery questions are already selected by Coach Mode,
+          so do not apply the normal random fetch or free-limit slice.
+        */
+
+        if (allQuestions.length === 0) {
+          allQuestions = getDemoQuestions(subjectIds[0] || 'english');
+        }
+
+        if (mode === 'study') {
+          document.getElementById('submitBtn').style.display = 'none';
+        }
+
+        showLoadingState(false);
+        renderSubjectTabs();
+        renderQuestion();
+        startTimer();
+        return;
+      }
+
+      /*
+        If the recovery set disappeared from sessionStorage,
+        fall back safely to the normal question loader.
+      */
+      console.warn('Coach recovery set not found. Loading normal questions.');
+    }
+
+    /* ============================================================
+       NORMAL PRACTICE / MOCK / STUDY LOADING
+    ============================================================ */
 
     for (const sid of subjectIds) {
+      const year       = urlP.get('year_' + sid) || 'Random';
+      const count      = parseInt(urlP.get('count_' + sid) || '40', 10);
+      const topicParam = urlP.get('topics_' + sid) || '';
 
-      const year =
-        urlP.get('year_' + sid) ||
-        'Random';
+      const requestedCount = hasPaid
+        ? count
+        : Math.min(count, FREE_LIMIT);
 
-      const count =
-        parseInt(
-          urlP.get('count_' + sid) || '40',
-          10
-        );
-
-      const topicParam =
-        urlP.get('topics_' + sid) ||
-        '';
-
-      let qs =
-        await fetchQuestionsFromJSON(
-          sid,
-          year,
-          count,
-          topicParam
-        );
+      let qs = await fetchQuestionsFromJSON(
+        sid,
+        year,
+        requestedCount,
+        topicParam
+      );
 
       if (qs.length === 0) {
-
-        qs =
-          getDemoQuestions(sid);
-
+        qs = getDemoQuestions(sid);
         showToast(
           'Unable to load live questions right now. Demo question shown.'
         );
       }
 
       if (!hasPaid) {
-        qs =
-          qs.slice(0, FREE_LIMIT);
+        qs = qs.slice(0, FREE_LIMIT);
       }
 
       if (shuffleQ) {
-        qs.sort(
-          () => Math.random() - 0.5
-        );
+        qs.sort(() => Math.random() - 0.5);
       }
 
       qs.forEach((q, i) => {
-
-        q.qNum =
-          allQuestions.length +
-          i +
-          1;
-
+        q.qNum = allQuestions.length + i + 1;
         q.subjectId = sid;
       });
 
       allQuestions.push(...qs);
     }
 
-  } catch(e) {
-
-    console.error(
-      'loadAllQuestions error:',
-      e
-    );
+  } catch (e) {
+    console.error('loadAllQuestions error:', e);
 
   } finally {
 
     if (allQuestions.length === 0) {
-
-      allQuestions =
-        getDemoQuestions(
-          subjectIds[0] || 'english'
-        );
+      allQuestions = getDemoQuestions(
+        subjectIds[0] || 'english'
+      );
     }
 
     if (mode === 'study') {
-
-      document.getElementById(
-        'submitBtn'
-      ).style.display = 'none';
+      document.getElementById('submitBtn').style.display = 'none';
     }
 
     showLoadingState(false);
-
     renderSubjectTabs();
-
     renderQuestion();
-
     startTimer();
-  }
-}
-
-function showLoadingState(loading) {
-
-  const qCard =
-    document.getElementById('qCard');
-
-  if (loading) {
-
-    qCard.innerHTML = `
-      <div style="text-align:center;padding:40px 20px;">
-        <div style="font-size:32px;margin-bottom:12px;">⏳</div>
-        <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;">
-          Loading questions...
-        </div>
-        <div style="font-size:13px;color:var(--ink-soft);">
-          Please wait
-        </div>
-      </div>`;
-
-    document.getElementById(
-      'optionsList'
-    ).innerHTML = '';
   }
 }
 
