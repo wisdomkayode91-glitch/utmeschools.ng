@@ -934,34 +934,42 @@ function renderOptions(q) {
       if (optionText) {
         optionText.textContent =
           String(opt);
-         /* ================================================================
+         }
+
+      row.addEventListener(
+        'click',
+        () => selectAnswer(
+          q,
+          letter
+        )
+      );
+
+      list.appendChild(row);
+    }
+  );
+}
+/* ================================================================
    SELECT ANSWER
    ================================================================ */
-
 function selectAnswer(q, letter) {
-  if (!q) return;
+  if (currentMode === 'study' && showExplanation) {
+    return;
+  }
 
-  /*
-    In study mode, the student can still select an answer,
-    but selecting an answer does not automatically reveal
-    the correct answer.
-  */
   answers[q.id] = letter;
 
-  showExplanation = false;
-
   renderQuestion();
+
+  updateAnsweredCount();
+  renderQuestionGrid();
 }
 
-/* ================================================================
-   QUESTION NAVIGATION
-   ================================================================ */
 
+/* ================================================================
+   NAVIGATION
+   ================================================================ */
 function goToQuestion(index) {
-  if (
-    index < 0 ||
-    index >= allQuestions.length
-  ) {
+  if (index < 0 || index >= allQuestions.length) {
     return;
   }
 
@@ -969,165 +977,189 @@ function goToQuestion(index) {
   showExplanation = false;
 
   renderQuestion();
-
-  window.scrollTo({
-    top: 0,
-    behavior: 'smooth'
-  });
+  updateAnsweredCount();
+  renderQuestionGrid();
+  updateNavigationButtons();
 }
+
 
 function nextQuestion() {
-  if (
-    currentQIndex <
-    allQuestions.length - 1
-  ) {
-    goToQuestion(
-      currentQIndex + 1
-    );
+  if (currentQIndex < allQuestions.length - 1) {
+    goToQuestion(currentQIndex + 1);
   }
 }
+
 
 function previousQuestion() {
   if (currentQIndex > 0) {
-    goToQuestion(
-      currentQIndex - 1
-    );
+    goToQuestion(currentQIndex - 1);
   }
 }
 
-/* ================================================================
-   SHOW / HIDE STUDY ANSWER
-   ================================================================ */
 
-function toggleAnswer() {
-  if (mode !== 'study') {
+/* ================================================================
+   STUDY MODE — SHOW ANSWER
+   ================================================================ */
+function toggleStudyAnswer() {
+  if (currentMode !== 'study') {
     return;
   }
 
-  showExplanation =
-    !showExplanation;
+  showExplanation = !showExplanation;
 
   renderQuestion();
 }
+
 
 /* ================================================================
    BOOKMARK
    ================================================================ */
-
 function toggleBookmark() {
-  const q =
-    allQuestions[currentQIndex];
+  const q = allQuestions[currentQIndex];
 
-  if (!q) return;
-
-  if (bookmarks[q.id]) {
-    delete bookmarks[q.id];
-
-    showToast(
-      'Bookmark removed'
-    );
-  } else {
-    bookmarks[q.id] = {
-      id: q.id,
-      subjectId: q.subjectId,
-      year: q.year,
-      topic: q.topic,
-      subtopic: q.subtopic,
-      text: q.text
-    };
-
-    showToast(
-      'Question bookmarked'
-    );
+  if (!q) {
+    return;
   }
 
-  localStorage.setItem(
-    'utme_bookmarks',
-    JSON.stringify(bookmarks)
+  const questionId = String(q.id);
+
+  bookmarks[questionId] = !bookmarks[questionId];
+
+  try {
+    localStorage.setItem(
+      'utme_bookmarks',
+      JSON.stringify(bookmarks)
+    );
+  } catch (e) {
+    console.warn('Could not save bookmark:', e);
+  }
+
+  updateBookmarkButton();
+  showToast(
+    bookmarks[questionId]
+      ? 'Question bookmarked'
+      : 'Bookmark removed'
+  );
+}
+
+
+function updateBookmarkButton() {
+  const btn = document.getElementById('bookmarkBtn');
+
+  if (!btn) {
+    return;
+  }
+
+  const q = allQuestions[currentQIndex];
+
+  if (!q) {
+    btn.classList.remove('active');
+    return;
+  }
+
+  const isBookmarked = !!bookmarks[String(q.id)];
+
+  btn.classList.toggle(
+    'active',
+    isBookmarked
   );
 
-  renderQuestion();
+  btn.title = isBookmarked
+    ? 'Remove bookmark'
+    : 'Bookmark';
 }
+
 
 /* ================================================================
    QUESTION GRID
    ================================================================ */
+function openQuestionGrid() {
+  const overlay = document.getElementById('gridOverlay');
 
-function renderQuestionGrid() {
-  const grid =
-    document.getElementById(
-      'questionGrid'
-    );
-
-  if (!grid) return;
-
-  grid.innerHTML = '';
-
-  allQuestions.forEach(
-    (q, index) => {
-      const btn =
-        document.createElement('button');
-
-      btn.type = 'button';
-
-      btn.className =
-        'q-grid-btn';
-
-      if (index === currentQIndex) {
-        btn.classList.add('current');
-      }
-
-      if (answers[q.id]) {
-        btn.classList.add('answered');
-      }
-
-      btn.textContent =
-        index + 1;
-
-      btn.addEventListener(
-        'click',
-        () => {
-          goToQuestion(index);
-
-          const dialog =
-            document.getElementById(
-              'gridDialog'
-            );
-
-          if (dialog) {
-            dialog.classList.remove(
-              'visible'
-            );
-          }
-        }
-      );
-
-      grid.appendChild(btn);
-    }
-  );
-}
-
-/* ================================================================
-   SUBMISSION
-   ================================================================ */
-
-function submitExam() {
-  if (!allQuestions.length) {
-    showToast(
-      'There are no questions to submit.'
-    );
-
+  if (!overlay) {
     return;
   }
 
-  /*
-    Study mode does not require submission.
-  */
-  if (mode === 'study') {
-    showToast(
-      'Study mode does not require submission.'
+  renderQuestionGrid();
+
+  overlay.classList.add('open');
+}
+
+
+function closeQuestionGrid() {
+  const overlay = document.getElementById('gridOverlay');
+
+  if (!overlay) {
+    return;
+  }
+
+  overlay.classList.remove('open');
+}
+
+
+function renderQuestionGrid() {
+  const grid = document.getElementById('gridNums');
+
+  if (!grid) {
+    return;
+  }
+
+  grid.innerHTML = '';
+
+  allQuestions.forEach((q, index) => {
+    const button = document.createElement('button');
+
+    button.type = 'button';
+    button.className = 'grid-num';
+
+    if (answers[q.id]) {
+      button.classList.add('answered');
+    }
+
+    if (index === currentQIndex) {
+      button.classList.add('current');
+    }
+
+    button.textContent = String(index + 1);
+
+    button.addEventListener(
+      'click',
+      () => {
+        closeQuestionGrid();
+        goToQuestion(index);
+      }
     );
 
+    grid.appendChild(button);
+  });
+}
+
+
+function updateAnsweredCount() {
+  const answeredCount =
+    document.getElementById('answeredCount');
+
+  const totalCount =
+    document.getElementById('totalCount');
+
+  if (answeredCount) {
+    answeredCount.textContent =
+      Object.keys(answers).length;
+  }
+
+  if (totalCount) {
+    totalCount.textContent =
+      allQuestions.length;
+  }
+}
+
+
+/* ================================================================
+   SUBMIT
+   ================================================================ */
+function submitExam() {
+  if (!allQuestions.length) {
+    showToast('No questions available.');
     return;
   }
 
@@ -1137,155 +1169,196 @@ function submitExam() {
     ).length;
 
   if (unanswered > 0) {
-    openSubmitDialog(
-      unanswered
-    );
-
+    openSubmitDialog(unanswered);
     return;
   }
 
-  finishExam();
+  openSubmitDialog(0);
 }
 
-function openSubmitDialog(
-  unanswered
-) {
-  const dialog =
-    document.getElementById(
-      'submitDialog'
-    );
 
-  if (!dialog) {
-    finishExam();
+function openSubmitDialog(unanswered = 0) {
+  const overlay =
+    document.getElementById('dialogOverlay');
+
+  const body =
+    document.getElementById('dialogBody');
+
+  if (!overlay) {
     return;
   }
 
-  const countEl =
-    document.getElementById(
-      'unansweredCount'
-    );
-
-  if (countEl) {
-    countEl.textContent =
-      unanswered;
+  if (body) {
+    if (unanswered > 0) {
+      body.textContent =
+        `You have ${unanswered} unanswered ` +
+        `${unanswered === 1 ? 'question' : 'questions'}. ` +
+        `Are you sure you want to submit?`;
+    } else {
+      body.textContent =
+        'Are you sure you want to submit and see your results?';
+    }
   }
 
-  dialog.classList.add(
-    'visible'
-  );
+  overlay.classList.add('open');
 }
+
 
 function closeSubmitDialog() {
-  const dialog =
-    document.getElementById(
-      'submitDialog'
-    );
+  const overlay =
+    document.getElementById('dialogOverlay');
 
-  if (dialog) {
-    dialog.classList.remove(
-      'visible'
-    );
+  if (!overlay) {
+    return;
   }
+
+  overlay.classList.remove('open');
 }
+
 
 function finishExam() {
   closeSubmitDialog();
 
   if (timerInterval) {
-    clearInterval(
-      timerInterval
-    );
+    clearInterval(timerInterval);
+    timerInterval = null;
   }
 
   buildResult(true);
 }
 
+
 /* ================================================================
    BUILD RESULT
    ================================================================ */
-
 function buildResult(saveToHistory = true) {
   const subjectResults = {};
 
-  let correctCount = 0;
-  let answeredCount = 0;
-
   allQuestions.forEach(q => {
-    const selected =
-      answers[q.id] || '';
+    const subject =
+      q.subjectId ||
+      q.subject_slug ||
+      'unknown';
 
-    const isCorrect =
-      selected &&
-      selected === q.correct;
-
-    if (selected) {
-      answeredCount++;
-    }
-
-    if (isCorrect) {
-      correctCount++;
-    }
-
-    if (!subjectResults[q.subjectId]) {
-      subjectResults[q.subjectId] = {
-        subjectId: q.subjectId,
+    if (!subjectResults[subject]) {
+      subjectResults[subject] = {
+        subjectId: subject,
         total: 0,
         answered: 0,
         correct: 0,
-        questions: [],
+        wrong: 0,
+        unanswered: 0,
         topics: {}
       };
     }
 
-    const subject =
-      subjectResults[q.subjectId];
+    const result =
+      subjectResults[subject];
 
-    subject.total++;
+    result.total += 1;
 
-    if (selected) {
-      subject.answered++;
+    const selected =
+      answers[q.id] || '';
+
+    if (!selected) {
+      result.unanswered += 1;
+    } else {
+      result.answered += 1;
+
+      if (
+        selected.toUpperCase() ===
+        String(q.correct || '').toUpperCase()
+      ) {
+        result.correct += 1;
+      } else {
+        result.wrong += 1;
+      }
     }
 
-    if (isCorrect) {
-      subject.correct++;
-    }
+    const topic =
+      q.topic ||
+      'Unclassified';
 
-    /*
-      Topic/subtopic performance is stored now so Coach Mode
-      can use the same result structure later.
-    */
-    const topicName =
-      q.topic || 'Uncategorized';
-
-    const subtopicName =
-      q.subtopic || '';
+    const subtopic =
+      q.subtopic ||
+      '';
 
     const topicKey =
-      subtopicName
-        ? `${topicName} : ${subtopicName}`
-        : topicName;
+      subtopic
+        ? `${topic} : ${subtopic}`
+        : topic;
 
-    if (!subject.topics[topicKey]) {
-      subject.topics[topicKey] = {
-        topic: topicName,
-        subtopic: subtopicName,
+    if (!result.topics[topicKey]) {
+      result.topics[topicKey] = {
+        topic,
+        subtopic,
         total: 0,
         answered: 0,
-        correct: 0
+        correct: 0,
+        wrong: 0,
+        unanswered: 0
       };
     }
 
-    subject.topics[topicKey].total++;
+    const topicResult =
+      result.topics[topicKey];
 
-    if (selected) {
-      subject.topics[topicKey].answered++;
+    topicResult.total += 1;
+
+    if (!selected) {
+      topicResult.unanswered += 1;
+    } else {
+      topicResult.answered += 1;
+
+      if (
+        selected.toUpperCase() ===
+        String(q.correct || '').toUpperCase()
+      ) {
+        topicResult.correct += 1;
+      } else {
+        topicResult.wrong += 1;
+      }
     }
+  });
 
-    if (isCorrect) {
-      subject.topics[topicKey].correct++;
-    }
 
-    subject.questions.push({
+  let totalCorrect = 0;
+  let totalAnswered = 0;
+  let totalQuestions = allQuestions.length;
+
+  Object.values(subjectResults).forEach(result => {
+    totalCorrect += result.correct;
+    totalAnswered += result.answered;
+  });
+
+
+  const elapsedSeconds =
+    Math.max(
+      0,
+      Math.floor(
+        (Date.now() - sessionStartedAt) / 1000
+      )
+    );
+
+
+  const resultData = {
+    mode: currentMode,
+    subjects: subjectResults,
+    totalQuestions,
+    totalAnswered,
+    totalCorrect,
+    totalWrong:
+      totalAnswered - totalCorrect,
+    totalUnanswered:
+      totalQuestions - totalAnswered,
+    scorePercent:
+      totalQuestions
+        ? Math.round(
+            (totalCorrect / totalQuestions) * 100
+          )
+        : 0,
+    timeTakenSeconds: elapsedSeconds,
+    questions: allQuestions.map(q => ({
       id: q.id,
       subjectId: q.subjectId,
       year: q.year,
@@ -1295,581 +1368,362 @@ function buildResult(saveToHistory = true) {
       text: q.text,
       options: q.options,
       correct: q.correct,
-      selected,
-      isCorrect: Boolean(isCorrect),
-      explanation: q.explanation,
-      image_url: q.image_url,
-      passage: q.passage,
-      syllabus_objective:
-        q.syllabus_objective
-    });
-  });
-
-  const total =
-    allQuestions.length;
-
-  const percentage =
-    total > 0
-      ? Math.round(
-          (correctCount / total) * 100
-        )
-      : 0;
-
-  const result = {
-    id:
-      `result_${Date.now()}`,
-
+      selected: answers[q.id] || '',
+      explanation: q.explanation || '',
+      passage: q.passage || '',
+      image_url: q.image_url || '',
+      svg_code: q.svg_code || ''
+    })),
     createdAt:
-      new Date().toISOString(),
-
-    mode,
-
-    totalQuestions:
-      total,
-
-    answeredQuestions:
-      answeredCount,
-
-    correctAnswers:
-      correctCount,
-
-    percentage,
-
-    subjects:
-      Object.values(subjectResults),
-
-    questions:
-      allQuestions.map(q => ({
-        id: q.id,
-        subjectId: q.subjectId,
-        year: q.year,
-        topic: q.topic,
-        subtopic: q.subtopic,
-        difficulty: q.difficulty,
-        text: q.text,
-        options: q.options,
-        correct: q.correct,
-        selected:
-          answers[q.id] || '',
-        isCorrect:
-          Boolean(
-            answers[q.id] &&
-            answers[q.id] === q.correct
-          ),
-        explanation:
-          q.explanation,
-        image_url:
-          q.image_url,
-        passage:
-          q.passage,
-        syllabus_objective:
-          q.syllabus_objective
-      }))
+      new Date().toISOString()
   };
 
-  /*
-    sessionStorage keeps the complete result available to
-    result.html immediately after redirect.
-  */
-  sessionStorage.setItem(
-    'utme_result',
-    JSON.stringify(result)
-  );
 
-  /*
-    Keep the existing local history behavior for now.
-    This will later be replaced/augmented by Supabase
-    practice_sessions + question_attempts.
-  */
-  if (saveToHistory) {
-    try {
+  try {
+    sessionStorage.setItem(
+      'utme_result',
+      JSON.stringify(resultData)
+    );
+
+    if (saveToHistory) {
       const history =
         JSON.parse(
-          localStorage.getItem(
-            'utme_history'
-          ) || '[]'
+          localStorage.getItem('utme_history') || '[]'
         );
 
-      history.unshift(result);
-
-      /*
-        Prevent unlimited localStorage growth.
-      */
-      const trimmed =
-        history.slice(0, 50);
+      history.unshift(resultData);
 
       localStorage.setItem(
         'utme_history',
-        JSON.stringify(trimmed)
-      );
-    } catch (e) {
-      console.warn(
-        'Could not save local result history:',
-        e
+        JSON.stringify(history.slice(0, 50))
       );
     }
+  } catch (e) {
+    console.warn(
+      'Could not save result:',
+      e
+    );
   }
+
 
   window.location.href =
     'result.html';
 }
 
+
 /* ================================================================
    CALCULATOR
    ================================================================ */
-
 let calculatorExpression = '';
 
-function openCalculator() {
-  const calculator =
-    document.getElementById(
-      'calculator'
-    );
 
-  if (calculator) {
-    calculator.classList.add(
-      'visible'
-    );
+function openCalculator() {
+  const overlay =
+    document.getElementById('calcOverlay');
+
+  if (!overlay) {
+    return;
   }
+
+  overlay.classList.add('open');
 }
+
 
 function closeCalculator() {
-  const calculator =
-    document.getElementById(
-      'calculator'
-    );
+  const overlay =
+    document.getElementById('calcOverlay');
 
-  if (calculator) {
-    calculator.classList.remove(
-      'visible'
-    );
+  if (!overlay) {
+    return;
   }
+
+  overlay.classList.remove('open');
 }
 
-function calculatorInput(value) {
-  calculatorExpression +=
-    String(value);
 
+function updateCalculatorDisplay() {
   const display =
-    document.getElementById(
-      'calculatorDisplay'
-    );
+    document.getElementById('calcDisplay');
 
-  if (display) {
-    display.value =
-      calculatorExpression;
+  if (!display) {
+    return;
   }
+
+  display.textContent =
+    calculatorExpression || '0';
 }
 
-function calculatorClear() {
-  calculatorExpression = '';
 
-  const display =
-    document.getElementById(
-      'calculatorDisplay'
-    );
-
-  if (display) {
-    display.value = '';
+function calculateExpression() {
+  if (!calculatorExpression) {
+    return;
   }
-}
-
-function calculatorBackspace() {
-  calculatorExpression =
-    calculatorExpression.slice(
-      0,
-      -1
-    );
-
-  const display =
-    document.getElementById(
-      'calculatorDisplay'
-    );
-
-  if (display) {
-    display.value =
-      calculatorExpression;
-  }
-}
-
-function calculatorCalculate() {
-  const display =
-    document.getElementById(
-      'calculatorDisplay'
-    );
 
   try {
-    /*
-      The calculator is intentionally restricted to
-      mathematical characters before evaluation.
-    */
-    const safe =
-      calculatorExpression.replace(
-        /[^0-9+\-*/().% ]/g,
-        ''
-      );
+    let expression =
+      calculatorExpression
+        .replace(/×/g, '*')
+        .replace(/÷/g, '/')
+        .replace(/−/g, '-')
+        .replace(/√/g, 'Math.sqrt');
 
-    if (!safe.trim()) {
-      return;
+    if (
+      !/^[0-9+\-*/().%\sMathsqrt]+$/.test(
+        expression
+      )
+    ) {
+      throw new Error('Invalid expression');
     }
 
-    const result =
+    const value =
       Function(
-        `"use strict"; return (${safe})`
+        `"use strict"; return (${expression})`
       )();
 
+    if (
+      typeof value !== 'number' ||
+      !Number.isFinite(value)
+    ) {
+      throw new Error('Invalid result');
+    }
+
     calculatorExpression =
-      String(result);
+      String(
+        Math.round(value * 100000000) /
+        100000000
+      );
 
-    if (display) {
-      display.value =
-        calculatorExpression;
-    }
-
-  } catch (error) {
-    if (display) {
-      display.value =
-        'Error';
-    }
-
+    updateCalculatorDisplay();
+  } catch (e) {
     calculatorExpression = '';
+    updateCalculatorDisplay();
+    showToast('Invalid calculation');
   }
 }
+
+
+function handleCalculatorInput(value) {
+  if (value === 'C') {
+    calculatorExpression = '';
+    updateCalculatorDisplay();
+    return;
+  }
+
+  if (value === 'DEL') {
+    calculatorExpression =
+      calculatorExpression.slice(0, -1);
+
+    updateCalculatorDisplay();
+    return;
+  }
+
+  if (value === '=') {
+    calculateExpression();
+    return;
+  }
+
+  if (value === '√') {
+    calculatorExpression += '√(';
+    updateCalculatorDisplay();
+    return;
+  }
+
+  if (value === '%') {
+    calculatorExpression += '/100';
+    updateCalculatorDisplay();
+    return;
+  }
+
+  calculatorExpression += value;
+
+  updateCalculatorDisplay();
+}
+
 
 /* ================================================================
    TOAST
    ================================================================ */
+let toastTimeout = null;
 
-let toastTimer = null;
 
 function showToast(message) {
-  let toast =
-    document.getElementById(
-      'toast'
-    );
+  const toast =
+    document.getElementById('toast');
 
   if (!toast) {
-    toast =
-      document.createElement(
-        'div'
-      );
-
-    toast.id =
-      'toast';
-
-    toast.className =
-      'toast';
-
-    document.body.appendChild(
-      toast
-    );
+    return;
   }
 
   toast.textContent =
     message;
 
-  toast.classList.add(
-    'visible'
-  );
+  toast.classList.add('show');
 
-  clearTimeout(
-    toastTimer
-  );
+  clearTimeout(toastTimeout);
 
-  toastTimer =
+  toastTimeout =
     setTimeout(() => {
-      toast.classList.remove(
-        'visible'
-      );
-    }, 2500);
+      toast.classList.remove('show');
+    }, 2200);
 }
+
 
 /* ================================================================
    TEXT TO SPEECH
    ================================================================ */
-
-let speechActive = false;
-
 function speakCurrentQuestion() {
+  if (!('speechSynthesis' in window)) {
+    showToast(
+      'Text-to-speech is not supported here.'
+    );
+    return;
+  }
+
   const q =
     allQuestions[currentQIndex];
 
-  if (!q) return;
-
-  if (
-    !('speechSynthesis' in window)
-  ) {
-    showToast(
-      'Text-to-speech is not supported on this device.'
-    );
-
+  if (!q) {
     return;
   }
 
   window.speechSynthesis.cancel();
 
-  const parts = [
+  const text = [
     q.text,
     ...(q.options || []).map(
       (option, index) =>
         `${String.fromCharCode(65 + index)}. ${option}`
     )
-  ];
-
-  if (q.passage) {
-    parts.unshift(
-      `Passage. ${q.passage}`
-    );
-  }
+  ].join('. ');
 
   const utterance =
-    new SpeechSynthesisUtterance(
-      parts.join('. ')
-    );
+    new SpeechSynthesisUtterance(text);
 
-  utterance.rate = 0.95;
-  utterance.pitch = 1;
-
-  utterance.onstart = () => {
-    speechActive = true;
-
-    const btn =
-      document.getElementById(
-        'speakBtn'
-      );
-
-    if (btn) {
-      btn.textContent =
-        '⏹ Stop';
-    }
-  };
-
-  utterance.onend = () => {
-    speechActive = false;
-
-    const btn =
-      document.getElementById(
-        'speakBtn'
-      );
-
-    if (btn) {
-      btn.textContent =
-        '🔊 Read';
-    }
-  };
-
-  utterance.onerror = () => {
-    speechActive = false;
-
-    const btn =
-      document.getElementById(
-        'speakBtn'
-      );
-
-    if (btn) {
-      btn.textContent =
-        '🔊 Read';
-    }
-  };
+  utterance.rate = 0.9;
 
   window.speechSynthesis.speak(
     utterance
   );
 }
 
-function toggleSpeech() {
-  if (
-    !('speechSynthesis' in window)
-  ) {
-    showToast(
-      'Text-to-speech is not supported on this device.'
-    );
-
-    return;
-  }
-
-  if (speechActive) {
-    window.speechSynthesis.cancel();
-
-    speechActive = false;
-
-    const btn =
-      document.getElementById(
-        'speakBtn'
-      );
-
-    if (btn) {
-      btn.textContent =
-        '🔊 Read';
-    }
-
-    return;
-  }
-
-  speakCurrentQuestion();
-}
 
 /* ================================================================
    KEYBOARD SHORTCUTS
    ================================================================ */
-
-document.addEventListener(
-  'keydown',
-  event => {
-    /*
-      Do not trigger shortcuts while typing.
-    */
-    const tag =
-      document.activeElement?.tagName;
-
-    if (
-      tag === 'INPUT' ||
-      tag === 'TEXTAREA' ||
-      tag === 'SELECT'
-    ) {
-      return;
-    }
-
-    const key =
-      event.key.toLowerCase();
-
-    if (key === 'arrowright') {
-      event.preventDefault();
-      nextQuestion();
-      return;
-    }
-
-    if (key === 'arrowleft') {
-      event.preventDefault();
-      previousQuestion();
-      return;
-    }
-
-    if (
-      ['a', 'b', 'c', 'd', 'e']
-        .includes(key)
-    ) {
-      const q =
-        allQuestions[currentQIndex];
-
-      if (q) {
-        const index =
-          key.charCodeAt(0) -
-          97;
-
-        if (
-          q.options &&
-          index < q.options.length
-        ) {
-          selectAnswer(
-            q,
-            key.toUpperCase()
-          );
-        }
-      }
-
-      return;
-    }
-
-    if (key === 'b') {
-      toggleBookmark();
-      return;
-    }
-
-    if (key === 's') {
-      toggleSpeech();
-      return;
-    }
-
-    if (key === 'escape') {
-      closeSubmitDialog();
-      closeCalculator();
-    }
+function handleKeyboardShortcuts(event) {
+  if (
+    event.target &&
+    (
+      event.target.tagName === 'INPUT' ||
+      event.target.tagName === 'TEXTAREA'
+    )
+  ) {
+    return;
   }
-);
+
+  const key =
+    event.key.toLowerCase();
+
+  if (
+    ['a', 'b', 'c', 'd', 'e'].includes(key)
+  ) {
+    const q =
+      allQuestions[currentQIndex];
+
+    if (!q) {
+      return;
+    }
+
+    const optionIndex =
+      key.charCodeAt(0) -
+      'a'.charCodeAt(0);
+
+    if (
+      optionIndex <
+      (q.options || []).length
+    ) {
+      selectAnswer(
+        q,
+        key.toUpperCase()
+      );
+    }
+
+    return;
+  }
+
+  if (event.key === 'ArrowRight') {
+    nextQuestion();
+    return;
+  }
+
+  if (event.key === 'ArrowLeft') {
+    previousQuestion();
+    return;
+  }
+
+  if (event.key === 'Escape') {
+    closeQuestionGrid();
+    closeSubmitDialog();
+    closeCalculator();
+  }
+}
+
 
 /* ================================================================
    DOM READY
    ================================================================ */
-
 document.addEventListener(
   'DOMContentLoaded',
   () => {
-    const prevBtn =
-      document.getElementById(
-        'prevBtn'
-      );
-
-    const nextBtn =
-      document.getElementById(
-        'nextBtn'
-      );
-
-    const submitBtn =
-      document.getElementById(
-        'submitBtn'
-      );
+    const backBtn =
+      document.getElementById('backBtn');
 
     const bookmarkBtn =
-      document.getElementById(
-        'bookmarkBtn'
-      );
+      document.getElementById('bookmarkBtn');
 
-    const gridBtn =
-      document.getElementById(
-        'gridBtn'
-      );
+    const calcBtn =
+      document.getElementById('calcBtn');
 
-    const showAnswerBtn =
-      document.getElementById(
-        'showAnswerBtn'
-      );
+    const calcCloseBtn =
+      document.getElementById('calcCloseBtn');
 
-    const closeSubmitBtn =
-      document.getElementById(
-        'closeSubmitBtn'
-      );
+    const speakerBtn =
+      document.getElementById('speakerBtn');
 
-    const confirmSubmitBtn =
-      document.getElementById(
-        'confirmSubmitBtn'
-      );
+    const prevBtn =
+      document.getElementById('prevBtn');
 
-    const calculatorBtn =
-      document.getElementById(
-        'calculatorBtn'
-      );
+    const nextBtn =
+      document.getElementById('nextBtn');
 
-    const closeCalculatorBtn =
-      document.getElementById(
-        'closeCalculatorBtn'
-      );
+    const submitBtn =
+      document.getElementById('submitBtn');
 
-    const speakBtn =
-      document.getElementById(
-        'speakBtn'
-      );
+    const dialogCancel =
+      document.getElementById('dialogCancel');
 
-    if (prevBtn) {
-      prevBtn.addEventListener(
+    const dialogSubmit =
+      document.getElementById('dialogSubmit');
+
+    const answeredPill =
+      document.getElementById('answeredPill');
+
+    const gridOverlay =
+      document.getElementById('gridOverlay');
+
+    const gridCloseBtn =
+      document.getElementById('gridCloseBtn');
+
+
+    if (backBtn) {
+      backBtn.addEventListener(
         'click',
-        previousQuestion
+        () => {
+          window.history.back();
+        }
       );
     }
 
-    if (nextBtn) {
-      nextBtn.addEventListener(
-        'click',
-        nextQuestion
-      );
-    }
-
-    if (submitBtn) {
-      submitBtn.addEventListener(
-        'click',
-        submitExam
-      );
-    }
 
     if (bookmarkBtn) {
       bookmarkBtn.addEventListener(
@@ -1878,167 +1732,131 @@ document.addEventListener(
       );
     }
 
-    if (gridBtn) {
-      gridBtn.addEventListener(
-        'click',
-        () => {
-          renderQuestionGrid();
 
-          const dialog =
-            document.getElementById(
-              'gridDialog'
-            );
-
-          if (dialog) {
-            dialog.classList.add(
-              'visible'
-            );
-          }
-        }
-      );
-    }
-
-    if (showAnswerBtn) {
-      showAnswerBtn.addEventListener(
-        'click',
-        toggleAnswer
-      );
-    }
-
-    if (closeSubmitBtn) {
-      closeSubmitBtn.addEventListener(
-        'click',
-        closeSubmitDialog
-      );
-    }
-
-    if (confirmSubmitBtn) {
-      confirmSubmitBtn.addEventListener(
-        'click',
-        finishExam
-      );
-    }
-
-    if (calculatorBtn) {
-      calculatorBtn.addEventListener(
+    if (calcBtn) {
+      calcBtn.addEventListener(
         'click',
         openCalculator
       );
     }
 
-    if (closeCalculatorBtn) {
-      closeCalculatorBtn.addEventListener(
+
+    if (calcCloseBtn) {
+      calcCloseBtn.addEventListener(
         'click',
         closeCalculator
       );
     }
 
-    if (speakBtn) {
-      speakBtn.addEventListener(
+
+    if (speakerBtn) {
+      speakerBtn.addEventListener(
         'click',
-        toggleSpeech
+        speakCurrentQuestion
       );
     }
 
-    /*
-      Grid dialog close buttons.
-    */
+
+    if (prevBtn) {
+      prevBtn.addEventListener(
+        'click',
+        previousQuestion
+      );
+    }
+
+
+    if (nextBtn) {
+      nextBtn.addEventListener(
+        'click',
+        nextQuestion
+      );
+    }
+
+
+    if (submitBtn) {
+      submitBtn.addEventListener(
+        'click',
+        submitExam
+      );
+    }
+
+
+    if (dialogCancel) {
+      dialogCancel.addEventListener(
+        'click',
+        closeSubmitDialog
+      );
+    }
+
+
+    if (dialogSubmit) {
+      dialogSubmit.addEventListener(
+        'click',
+        finishExam
+      );
+    }
+
+
+    if (answeredPill) {
+      answeredPill.addEventListener(
+        'click',
+        openQuestionGrid
+      );
+    }
+
+
+    if (gridCloseBtn) {
+      gridCloseBtn.addEventListener(
+        'click',
+        closeQuestionGrid
+      );
+    }
+
+
+    if (gridOverlay) {
+      gridOverlay.addEventListener(
+        'click',
+        event => {
+          if (event.target === gridOverlay) {
+            closeQuestionGrid();
+          }
+        }
+      );
+    }
+
+
     document
-      .querySelectorAll(
-        '[data-close-grid]'
-      )
+      .querySelectorAll('.calc-btn')
       .forEach(button => {
         button.addEventListener(
           'click',
           () => {
-            const dialog =
-              document.getElementById(
-                'gridDialog'
-              );
-
-            if (dialog) {
-              dialog.classList.remove(
-                'visible'
-              );
-            }
-          }
-        );
-      });
-
-    /*
-      Calculator buttons.
-
-      Buttons can use:
-      data-calc="7"
-      data-calc="+"
-      data-calc="clear"
-      data-calc="backspace"
-      data-calc="="
-    */
-    document
-      .querySelectorAll(
-        '[data-calc]'
-      )
-      .forEach(button => {
-        button.addEventListener(
-          'click',
-          () => {
-            const value =
-              button.dataset.calc;
-
-            if (value === 'clear') {
-              calculatorClear();
-            } else if (
-              value === 'backspace'
-            ) {
-              calculatorBackspace();
-            } else if (
-              value === '='
-            ) {
-              calculatorCalculate();
-            } else {
-              calculatorInput(value);
-            }
-          }
-        );
-      });
-
-    /*
-      Close modal when clicking its backdrop.
-    */
-    document
-      .querySelectorAll(
-        '.modal-backdrop'
-      )
-      .forEach(backdrop => {
-        backdrop.addEventListener(
-          'click',
-          event => {
-            if (
-              event.target !== backdrop
-            ) {
-              return;
-            }
-
-            backdrop.classList.remove(
-              'visible'
+            handleCalculatorInput(
+              button.dataset.val || ''
             );
           }
         );
       });
 
-    /*
-      Start loading questions only after
-      the DOM is ready.
-    */
+
+    document.addEventListener(
+      'keydown',
+      handleKeyboardShortcuts
+    );
+
+
+    updateAnsweredCount();
+    updateBookmarkButton();
+    updateNavigationButtons();
+
     loadAllQuestions();
   }
 );
 
-/* ================================================================
-   SAFETY CLEANUP
-   ================================================================ */
 
+/* ================================================================
+   CLEANUP
+   ================================================================ */
 window.addEventListener(
   'beforeunload',
   () => {
@@ -2055,4 +1873,4 @@ window.addEventListener(
     }
   }
 );
-```0
+                                        
