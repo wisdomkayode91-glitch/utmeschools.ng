@@ -1,11 +1,10 @@
 /* ============================================================
-   UTMESchools v3 — sw.js
-   Service Worker — fresh app code + safe offline fallback
+   UTMESchools — Service Worker
+   v4 — fresh app files, safe API handling
    ============================================================ */
 
-const CACHE_NAME = 'utmeschools-v3';
+const CACHE_NAME = 'utmeschools-v4';
 
-/* Files to cache for offline use */
 const CORE_FILES = [
   '/utmeschools.ng/',
   '/utmeschools.ng/index.html',
@@ -38,60 +37,28 @@ const CORE_FILES = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('UTMESchools: installing v3 cache');
-        return cache.addAll(CORE_FILES);
-      })
+      .then(cache => cache.addAll(CORE_FILES))
       .then(() => self.skipWaiting())
   );
 });
 
-
 /* ============================================================
    ACTIVATE
-   Delete every older UTMESchools cache.
    ============================================================ */
 
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => {
-        return Promise.all(
+      .then(keys =>
+        Promise.all(
           keys
             .filter(key => key !== CACHE_NAME)
             .map(key => caches.delete(key))
-        );
-      })
+        )
+      )
       .then(() => self.clients.claim())
   );
 });
-
-
-/* ============================================================
-   HELPERS
-   ============================================================ */
-
-function isBackendRequest(url) {
-  return url.hostname === 'utmeschools-ng.onrender.com';
-}
-
-function isSupabaseRequest(url) {
-  return url.hostname.includes('supabase.co');
-}
-
-function isAppScriptOrStyle(request) {
-  const destination = request.destination;
-
-  return (
-    destination === 'script' ||
-    destination === 'style'
-  );
-}
-
-function isDocument(request) {
-  return request.destination === 'document';
-}
-
 
 /* ============================================================
    FETCH
@@ -99,208 +66,114 @@ function isDocument(request) {
 
 self.addEventListener('fetch', event => {
   const request = event.request;
+
+  /* Only handle GET requests */
+  if (request.method !== 'GET') return;
+
   const url = new URL(request.url);
 
-  /*
-    Only handle GET requests.
+  /* ----------------------------------------------------------
+     Backend / API — NEVER use service-worker cache
+     ---------------------------------------------------------- */
 
-    POST/PATCH/DELETE requests must go directly to
-    the network.
-  */
-  if (request.method !== 'GET') {
-    return;
-  }
-
-
-  /* ==========================================================
-     1. RENDER BACKEND API
-     ==========================================================
-
-     NEVER cache API responses.
-
-     This is extremely important for UTMESchools because:
-     - questions can change
-     - sessions can change
-     - attempts can change
-     - Coach data can change
-     - Supabase data can change
-
-     The browser must always ask the live backend.
-  */
-
-  if (isBackendRequest(url)) {
+  if (
+    url.hostname === 'utmeschools-ng.onrender.com' ||
+    url.hostname.includes('supabase.co')
+  ) {
     event.respondWith(
-      fetch(request)
-        .catch(() => {
-          return new Response(
-            JSON.stringify({
-              ok: false,
-              offline: true,
-              message: 'Backend unavailable'
-            }),
-            {
-              status: 503,
-              headers: {
-                'Content-Type': 'application/json'
-              }
+      fetch(request, {
+        cache: 'no-store'
+      }).catch(() => {
+        return new Response(
+          JSON.stringify([]),
+          {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json'
             }
-          );
-        })
+          }
+        );
+      })
     );
 
     return;
   }
 
+  /* ----------------------------------------------------------
+     HTML — NETWORK FIRST
+     ---------------------------------------------------------- */
 
-  /* ==========================================================
-     2. SUPABASE
-     ==========================================================
-
-     Never cache Supabase requests.
-  */
-
-  if (isSupabaseRequest(url)) {
+  if (request.destination === 'document') {
     event.respondWith(
-      fetch(request)
-        .catch(() => {
-          return new Response(
-            JSON.stringify([]),
-            {
-              status: 503,
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-        })
-    );
-
-    return;
-  }
-
-
-  /* ==========================================================
-     3. JAVASCRIPT + CSS
-     ==========================================================
-
-     NETWORK FIRST.
-
-     This prevents the old practice.js / coach.js /
-     result.js from being permanently served from cache.
-
-     If internet fails, use the cached version.
-  */
-
-  if (isAppScriptOrStyle(request)) {
-    event.respondWith(
-      fetch(request)
+      fetch(request, {
+        cache: 'no-cache'
+      })
         .then(response => {
-
-          if (
-            response &&
-            response.status === 200 &&
-            response.type !== 'opaque'
-          ) {
-            const clone = response.clone();
+          if (response && response.ok) {
+            const copy = response.clone();
 
             caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(request, clone);
-              });
+              .then(cache => cache.put(request, copy));
+
+            return response;
           }
 
-          return response;
-        })
-        .catch(() => {
           return caches.match(request);
         })
+        .catch(() => caches.match(request))
     );
 
     return;
   }
 
+  /* ----------------------------------------------------------
+     JavaScript / CSS — NETWORK FIRST
+     ---------------------------------------------------------- */
 
-  /* ==========================================================
-     4. HTML DOCUMENTS
-     ==========================================================
-
-     NETWORK FIRST.
-
-     This ensures the latest HTML is used whenever internet
-     is available, while still allowing offline access.
-  */
-
-  if (isDocument(request)) {
+  if (
+    request.destination === 'script' ||
+    request.destination === 'style'
+  ) {
     event.respondWith(
-      fetch(request)
+      fetch(request, {
+        cache: 'no-cache'
+      })
         .then(response => {
-
-          if (
-            response &&
-            response.status === 200 &&
-            response.type !== 'opaque'
-          ) {
-            const clone = response.clone();
+          if (response && response.ok) {
+            const copy = response.clone();
 
             caches.open(CACHE_NAME)
-              .then(cache => {
-                cache.put(request, clone);
-              });
+              .then(cache => cache.put(request, copy));
           }
 
           return response;
         })
-        .catch(() => {
-          return caches.match(request)
-            .then(cached => {
-              return cached ||
-                caches.match('/utmeschools.ng/index.html');
-            });
-        })
+        .catch(() => caches.match(request))
     );
 
     return;
   }
 
-
-  /* ==========================================================
-     5. IMAGES / ICONS / OTHER STATIC FILES
-     ==========================================================
-
-     Cache first for speed, with network fallback.
-  */
+  /* ----------------------------------------------------------
+     Images / icons — CACHE FIRST
+     ---------------------------------------------------------- */
 
   event.respondWith(
     caches.match(request)
       .then(cached => {
-
-        if (cached) {
-          return cached;
-        }
+        if (cached) return cached;
 
         return fetch(request)
           .then(response => {
-
-            if (
-              response &&
-              response.status === 200 &&
-              response.type !== 'opaque'
-            ) {
-              const clone = response.clone();
+            if (response && response.ok) {
+              const copy = response.clone();
 
               caches.open(CACHE_NAME)
-                .then(cache => {
-                  cache.put(request, clone);
-                });
+                .then(cache => cache.put(request, copy));
             }
 
             return response;
           });
-      })
-      .catch(() => {
-        return new Response('', {
-          status: 503
-        });
       })
   );
 });
