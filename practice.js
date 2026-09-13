@@ -45,15 +45,12 @@ async function fetchQuestionsFromJSON(subjectId, year, count, topicsParam) {
     }
 
     const res = await fetch(
-      `${API_BASE}/api/questions?${params.toString()}`,
-      {
-        method: 'GET',
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json'
-        }
-      }
-    );
+  `https://utmeschools-ng.onrender.com/api/questions?${params.toString()}`,
+  {
+    signal: controller.signal,
+    cache: 'no-store'
+  }
+);
 
     if (!res.ok) {
       console.warn(
