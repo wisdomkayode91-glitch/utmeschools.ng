@@ -284,12 +284,246 @@ function startTimer() {
    LOAD QUESTIONS
    ================================================================ */
 async function loadAllQuestions() {
-  showLoadingState(true);
+
+  /*
+   * IMPORTANT:
+   * Demo questions are placed immediately so the Practice screen
+   * never gets stuck waiting for the API.
+   *
+   * If real questions are available, they replace the demo questions
+   * automatically when the backend responds.
+   */
+
+  // ---------------------------------------------------------------
+  // 1. SHOW DEMO QUESTIONS IMMEDIATELY
+  // ---------------------------------------------------------------
+
+  allQuestions = [];
+
+  subjectIds.forEach((sid) => {
+
+    let demoQuestions = getDemoQuestions(sid);
+
+    demoQuestions = demoQuestions.slice(0, FREE_LIMIT);
+
+    demoQuestions.forEach((q, i) => {
+      q.qNum = allQuestions.length + i + 1;
+      q.subjectId = sid;
+    });
+
+    allQuestions.push(...demoQuestions);
+
+  });
+
+  // Remove loading screen immediately.
+  showLoadingState(false);
+
+  if (mode === 'study') {
+    document.getElementById('submitBtn').style.display = 'none';
+  }
+
+  renderSubjectTabs();
+  renderQuestion();
+  startTimer();
+
+
+  // ---------------------------------------------------------------
+  // 2. LOAD REAL QUESTIONS IN THE BACKGROUND
+  // ---------------------------------------------------------------
 
   try {
-    const user    = JSON.parse(localStorage.getItem('utme_user') || 'null');
+
+    const user = JSON.parse(
+      localStorage.getItem('utme_user') || 'null'
+    );
+
     const hasPaid = user && user.has_paid;
-    const isCoachRecovery = urlP.get('coach') === '1';
+
+    const realResults = await Promise.all(
+
+      subjectIds.map(async (sid) => {
+
+        try {
+
+          const year =
+            urlP.get('year_' + sid) || 'Random';
+
+          const count =
+            parseInt(
+              urlP.get('count_' + sid) || '40',
+              10
+            );
+
+          const topicParam =
+            urlP.get('topics_' + sid) || '';
+
+          const requestedCount =
+            hasPaid
+              ? count
+              : Math.min(count, FREE_LIMIT);
+
+          const questions =
+            await fetchQuestionsFromJSON(
+              sid,
+              year,
+              requestedCount,
+              topicParam
+            );
+
+          return {
+            subjectId: sid,
+            questions: Array.isArray(questions)
+              ? questions
+              : []
+          };
+
+        } catch (error) {
+
+          console.warn(
+            `Real questions unavailable for ${sid}:`,
+            error
+          );
+
+          return {
+            subjectId: sid,
+            questions: []
+          };
+
+        }
+
+      })
+
+    );
+
+
+    // -------------------------------------------------------------
+    // 3. REPLACE DEMO WITH REAL QUESTIONS WHEN AVAILABLE
+    // -------------------------------------------------------------
+
+    let receivedRealQuestions = false;
+
+    realResults.forEach((result) => {
+
+      if (
+        !result ||
+        !result.questions ||
+        result.questions.length === 0
+      ) {
+        return;
+      }
+
+      receivedRealQuestions = true;
+
+      const sid = result.subjectId;
+
+      let realQuestions = result.questions;
+
+      if (!hasPaid) {
+        realQuestions =
+          realQuestions.slice(0, FREE_LIMIT);
+      }
+
+      if (shuffleQ) {
+        realQuestions.sort(
+          () => Math.random() - 0.5
+        );
+      }
+
+      realQuestions.forEach((q, i) => {
+        q.subjectId = sid;
+        q.qNum = i + 1;
+      });
+
+
+      // Find the demo questions belonging to this subject.
+      const firstIndex =
+        allQuestions.findIndex(
+          q => q.subjectId === sid
+        );
+
+      if (firstIndex === -1) {
+        allQuestions.push(...realQuestions);
+        return;
+      }
+
+
+      // Remove the demo questions for this subject.
+      allQuestions =
+        allQuestions.filter(
+          q =>
+            !(
+              q.subjectId === sid &&
+              String(q.id).startsWith('demo_')
+            )
+        );
+
+
+      // Find where this subject should be inserted.
+      let insertIndex = allQuestions.findIndex(
+        q => q.subjectId === sid
+      );
+
+      if (insertIndex === -1) {
+        insertIndex = allQuestions.length;
+      }
+
+
+      allQuestions.splice(
+        insertIndex,
+        0,
+        ...realQuestions
+      );
+
+    });
+
+
+    // -------------------------------------------------------------
+    // 4. REBUILD QUESTION NUMBERS
+    // -------------------------------------------------------------
+
+    allQuestions.forEach((q, index) => {
+      q.qNum = index + 1;
+    });
+
+
+    // -------------------------------------------------------------
+    // 5. REFRESH THE SCREEN
+    // -------------------------------------------------------------
+
+    if (receivedRealQuestions) {
+
+      // Keep the current question valid.
+      if (
+        currentQIndex >= allQuestions.length
+      ) {
+        currentQIndex = 0;
+      }
+
+      renderSubjectTabs();
+      renderQuestion();
+
+      showToast(
+        'Real questions loaded.'
+      );
+
+    }
+
+  } catch (error) {
+
+    /*
+     * Do absolutely nothing to the visible Practice screen.
+     *
+     * The demo questions are already working.
+     */
+
+    console.warn(
+      'Background real-question loading failed:',
+      error
+    );
+
+  }
+
+         }
 
     /*
       COACH RECOVERY
