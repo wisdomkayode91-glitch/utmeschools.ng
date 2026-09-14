@@ -1,92 +1,276 @@
 /* ============================================================
-   UTMESchools v2 — practice.js
-   Reads questions from the UTMESchools backend / Supabase.
-   Uses a safe timeout and demo fallback if live questions are unavailable.
+   UTMESchools — practice.js
    ============================================================ */
 
 /* ================================================================
    MODE RULES
    practice : no answers shown during session. Submit → result saved.
-   mock     : no answers shown during session. Submit → analysis only, NOT saved.
-   study    : click "Show Answer" to reveal. No submit button. NOT saved.
-   All modes: can freely change selected answer anytime.
+   mock     : no answers shown during session. Submit → analysis only.
+   study    : click "Show Answer" to reveal. No submit button.
+   All modes: selected answers can be changed at any time.
    ================================================================ */
 
-const urlP       = new URLSearchParams(window.location.search);
-const subjectIds = (urlP.get('subjects') || 'english').split(',');
-const mode       = urlP.get('mode') || 'practice';
-const timerH     = parseInt(urlP.get('h') || '2', 10);
-const timerM     = parseInt(urlP.get('m') || '0', 10);
-const shuffleQ   = urlP.get('shuffleQ') !== '0';
+const urlP = new URLSearchParams(window.location.search);
+
+const subjectIds = (urlP.get('subjects') || 'english')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+const mode = urlP.get('mode') || 'practice';
+
+const timerH = parseInt(
+  urlP.get('h') || '2',
+  10
+);
+
+const timerM = parseInt(
+  urlP.get('m') || '0',
+  10
+);
+
+const shuffleQ = urlP.get('shuffleQ') !== '0';
+
 
 /* ================================================================
-   FETCH QUESTIONS FROM UTMESCHOOLS BACKEND
+   FETCH QUESTIONS
    ================================================================ */
-async function fetchQuestionsFromJSON(subjectId, year, count, topicsParam) {
-  const API_BASE = 'https://utmeschools-ng.onrender.com';
+
+async function fetchQuestionsFromJSON(
+  subjectId,
+  year,
+  count,
+  topicsParam
+) {
+
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  const timeout = setTimeout(
+    () => controller.abort(),
+    8000
+  );
 
   try {
-    const params = new URLSearchParams();
-    params.set('subject', subjectId);
-    params.set('limit', String(count));
-    params.set('shuffle', shuffleQ ? 'true' : 'false');
 
-    if (year && year !== 'Random') {
-      params.set('year', year);
+    const safeCount = Math.min(
+      Math.max(
+        parseInt(count, 10) || 1,
+        1
+      ),
+      50
+    );
+
+    const params = new URLSearchParams();
+
+    params.set(
+      'subject',
+      subjectId
+    );
+
+    params.set(
+      'limit',
+      String(safeCount)
+    );
+
+    params.set(
+      'shuffle',
+      'true'
+    );
+
+    if (
+      year &&
+      year !== 'Random'
+    ) {
+      params.set(
+        'year',
+        year
+      );
     }
 
     if (topicsParam) {
-      const firstTopic = topicsParam.split('||')[0];
+
+      const firstTopic =
+        topicsParam
+          .split('||')
+          .map(t => t.trim())
+          .filter(Boolean)[0];
+
       if (firstTopic) {
-        params.set('topic', firstTopic);
+        params.set(
+          'topic',
+          firstTopic
+        );
       }
     }
 
-    const res = await fetch(
-  `https://utmeschools-ng.onrender.com/api/questions?${params.toString()}`,
-  {
-    signal: controller.signal,
-    cache: 'no-store'
-  }
-);
+    const response = await fetch(
+      `https://utmeschools-ng.onrender.com/api/questions?${params.toString()}`,
+      {
+        method: 'GET',
+        signal: controller.signal,
+        cache: 'no-store'
+      }
+    );
 
-    if (!res.ok) {
+    if (!response.ok) {
+
       console.warn(
-        `Question API returned ${res.status} for ${subjectId}`
+        `Question API returned ${response.status} for ${subjectId}`
       );
+
       return [];
     }
 
-    const data = await res.json();
+    const result =
+      await response.json();
 
-    const questions = Array.isArray(data)
-      ? data
-      : (data.questions || data.data || []);
+    /*
+     * Our backend may return:
+     *
+     * { questions: [...] }
+     *
+     * or:
+     *
+     * { data: [...] }
+     *
+     * or directly:
+     *
+     * [...]
+     *
+     * Accept all three so Practice does not
+     * break when the backend response wrapper changes.
+     */
 
-    if (!Array.isArray(questions)) {
-      return [];
+    let questions = [];
+
+    if (Array.isArray(result)) {
+
+      questions = result;
+
+    } else if (
+      result &&
+      Array.isArray(result.questions)
+    ) {
+
+      questions = result.questions;
+
+    } else if (
+      result &&
+      Array.isArray(result.data)
+    ) {
+
+      questions = result.data;
+
     }
+
+    /*
+     * Convert backend/Supabase question objects
+     * into the exact structure used by Practice.
+     */
 
     return questions
+
+      .filter(q => {
+
+        if (!q) return false;
+
+        const text =
+          q.question ||
+          q.text ||
+          '';
+
+        if (!String(text).trim()) {
+          return false;
+        }
+
+        return true;
+      })
+
       .map(q => {
-        const options = Array.isArray(q.options)
-          ? q.options.filter(Boolean)
-          : [
-              q.option_a,
-              q.option_b,
-              q.option_c,
-              q.option_d,
-              q.option_e
-            ].filter(Boolean);
+
+        let options = [];
+
+        /*
+         * Supabase normally gives us an array.
+         *
+         * Sdash itself uses:
+         * {
+         *   a: "...",
+         *   b: "...",
+         *   c: "...",
+         *   d: "...",
+         *   e: "..."
+         * }
+         *
+         * Support both formats.
+         */
+
+        if (Array.isArray(q.options)) {
+
+          options = q.options;
+
+        } else if (
+          q.options &&
+          typeof q.options === 'object'
+        ) {
+
+          options = [
+            q.options.a,
+            q.options.b,
+            q.options.c,
+            q.options.d,
+            q.options.e
+          ].filter(
+            option =>
+              option !== null &&
+              option !== undefined &&
+              String(option).trim() !== ''
+          );
+
+        } else if (
+          q.option &&
+          typeof q.option === 'object'
+        ) {
+
+          options = [
+            q.option.a,
+            q.option.b,
+            q.option.c,
+            q.option.d,
+            q.option.e
+          ].filter(
+            option =>
+              option !== null &&
+              option !== undefined &&
+              String(option).trim() !== ''
+          );
+
+        }
+
+        /*
+         * Sdash answers are normally lower-case
+         * such as "a", "b", "c".
+         *
+         * Practice uses A, B, C, D, E.
+         */
+
+        const rawCorrect =
+          q.answer ||
+          q.correct ||
+          '';
+
+        const correct =
+          String(rawCorrect)
+            .trim()
+            .toUpperCase();
 
         return {
-          id: String(
-            q.id ??
-            q.source_id ??
-            `q_${Date.now()}_${Math.random()}`
-          ),
+
+          id:
+            String(
+              q.id ??
+              ''
+            ),
 
           subjectId:
             q.subject_slug ||
@@ -98,9 +282,13 @@ async function fetchQuestionsFromJSON(subjectId, year, count, topicsParam) {
             q.year ??
             '',
 
-          topic: q.topic || '',
+          topic:
+            q.topic ||
+            '',
 
-          subtopic: q.subtopic || '',
+          subtopic:
+            q.subtopic ||
+            '',
 
           difficulty:
             q.difficulty ||
@@ -113,14 +301,20 @@ async function fetchQuestionsFromJSON(subjectId, year, count, topicsParam) {
 
           options,
 
-          correct:
-            q.answer ||
-            q.correct ||
-            '',
+          correct,
+
+          /*
+           * We are no longer generating explanations
+           * ourselves.
+           *
+           * The explanation/solution comes from the
+           * imported Sdash question data.
+           */
 
           explanation:
-            q.ai_explanation ||
             q.explanation ||
+            q.solution ||
+            q.ai_explanation ||
             '',
 
           svg_code:
@@ -139,45 +333,67 @@ async function fetchQuestionsFromJSON(subjectId, year, count, topicsParam) {
             q.passage ||
             q.section ||
             ''
+
         };
+
       })
-      .filter(q =>
-        q.text.trim() &&
-        q.options.length >= 2
+
+      .filter(
+        q =>
+          q.options.length >= 2
       );
 
-  } catch (e) {
+  } catch (error) {
 
-    if (e.name === 'AbortError') {
+    if (
+      error &&
+      error.name === 'AbortError'
+    ) {
+
       console.warn(
-        `Question API timed out for ${subjectId}`
+        `Question request timed out for ${subjectId}`
       );
+
     } else {
+
       console.error(
         `Error loading questions for ${subjectId}:`,
-        e
+        error
       );
+
     }
 
     return [];
 
   } finally {
-    clearTimeout(timeoutId);
+
+    clearTimeout(timeout);
+
   }
+
 }
 
+
 /* ================================================================
-   DEMO QUESTIONS — shown when live questions are unavailable
+   DEMO QUESTION
    ================================================================ */
+
 function getDemoQuestions(subjectId) {
+
   return [
+
     {
+
       id: 'demo_1',
-      subjectId: subjectId,
+
+      subjectId,
+
       year: 2024,
 
       topic: 'DEMO',
+
       subtopic: '',
+
       difficulty: 'Basic',
 
       text:
@@ -193,313 +409,523 @@ function getDemoQuestions(subjectId) {
       correct: 'A',
 
       explanation:
-        'This is a demo. Real explanations will be detailed and educational.',
+        'This is a demo question. Real Sdash questions will replace it when available.',
 
       svg_code: '',
+
       image_file: '',
+
       image_url: '',
+
       passage: ''
+
     }
+
   ];
+
 }
+
 
 /* ================================================================
    STATE
    ================================================================ */
-let allQuestions    = [];
-let currentQIndex   = 0;
-let answers         = {};
-let bookmarks       = {};
+
+let allQuestions = [];
+
+let currentQIndex = 0;
+
+let answers = {};
+
+let bookmarks = {};
+
 let showExplanation = false;
 
 const FREE_LIMIT = 5;
 
 try {
-  bookmarks = JSON.parse(
-    localStorage.getItem('utme_bookmarks') || '{}'
-  );
-} catch(e) {}
+
+  bookmarks =
+    JSON.parse(
+      localStorage.getItem(
+        'utme_bookmarks'
+      ) || '{}'
+    );
+
+} catch (error) {
+
+  bookmarks = {};
+
+}
+
 
 /* ================================================================
    TIMER
    ================================================================ */
+
 let totalSeconds =
   (timerH * 3600) +
   (timerM * 60);
 
 let timerInterval = null;
 
-function formatTime(s) {
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
+
+function formatTime(seconds) {
+
+  const h =
+    Math.floor(
+      seconds / 3600
+    );
+
+  const m =
+    Math.floor(
+      (seconds % 3600) / 60
+    );
+
+  const sec =
+    seconds % 60;
 
   return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+
 }
 
+
 function startTimer() {
+
   if (mode === 'study') {
-    document.getElementById('timerPill').style.display = 'none';
+
+    const timer =
+      document.getElementById(
+        'timerPill'
+      );
+
+    if (timer) {
+      timer.style.display = 'none';
+    }
+
     return;
   }
 
-  const pill = document.getElementById('timerPill');
+  const pill =
+    document.getElementById(
+      'timerPill'
+    );
 
-  pill.textContent = formatTime(totalSeconds);
+  if (!pill) return;
 
-  timerInterval = setInterval(() => {
+  pill.textContent =
+    formatTime(
+      totalSeconds
+    );
 
-    totalSeconds--;
+  timerInterval =
+    setInterval(() => {
 
-    pill.textContent =
-      formatTime(totalSeconds);
+      totalSeconds--;
 
-    if (totalSeconds <= 300) {
-      pill.className =
-        'timer-pill danger';
+      pill.textContent =
+        formatTime(
+          Math.max(
+            totalSeconds,
+            0
+          )
+        );
 
-    } else if (totalSeconds <= 600) {
-      pill.className =
-        'timer-pill warn';
-    }
+      if (
+        totalSeconds <= 300
+      ) {
 
-    if (totalSeconds <= 0) {
+        pill.className =
+          'timer-pill danger';
 
-      clearInterval(timerInterval);
+      } else if (
+        totalSeconds <= 600
+      ) {
 
-      showToast(
-        'Time up! Submitting...'
-      );
+        pill.className =
+          'timer-pill warn';
 
-      setTimeout(
-        submitExam,
-        1500
-      );
-    }
+      }
 
-  }, 1000);
+      if (
+        totalSeconds <= 0
+      ) {
+
+        clearInterval(
+          timerInterval
+        );
+
+        showToast(
+          'Time up! Submitting...'
+        );
+
+        setTimeout(
+          submitExam,
+          1500
+        );
+
+      }
+
+    }, 1000);
+
 }
+
 
 /* ================================================================
    LOAD QUESTIONS
    ================================================================ */
+
 async function loadAllQuestions() {
 
   /*
-   * IMPORTANT:
-   * Demo questions are placed immediately so the Practice screen
-   * never gets stuck waiting for the API.
+   * Demo questions are placed immediately.
    *
-   * If real questions are available, they replace the demo questions
-   * automatically when the backend responds.
+   * This guarantees that Practice can never remain
+   * stuck on "Loading questions..." while waiting
+   * for the backend.
+   *
+   * Real questions are requested in the background.
+   * When they arrive, they replace the demo questions.
    */
-
-  // ---------------------------------------------------------------
-  // 1. SHOW DEMO QUESTIONS IMMEDIATELY
-  // ---------------------------------------------------------------
 
   allQuestions = [];
 
-  subjectIds.forEach((sid) => {
 
-    let demoQuestions = getDemoQuestions(sid);
+  /* ---------------------------------------------------------------
+     SHOW DEMO QUESTIONS IMMEDIATELY
+     --------------------------------------------------------------- */
 
-    demoQuestions = demoQuestions.slice(0, FREE_LIMIT);
+  subjectIds.forEach(
+    sid => {
 
-    demoQuestions.forEach((q, i) => {
-      q.qNum = allQuestions.length + i + 1;
-      q.subjectId = sid;
-    });
+      let demoQuestions =
+        getDemoQuestions(
+          sid
+        );
 
-    allQuestions.push(...demoQuestions);
+      demoQuestions =
+        demoQuestions.slice(
+          0,
+          FREE_LIMIT
+        );
 
-  });
+      demoQuestions.forEach(
+        (question, index) => {
 
-  // Remove loading screen immediately.
-  showLoadingState(false);
+          question.qNum =
+            allQuestions.length +
+            index +
+            1;
 
-  if (mode === 'study') {
-    document.getElementById('submitBtn').style.display = 'none';
+          question.subjectId =
+            sid;
+
+        }
+      );
+
+      allQuestions.push(
+        ...demoQuestions
+      );
+
+    }
+  );
+
+
+  /*
+   * The loading screen is never left visible.
+   */
+
+  showLoadingState(
+    false
+  );
+
+
+  if (
+    mode === 'study'
+  ) {
+
+    const submitButton =
+      document.getElementById(
+        'submitBtn'
+      );
+
+    if (submitButton) {
+      submitButton.style.display =
+        'none';
+    }
+
   }
 
+
   renderSubjectTabs();
+
   renderQuestion();
+
   startTimer();
 
 
-  // ---------------------------------------------------------------
-  // 2. LOAD REAL QUESTIONS IN THE BACKGROUND
-  // ---------------------------------------------------------------
+  /* ---------------------------------------------------------------
+     LOAD REAL QUESTIONS IN BACKGROUND
+     --------------------------------------------------------------- */
 
   try {
 
-    const user = JSON.parse(
-      localStorage.getItem('utme_user') || 'null'
-    );
+    let user = null;
 
-    const hasPaid = user && user.has_paid;
+    try {
 
-    const realResults = await Promise.all(
+      user =
+        JSON.parse(
+          localStorage.getItem(
+            'utme_user'
+          ) || 'null'
+        );
 
-      subjectIds.map(async (sid) => {
+    } catch (error) {
 
-        try {
+      user = null;
 
-          const year =
-            urlP.get('year_' + sid) || 'Random';
+    }
 
-          const count =
-            parseInt(
-              urlP.get('count_' + sid) || '40',
-              10
-            );
+    const hasPaid =
+      Boolean(
+        user &&
+        user.has_paid
+      );
 
-          const topicParam =
-            urlP.get('topics_' + sid) || '';
 
-          const requestedCount =
-            hasPaid
-              ? count
-              : Math.min(count, FREE_LIMIT);
+    const realResults =
+      await Promise.all(
 
-          const questions =
-            await fetchQuestionsFromJSON(
-              sid,
-              year,
-              requestedCount,
-              topicParam
-            );
+        subjectIds.map(
+          async sid => {
 
-          return {
-            subjectId: sid,
-            questions: Array.isArray(questions)
-              ? questions
-              : []
-          };
+            try {
 
-        } catch (error) {
+              const year =
+                urlP.get(
+                  'year_' + sid
+                ) || 'Random';
 
-          console.warn(
-            `Real questions unavailable for ${sid}:`,
-            error
-          );
+              const count =
+                parseInt(
+                  urlP.get(
+                    'count_' + sid
+                  ) || '40',
+                  10
+                );
 
-          return {
-            subjectId: sid,
-            questions: []
-          };
+              const topicParam =
+                urlP.get(
+                  'topics_' + sid
+                ) || '';
+
+              const requestedCount =
+                hasPaid
+                  ? count
+                  : Math.min(
+                      count,
+                      FREE_LIMIT
+                    );
+
+              const questions =
+                await fetchQuestionsFromJSON(
+                  sid,
+                  year,
+                  requestedCount,
+                  topicParam
+                );
+
+              return {
+
+                subjectId: sid,
+
+                questions:
+                  Array.isArray(
+                    questions
+                  )
+                    ? questions
+                    : []
+
+              };
+
+            } catch (error) {
+
+              console.warn(
+                `Real questions unavailable for ${sid}:`,
+                error
+              );
+
+              return {
+
+                subjectId: sid,
+
+                questions: []
+
+              };
+
+            }
+
+          }
+        )
+
+      );
+
+
+  /* ---------------------------------------------------------------
+     REPLACE DEMO QUESTIONS WITH REAL QUESTIONS
+     --------------------------------------------------------------- */
+
+    let receivedRealQuestions =
+      false;
+
+
+    realResults.forEach(
+      result => {
+
+        if (
+          !result ||
+          !Array.isArray(
+            result.questions
+          ) ||
+          result.questions.length === 0
+        ) {
+
+          return;
 
         }
 
-      })
 
+        receivedRealQuestions =
+          true;
+
+
+        const sid =
+          result.subjectId;
+
+
+        let realQuestions =
+          result.questions;
+
+
+        if (!hasPaid) {
+
+          realQuestions =
+            realQuestions.slice(
+              0,
+              FREE_LIMIT
+            );
+
+        }
+
+
+        if (shuffleQ) {
+
+          realQuestions.sort(
+            () =>
+              Math.random() -
+              0.5
+          );
+
+        }
+
+
+        realQuestions.forEach(
+          (question, index) => {
+
+            question.subjectId =
+              sid;
+
+            question.qNum =
+              index + 1;
+
+          }
+        );
+
+
+        /*
+         * Remove only demo questions
+         * belonging to this subject.
+         */
+
+        allQuestions =
+          allQuestions.filter(
+            question =>
+              !(
+                question.subjectId === sid &&
+                String(
+                  question.id
+                ).startsWith(
+                  'demo_'
+                )
+              )
+          );
+
+
+        /*
+         * Find the correct position
+         * for this subject.
+         */
+
+        let insertIndex =
+          allQuestions.findIndex(
+            question =>
+              question.subjectId === sid
+          );
+
+
+        if (
+          insertIndex === -1
+        ) {
+
+          insertIndex =
+            allQuestions.length;
+
+        }
+
+
+        allQuestions.splice(
+          insertIndex,
+          0,
+          ...realQuestions
+        );
+
+      }
     );
 
 
-    // -------------------------------------------------------------
-    // 3. REPLACE DEMO WITH REAL QUESTIONS WHEN AVAILABLE
-    // -------------------------------------------------------------
+  /* ---------------------------------------------------------------
+     REBUILD QUESTION NUMBERS
+     --------------------------------------------------------------- */
 
-    let receivedRealQuestions = false;
+    allQuestions.forEach(
+      (question, index) => {
 
-    realResults.forEach((result) => {
+        question.qNum =
+          index + 1;
+
+      }
+    );
+
+
+  /* ---------------------------------------------------------------
+     REFRESH SCREEN
+     --------------------------------------------------------------- */
+
+    if (
+      receivedRealQuestions
+    ) {
 
       if (
-        !result ||
-        !result.questions ||
-        result.questions.length === 0
+        currentQIndex >=
+        allQuestions.length
       ) {
-        return;
-      }
 
-      receivedRealQuestions = true;
-
-      const sid = result.subjectId;
-
-      let realQuestions = result.questions;
-
-      if (!hasPaid) {
-        realQuestions =
-          realQuestions.slice(0, FREE_LIMIT);
-      }
-
-      if (shuffleQ) {
-        realQuestions.sort(
-          () => Math.random() - 0.5
-        );
-      }
-
-      realQuestions.forEach((q, i) => {
-        q.subjectId = sid;
-        q.qNum = i + 1;
-      });
-
-
-      // Find the demo questions belonging to this subject.
-      const firstIndex =
-        allQuestions.findIndex(
-          q => q.subjectId === sid
-        );
-
-      if (firstIndex === -1) {
-        allQuestions.push(...realQuestions);
-        return;
-      }
-
-
-      // Remove the demo questions for this subject.
-      allQuestions =
-        allQuestions.filter(
-          q =>
-            !(
-              q.subjectId === sid &&
-              String(q.id).startsWith('demo_')
-            )
-        );
-
-
-      // Find where this subject should be inserted.
-      let insertIndex = allQuestions.findIndex(
-        q => q.subjectId === sid
-      );
-
-      if (insertIndex === -1) {
-        insertIndex = allQuestions.length;
-      }
-
-
-      allQuestions.splice(
-        insertIndex,
-        0,
-        ...realQuestions
-      );
-
-    });
-
-
-    // -------------------------------------------------------------
-    // 4. REBUILD QUESTION NUMBERS
-    // -------------------------------------------------------------
-
-    allQuestions.forEach((q, index) => {
-      q.qNum = index + 1;
-    });
-
-
-    // -------------------------------------------------------------
-    // 5. REFRESH THE SCREEN
-    // -------------------------------------------------------------
-
-    if (receivedRealQuestions) {
-
-      // Keep the current question valid.
-      if (
-        currentQIndex >= allQuestions.length
-      ) {
         currentQIndex = 0;
+
       }
 
       renderSubjectTabs();
+
       renderQuestion();
 
       showToast(
@@ -511,9 +937,8 @@ async function loadAllQuestions() {
   } catch (error) {
 
     /*
-     * Do absolutely nothing to the visible Practice screen.
-     *
-     * The demo questions are already working.
+     * The demo questions are already visible.
+     * Therefore an API failure does not break Practice.
      */
 
     console.warn(
@@ -523,446 +948,722 @@ async function loadAllQuestions() {
 
   }
 
-         }
-
-    /*
-      COACH RECOVERY
-      ------------------------------------------------------------
-      Coach Mode already selected the exact questions to practise.
-      Use that same set instead of requesting a new random set.
-
-      The student can enter this set as:
-        - Study
-        - Practice
-        - Mock
-
-      The same questions remain available when the student moves
-      between these learning modes from Coach Mode.
-    */
-    if (isCoachRecovery) {
-      let recoverySet = [];
-
-      try {
-        recoverySet = JSON.parse(
-          sessionStorage.getItem('coach_recovery_set') || '[]'
-        );
-      } catch (e) {
-        recoverySet = [];
-      }
-
-      if (Array.isArray(recoverySet) && recoverySet.length > 0) {
-        allQuestions = recoverySet
-          .filter(q =>
-            q &&
-            String(q.question || q.text || '').trim() &&
-            Array.isArray(q.options) &&
-            q.options.length >= 2
-          )
-          .map((q, index) => ({
-            id: String(q.id || `coach_${index + 1}`),
-            subjectId:
-              q.subject_slug ||
-              q.subjectId ||
-              q.subject_id ||
-              subjectIds[0] ||
-              'english',
-            year: q.exam_year ?? q.year ?? '',
-            topic: q.topic || '',
-            subtopic: q.subtopic || '',
-            difficulty: q.difficulty || 'Intermediate',
-            text: q.question || q.text || '',
-            options: q.options || [],
-            correct: q.answer || q.correct || '',
-            explanation: q.ai_explanation || q.explanation || '',
-            svg_code: q.svg_code || '',
-            image_file: q.image_file || '',
-            image_url: q.image_url || '',
-            passage: q.passage || q.section || '',
-            qNum: index + 1
-          }));
-
-        /*
-          IMPORTANT:
-          Coach recovery questions are already selected by Coach Mode,
-          so do not apply the normal random fetch or free-limit slice.
-        */
-
-        if (allQuestions.length === 0) {
-          allQuestions = getDemoQuestions(subjectIds[0] || 'english');
-        }
-
-        if (mode === 'study') {
-          document.getElementById('submitBtn').style.display = 'none';
-        }
-
-        showLoadingState(false);
-        renderSubjectTabs();
-        renderQuestion();
-        startTimer();
-        return;
-      }
-
-      /*
-        If the recovery set disappeared from sessionStorage,
-        fall back safely to the normal question loader.
-      */
-      console.warn('Coach recovery set not found. Loading normal questions.');
-    }
-
-    /* ============================================================
-       NORMAL PRACTICE / MOCK / STUDY LOADING
-    ============================================================ */
-
-    for (const sid of subjectIds) {
-      const year       = urlP.get('year_' + sid) || 'Random';
-      const count      = parseInt(urlP.get('count_' + sid) || '40', 10);
-      const topicParam = urlP.get('topics_' + sid) || '';
-
-      const requestedCount = hasPaid
-        ? count
-        : Math.min(count, FREE_LIMIT);
-
-      let qs = await fetchQuestionsFromJSON(
-        sid,
-        year,
-        requestedCount,
-        topicParam
-      );
-
-      if (qs.length === 0) {
-        qs = getDemoQuestions(sid);
-        showToast(
-          'Unable to load live questions right now. Demo question shown.'
-        );
-      }
-
-      if (!hasPaid) {
-        qs = qs.slice(0, FREE_LIMIT);
-      }
-
-      if (shuffleQ) {
-        qs.sort(() => Math.random() - 0.5);
-      }
-
-      qs.forEach((q, i) => {
-        q.qNum = allQuestions.length + i + 1;
-        q.subjectId = sid;
-      });
-
-      allQuestions.push(...qs);
-    }
-
-  } catch (e) {
-    console.error('loadAllQuestions error:', e);
-
-  } finally {
-
-    if (allQuestions.length === 0) {
-      allQuestions = getDemoQuestions(
-        subjectIds[0] || 'english'
-      );
-    }
-
-    if (mode === 'study') {
-      document.getElementById('submitBtn').style.display = 'none';
-    }
-
-    showLoadingState(false);
-    renderSubjectTabs();
-    renderQuestion();
-    startTimer();
-  }
 }
 
+
 /* ================================================================
+   LOADING STATE
+   ================================================================ */
+
+function showLoadingState(
+  loading
+) {
+
+  const qCard =
+    document.getElementById(
+      'qCard'
+    );
+
+  const optionsList =
+    document.getElementById(
+      'optionsList'
+    );
+
+  if (!qCard) return;
+
+
+  if (loading) {
+
+    qCard.innerHTML = `
+
+      <div style="text-align:center;padding:40px 20px;">
+
+        <div style="font-size:32px;margin-bottom:12px;">
+          ⏳
+        </div>
+
+        <div
+          style="
+            font-family:var(--font-display);
+            font-size:16px;
+            font-weight:700;
+            color:var(--navy);
+            margin-bottom:6px;
+          "
+        >
+          Loading questions...
+        </div>
+
+        <div
+          style="
+            font-size:13px;
+            color:var(--ink-soft);
+          "
+        >
+          Please wait
+        </div>
+
+      </div>
+
+    `;
+
+    if (optionsList) {
+      optionsList.innerHTML = '';
+    }
+
+  }
+
+         }/* ================================================================
    SUBJECT TABS
    ================================================================ */
+
 function renderSubjectTabs() {
 
   const container =
-    document.getElementById('subjTabs');
+    document.getElementById(
+      'subjTabs'
+    );
 
-  if (subjectIds.length <= 1) {
+  if (!container) return;
+
+
+  /*
+   * Clear previous tabs.
+   *
+   * This is important because real questions can
+   * replace demo questions after the first render.
+   */
+
+  container.innerHTML = '';
+
+
+  if (
+    subjectIds.length <= 1
+  ) {
 
     container.style.display =
       'none';
 
     return;
+
   }
 
-  subjectIds.forEach(sid => {
 
-    const subjQs =
-      allQuestions.filter(
-        q => q.subjectId === sid
+  container.style.display =
+    '';
+
+
+  subjectIds.forEach(
+    sid => {
+
+      const subjQs =
+        allQuestions.filter(
+          question =>
+            question.subjectId === sid
+        );
+
+
+      const tab =
+        document.createElement(
+          'div'
+        );
+
+
+      tab.className =
+        'subj-tab';
+
+
+      tab.dataset.subject =
+        sid;
+
+
+      const name =
+        sid.charAt(0).toUpperCase() +
+        sid.slice(1);
+
+
+      tab.innerHTML =
+        `${name} <span class="subj-tab-count">0/${subjQs.length}</span>`;
+
+
+      tab.addEventListener(
+        'click',
+        () => {
+
+          const first =
+            allQuestions.findIndex(
+              question =>
+                question.subjectId === sid
+            );
+
+          if (
+            first >= 0
+          ) {
+
+            goToQuestion(
+              first
+            );
+
+          }
+
+        }
       );
 
-    const tab =
-      document.createElement('div');
 
-    tab.className =
-      'subj-tab';
+      container.appendChild(
+        tab
+      );
 
-    tab.dataset.subject =
-      sid;
+    }
+  );
 
-    tab.innerHTML =
-      `${sid.charAt(0).toUpperCase() + sid.slice(1)}
-       <span class="subj-tab-count">
-       0/${subjQs.length}
-       </span>`;
-
-    tab.addEventListener(
-      'click',
-      () => {
-
-        const first =
-          allQuestions.findIndex(
-            q => q.subjectId === sid
-          );
-
-        if (first >= 0) {
-          goToQuestion(first);
-        }
-      }
-    );
-
-    container.appendChild(tab);
-  });
 
   updateSubjectTabs();
+
 }
+
 
 function updateSubjectTabs() {
 
   const current =
-    allQuestions[currentQIndex]?.subjectId;
+    allQuestions[
+      currentQIndex
+    ]?.subjectId;
+
 
   document
-    .querySelectorAll('.subj-tab')
-    .forEach(tab => {
+    .querySelectorAll(
+      '.subj-tab'
+    )
+    .forEach(
+      tab => {
 
-      tab.classList.toggle(
-        'active',
-        tab.dataset.subject === current
-      );
-
-      const sid =
-        tab.dataset.subject;
-
-      const subjQs =
-        allQuestions.filter(
-          q => q.subjectId === sid
+        tab.classList.toggle(
+          'active',
+          tab.dataset.subject === current
         );
 
-      const ans =
-        subjQs.filter(
-          q => answers[q.id]
-        ).length;
 
-      const el =
-        tab.querySelector(
-          '.subj-tab-count'
-        );
+        const sid =
+          tab.dataset.subject;
 
-      if (el) {
-        el.textContent =
-          `${ans}/${subjQs.length}`;
+
+        const subjQs =
+          allQuestions.filter(
+            question =>
+              question.subjectId === sid
+          );
+
+
+        const answered =
+          subjQs.filter(
+            question =>
+              answers[
+                question.id
+              ]
+          ).length;
+
+
+        const countElement =
+          tab.querySelector(
+            '.subj-tab-count'
+          );
+
+
+        if (
+          countElement
+        ) {
+
+          countElement.textContent =
+            `${answered}/${subjQs.length}`;
+
+        }
+
       }
-    });
+    );
+
 }
+
 
 /* ================================================================
    RENDER QUESTION
    ================================================================ */
+
 function renderQuestion() {
 
   const q =
-    allQuestions[currentQIndex];
+    allQuestions[
+      currentQIndex
+    ];
+
 
   if (!q) return;
 
-  const qCard =
-    document.getElementById('qCard');
 
-  if (!qCard.querySelector('#qMeta')) {
+  const qCard =
+    document.getElementById(
+      'qCard'
+    );
+
+
+  if (!qCard) return;
+
+
+  if (
+    !qCard.querySelector(
+      '#qMeta'
+    )
+  ) {
 
     qCard.innerHTML = `
-      <div class="q-meta" id="qMeta"></div>
-      <div class="q-text" id="qText"></div>
-      <div class="q-svg" id="qSvg"></div>`;
+
+      <div
+        class="q-meta"
+        id="qMeta"
+      ></div>
+
+      <div
+        class="q-text"
+        id="qText"
+      ></div>
+
+      <div
+        class="q-svg"
+        id="qSvg"
+      ></div>
+
+    `;
+
   }
 
-  document.getElementById(
-    'qLabel'
-  ).textContent =
-    `Q ${currentQIndex + 1} / ${allQuestions.length}`;
+
+  const qLabel =
+    document.getElementById(
+      'qLabel'
+    );
+
+
+  if (qLabel) {
+
+    qLabel.textContent =
+      `Q ${currentQIndex + 1} / ${allQuestions.length}`;
+
+  }
+
 
   const metaEl =
-    document.getElementById('qMeta');
+    document.getElementById(
+      'qMeta'
+    );
 
-  metaEl.innerHTML = '';
 
-  if (q.topic) {
-    metaEl.innerHTML +=
-      `<span class="q-meta-tag">${q.topic}</span>`;
+  if (metaEl) {
+
+    metaEl.innerHTML = '';
+
+
+    if (q.topic) {
+
+      const topicTag =
+        document.createElement(
+          'span'
+        );
+
+      topicTag.className =
+        'q-meta-tag';
+
+      topicTag.textContent =
+        q.topic;
+
+      metaEl.appendChild(
+        topicTag
+      );
+
+    }
+
+
+    if (q.subtopic) {
+
+      const subtopicTag =
+        document.createElement(
+          'span'
+        );
+
+      subtopicTag.className =
+        'q-meta-tag';
+
+      subtopicTag.textContent =
+        q.subtopic;
+
+      metaEl.appendChild(
+        subtopicTag
+      );
+
+    }
+
+
+    if (q.year) {
+
+      const yearTag =
+        document.createElement(
+          'span'
+        );
+
+      yearTag.className =
+        'q-meta-tag';
+
+      yearTag.textContent =
+        `📅 ${q.year}`;
+
+      metaEl.appendChild(
+        yearTag
+      );
+
+    }
+
+
+    if (q.difficulty) {
+
+      const difficultyTag =
+        document.createElement(
+          'span'
+        );
+
+      difficultyTag.className =
+        'q-meta-tag';
+
+      difficultyTag.textContent =
+        q.difficulty;
+
+      metaEl.appendChild(
+        difficultyTag
+      );
+
+    }
+
   }
 
-  if (q.year) {
-    metaEl.innerHTML +=
-      `<span class="q-meta-tag">📅 ${q.year}</span>`;
+
+  const questionText =
+    document.getElementById(
+      'qText'
+    );
+
+
+  if (questionText) {
+
+    questionText.textContent =
+      q.text;
+
   }
 
-  if (q.difficulty) {
-    metaEl.innerHTML +=
-      `<span class="q-meta-tag">${q.difficulty}</span>`;
-  }
-
-  document.getElementById(
-    'qText'
-  ).textContent =
-    q.text;
 
   const svgEl =
-    document.getElementById('qSvg');
+    document.getElementById(
+      'qSvg'
+    );
 
-  if (q.svg_code) {
 
-    svgEl.innerHTML =
-      q.svg_code;
-
-  } else if (q.image_url) {
-
-    svgEl.innerHTML =
-      `<img src="${q.image_url}" alt="Diagram" style="max-width:100%;border-radius:8px;margin-top:8px;">`;
-
-  } else if (q.image_file) {
-
-    svgEl.innerHTML =
-      `<img src="images/${q.image_file}" alt="Diagram" style="max-width:100%;border-radius:8px;margin-top:8px;">`;
-
-  } else {
+  if (svgEl) {
 
     svgEl.innerHTML = '';
+
+
+    if (q.svg_code) {
+
+      svgEl.innerHTML =
+        q.svg_code;
+
+    } else if (
+      q.image_url
+    ) {
+
+      const image =
+        document.createElement(
+          'img'
+        );
+
+      image.src =
+        q.image_url;
+
+      image.alt =
+        'Question diagram';
+
+      image.style.maxWidth =
+        '100%';
+
+      image.style.borderRadius =
+        '8px';
+
+      image.style.marginTop =
+        '8px';
+
+      svgEl.appendChild(
+        image
+      );
+
+    } else if (
+      q.image_file
+    ) {
+
+      const image =
+        document.createElement(
+          'img'
+        );
+
+      image.src =
+        `images/${q.image_file}`;
+
+      image.alt =
+        'Question diagram';
+
+      image.style.maxWidth =
+        '100%';
+
+      image.style.borderRadius =
+        '8px';
+
+      image.style.marginTop =
+        '8px';
+
+      svgEl.appendChild(
+        image
+      );
+
+    }
+
   }
 
-  /* Passage */
+
+  /* ---------------------------------------------------------------
+     PASSAGE
+     --------------------------------------------------------------- */
 
   const passCard =
     document.getElementById(
       'passageCard'
     );
 
-  if (q.passage) {
-
+  const passageText =
     document.getElementById(
       'passageText'
-    ).textContent =
-      q.passage;
-
-    passCard.classList.add(
-      'visible'
     );
 
-  } else {
 
-    passCard.classList.remove(
-      'visible'
-    );
+  if (
+    passCard &&
+    passageText
+  ) {
+
+    if (q.passage) {
+
+      passageText.textContent =
+        q.passage;
+
+      passCard.classList.add(
+        'visible'
+      );
+
+    } else {
+
+      passageText.textContent =
+        '';
+
+      passCard.classList.remove(
+        'visible'
+      );
+
+    }
+
   }
+
 
   renderOptions(q);
 
-  document.getElementById(
-    'prevBtn'
-  ).disabled =
-    currentQIndex === 0;
 
-  document.getElementById(
-    'nextBtn'
-  ).disabled =
-    currentQIndex ===
-    allQuestions.length - 1;
+  const prevBtn =
+    document.getElementById(
+      'prevBtn'
+    );
 
-  document.getElementById(
-    'bookmarkBtn'
-  ).style.color =
-    bookmarks[q.id]
-      ? 'var(--gold)'
-      : '';
+  if (prevBtn) {
+
+    prevBtn.disabled =
+      currentQIndex === 0;
+
+  }
+
+
+  const nextBtn =
+    document.getElementById(
+      'nextBtn'
+    );
+
+  if (nextBtn) {
+
+    nextBtn.disabled =
+      currentQIndex ===
+      allQuestions.length - 1;
+
+  }
+
+
+  const bookmarkBtn =
+    document.getElementById(
+      'bookmarkBtn'
+    );
+
+
+  if (bookmarkBtn) {
+
+    bookmarkBtn.style.color =
+      bookmarks[q.id]
+        ? 'var(--gold)'
+        : '';
+
+  }
+
 
   const studyActions =
     document.getElementById(
       'studyActions'
     );
 
-  const explanBox =
+  const explanationBox =
     document.getElementById(
       'explanationBox'
     );
 
-  if (mode === 'study') {
 
-    studyActions.classList.add(
-      'visible'
-    );
+  if (
+    mode === 'study'
+  ) {
 
-    document.getElementById(
-      'showAnswerBtn'
-    ).textContent =
-      showExplanation
-        ? '🙈 Hide Answer'
-        : '👁 Show Answer';
+    if (studyActions) {
 
-    if (showExplanation) {
-
-      explanBox.classList.add(
+      studyActions.classList.add(
         'visible'
       );
 
+    }
+
+
+    const showAnswerBtn =
       document.getElementById(
-        'explanationText'
-      ).textContent =
-        q.explanation ||
-        'No explanation available yet.';
+        'showAnswerBtn'
+      );
+
+
+    if (showAnswerBtn) {
+
+      showAnswerBtn.textContent =
+        showExplanation
+          ? '🙈 Hide Answer'
+          : '👁 Show Answer';
+
+    }
+
+
+    if (
+      showExplanation
+    ) {
+
+      if (explanationBox) {
+
+        explanationBox.classList.add(
+          'visible'
+        );
+
+      }
+
+
+      const explanationText =
+        document.getElementById(
+          'explanationText'
+        );
+
+
+      if (explanationText) {
+
+        explanationText.textContent =
+          q.explanation ||
+          'No solution is available for this question.';
+
+      }
 
     } else {
 
-      explanBox.classList.remove(
-        'visible'
-      );
+      if (explanationBox) {
+
+        explanationBox.classList.remove(
+          'visible'
+        );
+
+      }
+
     }
 
   } else {
 
-    studyActions.classList.remove(
-      'visible'
-    );
+    if (studyActions) {
 
-    explanBox.classList.remove(
-      'visible'
-    );
+      studyActions.classList.remove(
+        'visible'
+      );
+
+    }
+
+
+    if (explanationBox) {
+
+      explanationBox.classList.remove(
+        'visible'
+      );
+
+    }
+
   }
 
-  document.getElementById(
-    'answeredCount'
-  ).textContent =
-    Object.keys(answers).length;
 
-  document.getElementById(
-    'totalCount'
-  ).textContent =
-    allQuestions.length;
+  const answeredCount =
+    document.getElementById(
+      'answeredCount'
+    );
+
+
+  if (answeredCount) {
+
+    answeredCount.textContent =
+      Object.keys(
+        answers
+      ).length;
+
+  }
+
+
+  const totalCount =
+    document.getElementById(
+      'totalCount'
+    );
+
+
+  if (totalCount) {
+
+    totalCount.textContent =
+      allQuestions.length;
+
+  }
+
 
   updateSubjectTabs();
+
 }
+
 
 /* ================================================================
    RENDER OPTIONS
-   Practice/Mock: highlight selection only.
-   Study + showExplanation: green = correct, red = wrong.
-   ALL modes: clicking always updates answer.
    ================================================================ */
+
 function renderOptions(q) {
 
   const list =
@@ -970,122 +1671,219 @@ function renderOptions(q) {
       'optionsList'
     );
 
+
+  if (!list) return;
+
+
   const letters =
     ['A', 'B', 'C', 'D', 'E'];
+
 
   const userAns =
     answers[q.id];
 
+
   list.innerHTML = '';
 
-  (q.options || []).forEach(
-    (opt, i) => {
 
-      const letter =
-        letters[i];
+  (q.options || [])
+    .forEach(
+      (option, index) => {
 
-      const row =
-        document.createElement('div');
+        const letter =
+          letters[index];
 
-      row.className =
-        'option-row';
 
-      if (
-        mode === 'study' &&
-        showExplanation
-      ) {
+        if (!letter) return;
+
+
+        const row =
+          document.createElement(
+            'div'
+          );
+
+
+        row.className =
+          'option-row';
+
+
+        /*
+         * Study mode can reveal the answer.
+         *
+         * Practice and Mock never reveal
+         * the correct answer during the test.
+         */
 
         if (
-          letter === q.correct
+          mode === 'study' &&
+          showExplanation
         ) {
 
-          row.classList.add(
-            'correct'
-          );
+          if (
+            letter === q.correct
+          ) {
 
-        } else if (
-          letter === userAns
-        ) {
+            row.classList.add(
+              'correct'
+            );
 
-          row.classList.add(
-            'wrong'
-          );
+          } else if (
+            letter === userAns
+          ) {
+
+            row.classList.add(
+              'wrong'
+            );
+
+          } else {
+
+            row.classList.add(
+              'dimmed'
+            );
+
+          }
 
         } else {
 
-          row.classList.add(
-            'dimmed'
-          );
+          if (
+            userAns === letter
+          ) {
+
+            row.classList.add(
+              'selected'
+            );
+
+          }
+
         }
 
-      } else {
 
-        if (userAns === letter) {
-          row.classList.add(
-            'selected'
+        const letterElement =
+          document.createElement(
+            'div'
           );
-        }
+
+        letterElement.className =
+          'option-letter';
+
+        letterElement.textContent =
+          letter;
+
+
+        const textElement =
+          document.createElement(
+            'div'
+          );
+
+        textElement.className =
+          'option-text';
+
+        textElement.textContent =
+          option;
+
+
+        row.appendChild(
+          letterElement
+        );
+
+        row.appendChild(
+          textElement
+        );
+
+
+        row.addEventListener(
+          'click',
+          () =>
+            selectAnswer(
+              q,
+              letter
+            )
+        );
+
+
+        list.appendChild(
+          row
+        );
+
       }
+    );
 
-      row.innerHTML = `
-        <div class="option-letter">${letter}</div>
-        <div class="option-text">${opt}</div>`;
+}
 
-      row.addEventListener(
-        'click',
-        () => selectAnswer(q, letter)
-      );
 
-      list.appendChild(row);
-    }
-  );
-         }/* ================================================================
-   SELECT ANSWER — always changeable
+/* ================================================================
+   SELECT ANSWER
    ================================================================ */
-function selectAnswer(q, letter) {
 
-  answers[q.id] = letter;
+function selectAnswer(
+  q,
+  letter
+) {
 
-  showExplanation = false;
+  answers[q.id] =
+    letter;
+
+  showExplanation =
+    false;
 
   renderQuestion();
+
 }
+
 
 /* ================================================================
    NAVIGATION
    ================================================================ */
-function goToQuestion(index) {
+
+function goToQuestion(
+  index
+) {
 
   if (
     index < 0 ||
     index >= allQuestions.length
   ) {
+
     return;
+
   }
 
-  showExplanation = false;
 
-  currentQIndex = index;
+  showExplanation =
+    false;
+
+  currentQIndex =
+    index;
 
   renderQuestion();
+
 
   window.scrollTo({
     top: 0,
     behavior: 'smooth'
   });
+
 }
+
 
 /* ================================================================
    BOOKMARK
    ================================================================ */
+
 function toggleBookmark() {
 
   const q =
-    allQuestions[currentQIndex];
+    allQuestions[
+      currentQIndex
+    ];
+
 
   if (!q) return;
 
-  if (bookmarks[q.id]) {
+
+  if (
+    bookmarks[q.id]
+  ) {
 
     delete bookmarks[q.id];
 
@@ -1097,7 +1895,8 @@ function toggleBookmark() {
 
     bookmarks[q.id] = {
 
-      id: q.id,
+      id:
+        q.id,
 
       subjectId:
         q.subjectId,
@@ -1120,35 +1919,63 @@ function toggleBookmark() {
       topic:
         q.topic,
 
+      subtopic:
+        q.subtopic,
+
       savedAt:
         new Date().toISOString()
+
     };
+
 
     showToast(
       'Question bookmarked ⭐'
     );
+
   }
+
 
   try {
 
     localStorage.setItem(
       'utme_bookmarks',
-      JSON.stringify(bookmarks)
+      JSON.stringify(
+        bookmarks
+      )
     );
 
-  } catch(e) {}
+  } catch (error) {
 
-  document.getElementById(
-    'bookmarkBtn'
-  ).style.color =
-    bookmarks[q.id]
-      ? 'var(--gold)'
-      : '';
+    console.warn(
+      'Unable to save bookmark:',
+      error
+    );
+
+  }
+
+
+  const bookmarkBtn =
+    document.getElementById(
+      'bookmarkBtn'
+    );
+
+
+  if (bookmarkBtn) {
+
+    bookmarkBtn.style.color =
+      bookmarks[q.id]
+        ? 'var(--gold)'
+        : '';
+
+  }
+
 }
+
 
 /* ================================================================
    QUESTION GRID
    ================================================================ */
+
 function openGrid() {
 
   const grid =
@@ -1156,17 +1983,23 @@ function openGrid() {
       'gridNums'
     );
 
+
+  if (!grid) return;
+
+
   grid.innerHTML = '';
 
-  allQuestions.forEach(
-    (q, i) => {
 
-      const el =
+  allQuestions.forEach(
+    (q, index) => {
+
+      const element =
         document.createElement(
           'div'
         );
 
-      el.className =
+
+      element.className =
         'grid-num' +
         (
           answers[q.id]
@@ -1174,101 +2007,179 @@ function openGrid() {
             : ''
         ) +
         (
-          i === currentQIndex
+          index === currentQIndex
             ? ' current'
             : ''
         );
 
-      el.textContent =
-        i + 1;
 
-      el.addEventListener(
+      element.textContent =
+        index + 1;
+
+
+      element.addEventListener(
         'click',
         () => {
 
           closeGrid();
 
-          goToQuestion(i);
+          goToQuestion(
+            index
+          );
+
         }
       );
 
-      grid.appendChild(el);
+
+      grid.appendChild(
+        element
+      );
+
     }
   );
 
-  document.getElementById(
-    'gridOverlay'
-  ).classList.add(
-    'open'
-  );
+
+  const overlay =
+    document.getElementById(
+      'gridOverlay'
+    );
+
+
+  if (overlay) {
+
+    overlay.classList.add(
+      'open'
+    );
+
+  }
+
 }
+
 
 function closeGrid() {
 
-  document.getElementById(
-    'gridOverlay'
-  ).classList.remove(
-    'open'
-  );
+  const overlay =
+    document.getElementById(
+      'gridOverlay'
+    );
+
+
+  if (overlay) {
+
+    overlay.classList.remove(
+      'open'
+    );
+
+  }
+
 }
+
 
 /* ================================================================
    SUBMIT
    ================================================================ */
+
 function openSubmitDialog() {
 
   const answered =
-    Object.keys(answers).length;
+    Object.keys(
+      answers
+    ).length;
+
 
   const total =
     allQuestions.length;
+
 
   const label =
     mode === 'practice'
       ? 'submit and save your result'
       : 'submit and see your analysis';
 
-  document.getElementById(
-    'dialogBody'
-  ).textContent =
-    `You have answered ${answered} of ${total} questions. Ready to ${label}?`;
 
-  document.getElementById(
-    'dialogOverlay'
-  ).classList.add(
-    'open'
-  );
+  const dialogBody =
+    document.getElementById(
+      'dialogBody'
+    );
+
+
+  if (dialogBody) {
+
+    dialogBody.textContent =
+      `You have answered ${answered} of ${total} questions. Ready to ${label}?`;
+
+  }
+
+
+  const overlay =
+    document.getElementById(
+      'dialogOverlay'
+    );
+
+
+  if (overlay) {
+
+    overlay.classList.add(
+      'open'
+    );
+
+  }
+
 }
+
 
 function closeSubmitDialog() {
 
-  document.getElementById(
-    'dialogOverlay'
-  ).classList.remove(
-    'open'
-  );
+  const overlay =
+    document.getElementById(
+      'dialogOverlay'
+    );
+
+
+  if (overlay) {
+
+    overlay.classList.remove(
+      'open'
+    );
+
+  }
+
 }
 
-function buildResult(saveToHistory) {
 
-  if (timerInterval) {
+function buildResult(
+  saveToHistory
+) {
+
+  if (
+    timerInterval
+  ) {
+
     clearInterval(
       timerInterval
     );
+
   }
 
-  const subjectResults = {};
+
+  const subjectResults =
+    {};
+
 
   subjectIds.forEach(
     sid => {
 
       const subjQs =
         allQuestions.filter(
-          q => q.subjectId === sid
+          question =>
+            question.subjectId === sid
         );
 
+
       let correct = 0;
+
       let attempted = 0;
+
 
       const questionDetails =
         subjQs.map(
@@ -1278,9 +2189,11 @@ function buildResult(saveToHistory) {
               answers[q.id] ||
               null;
 
+
             const isCorrect =
               userAns ===
               q.correct;
+
 
             if (userAns) {
 
@@ -1289,7 +2202,9 @@ function buildResult(saveToHistory) {
               if (isCorrect) {
                 correct++;
               }
+
             }
+
 
             return {
 
@@ -1325,9 +2240,12 @@ function buildResult(saveToHistory) {
 
               difficulty:
                 q.difficulty
+
             };
+
           }
         );
+
 
       subjectResults[sid] = {
 
@@ -1340,9 +2258,12 @@ function buildResult(saveToHistory) {
 
         questions:
           questionDetails
+
       };
+
     }
   );
+
 
   const result = {
 
@@ -1356,7 +2277,9 @@ function buildResult(saveToHistory) {
     subjectResults,
 
     totalAnswered:
-      Object.keys(answers).length,
+      Object.keys(
+        answers
+      ).length,
 
     totalQuestions:
       allQuestions.length,
@@ -1365,22 +2288,37 @@ function buildResult(saveToHistory) {
       (
         timerH * 3600 +
         timerM * 60
-      ) - totalSeconds,
+      ) -
+      totalSeconds,
 
     date:
       new Date().toISOString()
+
   };
+
 
   try {
 
     sessionStorage.setItem(
       'utme_result',
-      JSON.stringify(result)
+      JSON.stringify(
+        result
+      )
     );
 
-  } catch(e) {}
+  } catch (error) {
 
-  if (saveToHistory) {
+    console.warn(
+      'Unable to save result:',
+      error
+    );
+
+  }
+
+
+  if (
+    saveToHistory
+  ) {
 
     try {
 
@@ -1391,103 +2329,205 @@ function buildResult(saveToHistory) {
           ) || '[]'
         );
 
-      history.unshift(result);
+
+      history.unshift(
+        result
+      );
+
 
       localStorage.setItem(
         'utme_history',
         JSON.stringify(
-          history.slice(0, 100)
+          history.slice(
+            0,
+            100
+          )
         )
       );
 
-    } catch(e) {}
+    } catch (error) {
+
+      console.warn(
+        'Unable to save history:',
+        error
+      );
+
+    }
+
   }
+
 
   window.location.href =
     'result.html';
+
 }
+
 
 function submitExam() {
 
   buildResult(
     mode === 'practice'
   );
+
 }
+
 
 function finishStudy() {
 
-  buildResult(false);
-}
+  buildResult(
+    false
+  );
 
-/* ================================================================
+  }/* ================================================================
    CALCULATOR
    ================================================================ */
+
 let calcDisplay = '0';
+
 let calcExpr = '';
+
 let calcJustEvaled = false;
+
 
 function openCalc() {
 
-  document.getElementById(
-    'calcOverlay'
-  ).classList.add(
-    'open'
-  );
+  const overlay =
+    document.getElementById(
+      'calcOverlay'
+    );
+
+
+  if (overlay) {
+
+    overlay.classList.add(
+      'open'
+    );
+
+  }
+
 }
+
 
 function closeCalc() {
 
-  document.getElementById(
-    'calcOverlay'
-  ).classList.remove(
-    'open'
-  );
+  const overlay =
+    document.getElementById(
+      'calcOverlay'
+    );
+
+
+  if (overlay) {
+
+    overlay.classList.remove(
+      'open'
+    );
+
+  }
+
 }
+
 
 function updateCalcDisplay() {
 
-  document.getElementById(
-    'calcDisplay'
-  ).textContent =
-    calcDisplay;
+  const display =
+    document.getElementById(
+      'calcDisplay'
+    );
+
+
+  if (display) {
+
+    display.textContent =
+      calcDisplay;
+
+  }
+
 }
 
-function calcPress(val) {
 
-  if (val === 'C') {
+function calcPress(
+  value
+) {
 
-    calcDisplay = '0';
-    calcExpr = '';
-    calcJustEvaled = false;
+  if (
+    value === 'C'
+  ) {
 
-  } else if (val === 'DEL') {
+    calcDisplay =
+      '0';
 
-    if (calcExpr.length <= 1) {
+    calcExpr =
+      '';
 
-      calcDisplay = '0';
-      calcExpr = '';
+    calcJustEvaled =
+      false;
+
+  } else if (
+    value === 'DEL'
+  ) {
+
+    if (
+      calcExpr.length <= 1
+    ) {
+
+      calcDisplay =
+        '0';
+
+      calcExpr =
+        '';
 
     } else {
 
       calcExpr =
-        calcExpr.slice(0, -1);
+        calcExpr.slice(
+          0,
+          -1
+        );
 
       calcDisplay =
         calcExpr;
+
     }
 
-  } else if (val === '=') {
+  } else if (
+    value === '='
+  ) {
 
     try {
 
       const safe =
         calcExpr
-          .replace(/×/g, '*')
-          .replace(/÷/g, '/')
+          .replace(
+            /×/g,
+            '*'
+          )
+          .replace(
+            /÷/g,
+            '/'
+          )
           .replace(
             /[^0-9+\-*/.()%]/g,
             ''
           );
+
+
+      if (!safe) {
+
+        calcDisplay =
+          '0';
+
+        calcExpr =
+          '';
+
+        calcJustEvaled =
+          false;
+
+        updateCalcDisplay();
+
+        return;
+
+      }
+
 
       const result =
         Function(
@@ -1496,14 +2536,18 @@ function calcPress(val) {
           ')'
         )();
 
+
       calcDisplay =
         isFinite(result)
           ? String(
               parseFloat(
-                result.toFixed(8)
+                result.toFixed(
+                  8
+                )
               )
             )
           : 'Error';
+
 
       calcExpr =
         calcDisplay;
@@ -1511,26 +2555,38 @@ function calcPress(val) {
       calcJustEvaled =
         true;
 
-    } catch(e) {
+    } catch (error) {
 
       calcDisplay =
         'Error';
 
       calcExpr =
         '';
+
     }
 
-  } else if (val === '√') {
+  } else if (
+    value === '√'
+  ) {
 
-    const n =
-      parseFloat(calcExpr);
+    const number =
+      parseFloat(
+        calcExpr
+      );
 
-    if (!isNaN(n)) {
+
+    if (
+      !isNaN(number)
+    ) {
 
       calcDisplay =
         String(
           parseFloat(
-            Math.sqrt(n).toFixed(8)
+            Math.sqrt(
+              number
+            ).toFixed(
+              8
+            )
           )
         );
 
@@ -1539,20 +2595,34 @@ function calcPress(val) {
 
       calcJustEvaled =
         true;
+
     }
 
   } else if (
-    ['+', '-', '×', '÷', '%']
-      .includes(val)
+    [
+      '+',
+      '-',
+      '×',
+      '÷',
+      '%'
+    ].includes(value)
   ) {
 
     const map = {
-      '×': '*',
-      '÷': '/'
+
+      '×':
+        '*',
+
+      '÷':
+        '/'
+
     };
 
+
     calcExpr +=
-      (map[val] || val);
+      map[value] ||
+      value;
+
 
     calcDisplay =
       calcExpr;
@@ -1562,10 +2632,12 @@ function calcPress(val) {
 
   } else {
 
-    if (calcJustEvaled) {
+    if (
+      calcJustEvaled
+    ) {
 
       calcExpr =
-        val;
+        value;
 
       calcJustEvaled =
         false;
@@ -1577,60 +2649,80 @@ function calcPress(val) {
           calcExpr === '0' ||
           calcExpr === ''
         )
-          ? val
-          : calcExpr + val;
+          ? value
+          : calcExpr + value;
+
     }
+
 
     calcDisplay =
       calcExpr;
+
   }
 
+
   updateCalcDisplay();
+
 }
+
 
 /* ================================================================
    TOAST
    ================================================================ */
+
 let toastTimer;
 
-function showToast(msg) {
 
-  const t =
+function showToast(
+  message
+) {
+
+  const toast =
     document.getElementById(
       'toast'
     );
 
-  if (!t) return;
 
-  t.textContent =
-    msg;
+  if (!toast) return;
 
-  t.classList.add(
+
+  toast.textContent =
+    message;
+
+
+  toast.classList.add(
     'show'
   );
+
 
   clearTimeout(
     toastTimer
   );
 
+
   toastTimer =
     setTimeout(
-      () => {
-        t.classList.remove(
+      () =>
+        toast.classList.remove(
           'show'
-        );
-      },
+        ),
       2200
     );
+
 }
+
 
 /* ================================================================
    TEXT TO SPEECH
    ================================================================ */
+
 function speakQuestion() {
 
   const q =
-    allQuestions[currentQIndex];
+    allQuestions[
+      currentQIndex
+    ];
+
 
   if (
     !q ||
@@ -1642,305 +2734,553 @@ function speakQuestion() {
     );
 
     return;
+
   }
+
 
   speechSynthesis.cancel();
 
-  const utt =
+
+  const utterance =
     new SpeechSynthesisUtterance(
       q.text
     );
 
-  utt.lang =
+
+  utterance.lang =
     'en-NG';
 
+
   speechSynthesis.speak(
-    utt
+    utterance
   );
+
 }
+
 
 /* ================================================================
    KEYBOARD SHORTCUTS
    ================================================================ */
+
 document.addEventListener(
   'keydown',
-  e => {
+  event => {
+
+    const calculator =
+      document.getElementById(
+        'calcOverlay'
+      );
+
+
+    if (
+      calculator &&
+      calculator.classList.contains(
+        'open'
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      event.key ===
+      'ArrowRight'
+    ) {
+
+      goToQuestion(
+        currentQIndex + 1
+      );
+
+    }
+
+
+    if (
+      event.key ===
+      'ArrowLeft'
+    ) {
+
+      goToQuestion(
+        currentQIndex - 1
+      );
+
+    }
+
+
+    const q =
+      allQuestions[
+        currentQIndex
+      ];
+
+
+    if (!q) return;
+
+
+    if (
+      event.key === '1'
+    ) {
+
+      selectAnswer(
+        q,
+        'A'
+      );
+
+    }
+
+
+    if (
+      event.key === '2'
+    ) {
+
+      selectAnswer(
+        q,
+        'B'
+      );
+
+    }
+
+
+    if (
+      event.key === '3'
+    ) {
+
+      selectAnswer(
+        q,
+        'C'
+      );
+
+    }
+
+
+    if (
+      event.key === '4'
+    ) {
+
+      selectAnswer(
+        q,
+        'D'
+      );
+
+    }
+
+
+    if (
+      event.key === '5'
+    ) {
+
+      selectAnswer(
+        q,
+        'E'
+      );
+
+    }
+
+  }
+);
+
+
+/* ================================================================
+   DOM CONTENT LOADED
+   ================================================================ */
+
+document.addEventListener(
+  'DOMContentLoaded',
+  () => {
+
+    const backBtn =
+      document.getElementById(
+        'backBtn'
+      );
+
+
+    if (backBtn) {
+
+      backBtn.addEventListener(
+        'click',
+        () => {
+
+          if (
+            confirm(
+              'Leave? Your progress will be lost.'
+            )
+          ) {
+
+            if (
+              timerInterval
+            ) {
+
+              clearInterval(
+                timerInterval
+              );
+
+            }
+
+
+            window.location.href =
+              'select-subjects.html';
+
+          }
+
+        }
+      );
+
+    }
+
+
+    const prevBtn =
+      document.getElementById(
+        'prevBtn'
+      );
+
+
+    if (prevBtn) {
+
+      prevBtn.addEventListener(
+        'click',
+        () =>
+          goToQuestion(
+            currentQIndex - 1
+          )
+      );
+
+    }
+
+
+    const nextBtn =
+      document.getElementById(
+        'nextBtn'
+      );
+
+
+    if (nextBtn) {
+
+      nextBtn.addEventListener(
+        'click',
+        () =>
+          goToQuestion(
+            currentQIndex + 1
+          )
+      );
+
+    }
+
+
+    const bookmarkBtn =
+      document.getElementById(
+        'bookmarkBtn'
+      );
+
+
+    if (bookmarkBtn) {
+
+      bookmarkBtn.addEventListener(
+        'click',
+        toggleBookmark
+      );
+
+    }
+
+
+    const flagBtn =
+      document.getElementById(
+        'flagBtn'
+      );
+
+
+    if (flagBtn) {
+
+      flagBtn.addEventListener(
+        'click',
+        () =>
+          showToast(
+            'Question reported. Thank you!'
+          )
+      );
+
+    }
+
+
+    const calcBtn =
+      document.getElementById(
+        'calcBtn'
+      );
+
+
+    if (calcBtn) {
+
+      calcBtn.addEventListener(
+        'click',
+        openCalc
+      );
+
+    }
+
+
+    const calcCloseBtn =
+      document.getElementById(
+        'calcCloseBtn'
+      );
+
+
+    if (calcCloseBtn) {
+
+      calcCloseBtn.addEventListener(
+        'click',
+        closeCalc
+      );
+
+    }
+
 
     const calcOverlay =
       document.getElementById(
         'calcOverlay'
       );
 
-    if (
-      calcOverlay &&
-      calcOverlay.classList.contains(
-        'open'
-      )
-    ) {
-      return;
-    }
 
-    if (
-      e.key === 'ArrowRight'
-    ) {
-      goToQuestion(
-        currentQIndex + 1
-      );
-    }
+    if (calcOverlay) {
 
-    if (
-      e.key === 'ArrowLeft'
-    ) {
-      goToQuestion(
-        currentQIndex - 1
-      );
-    }
+      calcOverlay.addEventListener(
+        'click',
+        event => {
 
-    const q =
-      allQuestions[currentQIndex];
+          if (
+            event.target ===
+            calcOverlay
+          ) {
 
-    if (!q) return;
+            closeCalc();
 
-    if (e.key === '1') {
-      selectAnswer(q, 'A');
-    }
-
-    if (e.key === '2') {
-      selectAnswer(q, 'B');
-    }
-
-    if (e.key === '3') {
-      selectAnswer(q, 'C');
-    }
-
-    if (e.key === '4') {
-      selectAnswer(q, 'D');
-    }
-  }
-);
-
-/* ================================================================
-   DOMContentLoaded
-   ================================================================ */
-document.addEventListener(
-  'DOMContentLoaded',
-  () => {
-
-    document.getElementById(
-      'backBtn'
-    ).addEventListener(
-      'click',
-      () => {
-
-        if (
-          confirm(
-            'Leave? Your progress will be lost.'
-          )
-        ) {
-
-          if (timerInterval) {
-            clearInterval(
-              timerInterval
-            );
           }
 
-          window.location.href =
-            'select-subjects.html';
         }
-      }
-    );
+      );
 
-    document.getElementById(
-      'prevBtn'
-    ).addEventListener(
-      'click',
-      () =>
-        goToQuestion(
-          currentQIndex - 1
-        )
-    );
+    }
 
-    document.getElementById(
-      'nextBtn'
-    ).addEventListener(
-      'click',
-      () =>
-        goToQuestion(
-          currentQIndex + 1
-        )
-    );
-
-    document.getElementById(
-      'bookmarkBtn'
-    ).addEventListener(
-      'click',
-      toggleBookmark
-    );
-
-    document.getElementById(
-      'flagBtn'
-    ).addEventListener(
-      'click',
-      () =>
-        showToast(
-          'Question reported. Thank you!'
-        )
-    );
-
-    document.getElementById(
-      'calcBtn'
-    ).addEventListener(
-      'click',
-      openCalc
-    );
-
-    document.getElementById(
-      'calcCloseBtn'
-    ).addEventListener(
-      'click',
-      closeCalc
-    );
-
-    document.getElementById(
-      'calcOverlay'
-    ).addEventListener(
-      'click',
-      e => {
-
-        if (
-          e.target ===
-          document.getElementById(
-            'calcOverlay'
-          )
-        ) {
-          closeCalc();
-        }
-      }
-    );
 
     document
       .querySelectorAll(
         '.calc-btn'
       )
       .forEach(
-        btn => {
+        button => {
 
-          btn.addEventListener(
+          button.addEventListener(
             'click',
             () =>
               calcPress(
-                btn.dataset.val
+                button.dataset.val
               )
           );
+
         }
       );
 
-    document.getElementById(
-      'speakerBtn'
-    ).addEventListener(
-      'click',
-      speakQuestion
-    );
 
-    document.getElementById(
-      'showAnswerBtn'
-    ).addEventListener(
-      'click',
-      () => {
+    const speakerBtn =
+      document.getElementById(
+        'speakerBtn'
+      );
 
-        showExplanation =
-          !showExplanation;
 
-        renderQuestion();
-      }
-    );
+    if (speakerBtn) {
 
-    document.getElementById(
-      'submitBtn'
-    ).addEventListener(
-      'click',
-      () => {
+      speakerBtn.addEventListener(
+        'click',
+        speakQuestion
+      );
 
-        if (mode === 'study') {
+    }
 
-          finishStudy();
 
-        } else {
+    const showAnswerBtn =
+      document.getElementById(
+        'showAnswerBtn'
+      );
 
-          openSubmitDialog();
+
+    if (showAnswerBtn) {
+
+      showAnswerBtn.addEventListener(
+        'click',
+        () => {
+
+          showExplanation =
+            !showExplanation;
+
+          renderQuestion();
+
         }
-      }
-    );
+      );
 
-    document.getElementById(
-      'dialogCancel'
-    ).addEventListener(
-      'click',
-      closeSubmitDialog
-    );
+    }
 
-    document.getElementById(
-      'dialogOverlay'
-    ).addEventListener(
-      'click',
-      e => {
 
-        if (
-          e.target ===
-          document.getElementById(
-            'dialogOverlay'
-          )
-        ) {
+    const submitBtn =
+      document.getElementById(
+        'submitBtn'
+      );
+
+
+    if (submitBtn) {
+
+      submitBtn.addEventListener(
+        'click',
+        () => {
+
+          if (
+            mode === 'study'
+          ) {
+
+            finishStudy();
+
+          } else {
+
+            openSubmitDialog();
+
+          }
+
+        }
+      );
+
+    }
+
+
+    const dialogCancel =
+      document.getElementById(
+        'dialogCancel'
+      );
+
+
+    if (dialogCancel) {
+
+      dialogCancel.addEventListener(
+        'click',
+        closeSubmitDialog
+      );
+
+    }
+
+
+    const dialogOverlay =
+      document.getElementById(
+        'dialogOverlay'
+      );
+
+
+    if (dialogOverlay) {
+
+      dialogOverlay.addEventListener(
+        'click',
+        event => {
+
+          if (
+            event.target ===
+            dialogOverlay
+          ) {
+
+            closeSubmitDialog();
+
+          }
+
+        }
+      );
+
+    }
+
+
+    const dialogSubmit =
+      document.getElementById(
+        'dialogSubmit'
+      );
+
+
+    if (dialogSubmit) {
+
+      dialogSubmit.addEventListener(
+        'click',
+        () => {
 
           closeSubmitDialog();
+
+          submitExam();
+
         }
-      }
-    );
+      );
 
-    document.getElementById(
-      'dialogSubmit'
-    ).addEventListener(
-      'click',
-      () => {
+    }
 
-        closeSubmitDialog();
 
-        submitExam();
-      }
-    );
+    const answeredPill =
+      document.getElementById(
+        'answeredPill'
+      );
 
-    document.getElementById(
-      'answeredPill'
-    ).addEventListener(
-      'click',
-      openGrid
-    );
 
-    document.getElementById(
-      'gridCloseBtn'
-    ).addEventListener(
-      'click',
-      closeGrid
-    );
+    if (answeredPill) {
 
-    document.getElementById(
-      'gridOverlay'
-    ).addEventListener(
-      'click',
-      e => {
+      answeredPill.addEventListener(
+        'click',
+        openGrid
+      );
 
-        if (
-          e.target ===
-          document.getElementById(
-            'gridOverlay'
-          )
-        ) {
+    }
 
-          closeGrid();
+
+    const gridCloseBtn =
+      document.getElementById(
+        'gridCloseBtn'
+      );
+
+
+    if (gridCloseBtn) {
+
+      gridCloseBtn.addEventListener(
+        'click',
+        closeGrid
+      );
+
+    }
+
+
+    const gridOverlay =
+      document.getElementById(
+        'gridOverlay'
+      );
+
+
+    if (gridOverlay) {
+
+      gridOverlay.addEventListener(
+        'click',
+        event => {
+
+          if (
+            event.target ===
+            gridOverlay
+          ) {
+
+            closeGrid();
+
+          }
+
         }
-      }
-    );
+      );
+
+    }
+
+
+    /*
+     * Start Practice immediately.
+     *
+     * Demo questions appear first.
+     * Real Supabase questions are fetched
+     * in the background.
+     */
 
     loadAllQuestions();
+
   }
 );
