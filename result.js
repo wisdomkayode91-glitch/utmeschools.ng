@@ -1,490 +1,210 @@
-/* ================================================================
-   UTMESchools — result.js
+/* ============================================================
+   UTMESchools v2 — result.js
+   Reads from sessionStorage. No 404. No server needed.
+   ============================================================ */
 
-   Responsibilities:
-   - Read the submitted result
-   - Show estimated UTME score /400 when appropriate
-   - Show subject performance
-   - Show COMPLETE View Corrections
-   - Correct option = GREEN
-   - Student's wrong option = RED
-   - Preserve A-E numbering
-   - Question navigation + question grid
-================================================================ */
-
-const resultData = (() => {
-  try {
-    return JSON.parse(sessionStorage.getItem('utme_result') || 'null');
-  } catch (e) {
-    return null;
-  }
-})();
-
+const SUBJECT_ICONS = {
+  english:'🔤', mathematics:'📐', physics:'⚛️', chemistry:'⚗️', biology:'🧬',
+  government:'🏛️', economics:'📈', literature:'📚', crk:'✝️', irk:'☪️',
+  geography:'🌍', commerce:'🛒', accounts:'🧾', agriculture:'🌾', history:'🏺',
+  homeec:'🏠', igbo:'📖', hausa:'📜', french:'🇫🇷', fineart:'🎨',
+  computer:'💻', music:'🎵', phe:'🏃', lekki:'📕', littext:'📗', yoruba:'🌺',
+};
 const SUBJECT_NAMES = {
-  english: 'English Language',
-  mathematics: 'Mathematics',
-  physics: 'Physics',
-  chemistry: 'Chemistry',
-  biology: 'Biology',
-  economics: 'Economics',
-  government: 'Government',
-  literature: 'Literature in English',
-  accounting: 'Accounting',
-  commerce: 'Commerce',
-  geography: 'Geography',
-  crk: 'Christian Religious Studies',
-  irk: 'Islamic Religious Studies',
-  civic: 'Civic Education',
-  agriculture: 'Agricultural Science',
-  computer: 'Computer Science',
-  igbo: 'Igbo',
-  yoruba: 'Yoruba',
-  french: 'French',
-  arabic: 'Arabic'
+  english:'English Language', mathematics:'Mathematics', physics:'Physics',
+  chemistry:'Chemistry', biology:'Biology', government:'Government',
+  economics:'Economics', literature:'Literature', crk:'CRK', irk:'IRK',
+  geography:'Geography', commerce:'Commerce', accounts:'Accounts',
+  agriculture:'Agriculture', history:'History', homeec:'Home Economics',
+  igbo:'Igbo', hausa:'Hausa', french:'French', fineart:'Fine Art',
+  computer:'Computer Studies', music:'Music', phe:'PHE',
+  lekki:'The Lekki Headmaster', littext:'Literature Textbooks', yoruba:'Yoruba',
 };
 
-const LETTERS = ['A', 'B', 'C', 'D', 'E'];
-
-let activeSubject = null;
-let activeQuestionIndex = 0;
-
-function subjectName(id) {
-  return SUBJECT_NAMES[String(id).toLowerCase()] ||
-         String(id).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
 /* ================================================================
-   SCORE
-================================================================ */
+   LOAD RESULT
+   ================================================================ */
+let result = null;
+try { result = JSON.parse(sessionStorage.getItem('utme_result') || 'null'); } catch(e) {}
 
-function calculateEstimatedUTMEScore() {
-  if (!resultData || !resultData.subjectIds) return null;
-
-  /*
-    A complete UTME-style four-subject combination is:
-    English + three other subjects.
-
-    Each subject is normalized to 100 before the four scores
-    are added together.
-
-    This is an estimate, not a claim that we reproduce JAMB's
-    exact internal scoring algorithm.
-  */
-
-  const ids = resultData.subjectIds.map(String);
-
-  const englishId = ids.find(id =>
-    id.toLowerCase() === 'english' ||
-    id.toLowerCase() === 'english-language'
-  );
-
-  const otherIds = ids.filter(id => id !== englishId);
-
-  if (!englishId || otherIds.length !== 3) {
-    return null;
-  }
-
-  const englishResult = resultData.subjectResults[englishId];
-
-  if (!englishResult || !englishResult.total) {
-    return null;
-  }
-
-  const englishScore =
-    (englishResult.correct / englishResult.total) * 100;
-
-  let total = englishScore;
-
-  for (const sid of otherIds) {
-    const r = resultData.subjectResults[sid];
-
-    if (!r || !r.total) return null;
-
-    total += (r.correct / r.total) * 100;
-  }
-
-  return Math.round(total);
+if (!result) {
+  /* Try last item in history */
+  try {
+    const history = JSON.parse(localStorage.getItem('utme_history') || '[]');
+    if (history.length) result = history[0];
+  } catch(e) {}
 }
 
-function renderMainScore() {
-  const scoreEl = document.getElementById('mainScore');
-  const noteEl = document.getElementById('scoreNote');
-
-  const score = calculateEstimatedUTMEScore();
-
-  if (score !== null) {
-    scoreEl.textContent = `${clamp(score, 0, 400)} / 400`;
-    noteEl.textContent =
-      'Estimated from your performance in the four-subject UTME combination.';
-  } else {
-    scoreEl.textContent = '—';
-    noteEl.textContent =
-      'Complete English + three other UTME subjects to see an estimated score over 400.';
-  }
+if (!result) {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('scorePct').textContent = '—';
+    document.getElementById('scoreRaw').textContent = 'No result found';
+    document.getElementById('scoreTitle').textContent = 'No Result';
+    document.getElementById('heroMeta').textContent = 'Start a practice session to see your results here.';
+  });
 }
 
 /* ================================================================
-   SUBJECT RESULTS
-================================================================ */
+   RENDER
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  if (!result) return;
 
-function renderSubjectResults() {
-  const container = document.getElementById('subjectResults');
+  const { subjectIds, subjectResults, mode, date, timeTaken } = result;
 
-  if (!resultData || !resultData.subjectIds) {
-    container.innerHTML = `
-      <div class="empty">
-        No result was found for this session.
-      </div>
-    `;
-    return;
-  }
+  /* Totals */
+  let totalCorrect = 0, totalQ = 0;
+  subjectIds.forEach(sid => {
+    const sr = subjectResults[sid];
+    totalCorrect += sr.correct;
+    totalQ       += sr.total;
+  });
+  const pct = totalQ > 0 ? Math.round((totalCorrect / totalQ) * 100) : 0;
 
-  container.innerHTML = '';
+  /* Hero */
+  document.getElementById('scorePct').textContent  = pct + '%';
+  document.getElementById('scoreRaw').textContent  = `${totalCorrect} / ${totalQ} correct`;
+  document.getElementById('scoreTitle').textContent = pct >= 70 ? '🎉 Excellent!' : pct >= 50 ? '👍 Good effort' : '💪 Keep practising';
 
-  resultData.subjectIds.forEach(sid => {
-    const result = resultData.subjectResults[sid];
+  const d = new Date(date);
+  const modeLabel = { practice:'Practice', mock:'Mock Exam', study:'Study' }[mode] || mode;
+  const timeStr = timeTaken ? formatSecs(timeTaken) : '—';
+  document.getElementById('heroMeta').textContent = `${modeLabel} · ${d.toLocaleDateString('en-NG')} · Time: ${timeStr}`;
 
-    if (!result) return;
-
-    const percentage = result.total
-      ? (result.correct / result.total) * 100
-      : 0;
-
-    const card = document.createElement('div');
-    card.className = 'subject-card';
-
-    card.innerHTML = `
-      <div class="subject-row">
-        <div class="subject-name">${subjectName(sid)}</div>
-        <div class="subject-score">
-          ${result.correct}/${result.total}
+  /* Subject bars */
+  const barsEl = document.getElementById('subjectBars');
+  subjectIds.forEach(sid => {
+    const sr = subjectResults[sid];
+    const spct = sr.total > 0 ? Math.round((sr.correct / sr.total) * 100) : 0;
+    const color = spct >= 60 ? 'var(--green)' : spct >= 40 ? 'var(--amber)' : 'var(--red)';
+    barsEl.innerHTML += `
+      <div class="subj-bar-row">
+        <div class="subj-bar-icon">${SUBJECT_ICONS[sid] || '📚'}</div>
+        <div class="subj-bar-info">
+          <div class="subj-bar-name">${SUBJECT_NAMES[sid] || sid}</div>
+          <div class="subj-bar-score">${sr.correct}/${sr.total} · ${spct}%</div>
         </div>
-      </div>
-
-      <div class="subject-meta">
-        ${Math.round(percentage)}% ·
-        ${result.attempted || 0} answered
-      </div>
-
-      <div class="progress">
-        <div
-          class="progress-fill"
-          style="width:${clamp(percentage, 0, 100)}%"
-        ></div>
-      </div>
-    `;
-
-    container.appendChild(card);
-  });
-}
-
-/* ================================================================
-   CORRECTIONS
-================================================================ */
-
-function openCorrections() {
-  const wrap = document.getElementById('correctionWrap');
-
-  wrap.classList.add('visible');
-
-  renderCorrectionTabs();
-
-  if (!activeSubject && resultData && resultData.subjectIds.length) {
-    activeSubject = resultData.subjectIds[0];
-    activeQuestionIndex = 0;
-  }
-
-  renderCorrectionQuestion();
-
-  setTimeout(() => {
-    wrap.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    });
-  }, 50);
-}
-
-function renderCorrectionTabs() {
-  const tabs = document.getElementById('correctionTabs');
-
-  tabs.innerHTML = '';
-
-  resultData.subjectIds.forEach(sid => {
-    const btn = document.createElement('button');
-
-    btn.className =
-      'correction-tab' +
-      (sid === activeSubject ? ' active' : '');
-
-    btn.textContent = subjectName(sid);
-
-    btn.addEventListener('click', () => {
-      activeSubject = sid;
-      activeQuestionIndex = 0;
-
-      renderCorrectionTabs();
-      renderCorrectionQuestion();
-    });
-
-    tabs.appendChild(btn);
-  });
-}
-
-function renderCorrectionQuestion() {
-  const container = document.getElementById('correctionQuestion');
-  const countEl = document.getElementById('correctionCount');
-
-  const result = resultData &&
-                 resultData.subjectResults &&
-                 resultData.subjectResults[activeSubject];
-
-  if (!result || !result.questions || !result.questions.length) {
-    container.innerHTML = `
-      <div class="empty">
-        No questions available for this subject.
-      </div>
-    `;
-
-    countEl.textContent = 'Q 0 / 0';
-
-    document.getElementById('questionGrid').innerHTML = '';
-
-    return;
-  }
-
-  activeQuestionIndex = clamp(
-    activeQuestionIndex,
-    0,
-    result.questions.length - 1
-  );
-
-  const q = result.questions[activeQuestionIndex];
-
-  countEl.textContent =
-    `Q ${activeQuestionIndex + 1} / ${result.questions.length}`;
-
-  const userAnswer = q.userAnswer || null;
-  const correctAnswer = String(q.correct || '').toUpperCase();
-
-  let html = `
-    <div class="correction-question">
-
-      <div class="correction-meta">
-        <span class="meta-tag">
-          ${subjectName(activeSubject)}
-        </span>
-  `;
-
-  if (q.topic) {
-    html += `<span class="meta-tag">${q.topic}</span>`;
-  }
-
-  if (q.subtopic) {
-    html += `<span class="meta-tag">${q.subtopic}</span>`;
-  }
-
-  if (q.year) {
-    html += `<span class="meta-tag">📅 ${q.year}</span>`;
-  }
-
-  html += `
-      </div>
-
-      <div class="correction-text">
-        ${escapeHTML(q.text || '')}
-      </div>
-  `;
-
-  (q.options || []).forEach((option, index) => {
-    const letter = LETTERS[index];
-
-    let state = '';
-
-    /*
-      IMPORTANT:
-      - Correct option is always GREEN.
-      - If student's answer was wrong, their selected
-        option is RED.
-      - If they were correct, that same option is GREEN.
-    */
-
-    if (letter === correctAnswer) {
-      state = 'correct';
-    } else if (letter === userAnswer) {
-      state = 'wrong';
-    }
-
-    html += `
-      <div class="correction-option ${state}">
-        <div class="correction-letter">${letter}</div>
-        <div class="correction-option-text">
-          ${escapeHTML(option)}
+        <div class="subj-bar-track" style="min-width:80px;">
+          <div class="progress-bar"><div class="progress-fill" style="width:${spct}%;background:${color};"></div></div>
         </div>
-      </div>
-    `;
+      </div>`;
   });
 
-  if (!userAnswer) {
-    html += `
-      <div class="answer-status">
-        <strong>Not answered.</strong>
-        Correct answer: ${correctAnswer || '—'}
-      </div>
-    `;
-  } else if (userAnswer === correctAnswer) {
-    html += `
-      <div class="answer-status">
-        ✅ You got this question correct.
-      </div>
-    `;
-  } else {
-    html += `
-      <div class="answer-status">
-        ❌ Your answer:
-        <strong>${userAnswer}</strong>
-        &nbsp; · &nbsp;
-        Correct answer:
-        <strong>${correctAnswer}</strong>
-      </div>
-    `;
-  }
-
-  if (q.explanation) {
-    html += `
-      <div class="explanation">
-        <strong>Explanation</strong><br>
-        ${escapeHTML(q.explanation)}
-      </div>
-    `;
-  }
-
-  html += `</div>`;
-
-  container.innerHTML = html;
-
-  renderQuestionGrid(result.questions);
-}
-
-function renderQuestionGrid(questions) {
-  const grid = document.getElementById('questionGrid');
-
-  grid.innerHTML = '';
-
-  questions.forEach((q, index) => {
-    const btn = document.createElement('button');
-
-    btn.className = 'grid-btn';
-
-    const userAnswer = q.userAnswer
-      ? String(q.userAnswer).toUpperCase()
-      : '';
-
-    const correctAnswer = q.correct
-      ? String(q.correct).toUpperCase()
-      : '';
-
-    if (userAnswer && userAnswer === correctAnswer) {
-      btn.classList.add('correct');
-    } else if (userAnswer) {
-      btn.classList.add('wrong');
-    }
-
-    if (index === activeQuestionIndex) {
-      btn.classList.add('current');
-    }
-
-    btn.textContent = index + 1;
-
-    btn.addEventListener('click', () => {
-      activeQuestionIndex = index;
-      renderCorrectionQuestion();
-
-      window.scrollTo({
-        top: document.getElementById('correctionQuestion').offsetTop - 80,
-        behavior: 'smooth'
-      });
+  /* Topic table — aggregate across all subjects */
+  const topicMap = {};
+  subjectIds.forEach(sid => {
+    (subjectResults[sid].questions || []).forEach(q => {
+      const key = q.topic || 'General';
+      if (!topicMap[key]) topicMap[key] = { correct: 0, total: 0 };
+      topicMap[key].total++;
+      if (q.userAnswer === q.correct) topicMap[key].correct++;
     });
-
-    grid.appendChild(btn);
   });
-}
+  const topicArr = Object.entries(topicMap)
+    .map(([t, v]) => ({ topic: t, ...v, pct: Math.round((v.correct/v.total)*100) }))
+    .sort((a,b) => a.pct - b.pct); // weakest first
 
-/* ================================================================
-   NAVIGATION
-================================================================ */
-
-function previousCorrection() {
-  if (!activeSubject) return;
-
-  const result = resultData.subjectResults[activeSubject];
-
-  if (!result || !result.questions.length) return;
-
-  if (activeQuestionIndex > 0) {
-    activeQuestionIndex--;
-    renderCorrectionQuestion();
+  const tbody = document.getElementById('topicTableBody');
+  topicArr.forEach((t, i) => {
+    const color = t.pct >= 60 ? 'var(--green)' : t.pct >= 40 ? 'var(--amber)' : 'var(--red)';
+    tbody.innerHTML += `<tr>
+      <td style="color:var(--ink-soft);">${i+1}</td>
+      <td>${t.topic}</td>
+      <td class="topic-pct" style="color:${color};">${t.pct}%</td>
+      <td style="color:var(--ink-soft);">${t.total}</td>
+    </tr>`;
+  });
+  if (topicArr.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);padding:14px;">No topic data available.</td></tr>';
   }
-}
 
-function nextCorrection() {
-  if (!activeSubject) return;
-
-  const result = resultData.subjectResults[activeSubject];
-
-  if (!result || !result.questions.length) return;
-
-  if (activeQuestionIndex < result.questions.length - 1) {
-    activeQuestionIndex++;
-    renderCorrectionQuestion();
+  /* Coach Mode */
+  const weakTopics = topicArr.slice(0, 3).map(t => t.topic);
+  const strongTopics = [...topicArr].sort((a,b) => b.pct - a.pct).slice(0,1).map(t => t.topic);
+  let coachMsg = '';
+  if (pct >= 70) {
+    coachMsg = `Great performance! You scored ${pct}%. Your strongest area is ${strongTopics[0] || 'General'}. Focus on ${weakTopics[0] || 'your weaker areas'} to push even higher.`;
+  } else if (pct >= 50) {
+    coachMsg = `Good effort — ${pct}% shows you understand the basics. To improve, focus on:\n• ${weakTopics.join('\n• ')}\n\nPractise these topics specifically this week.`;
+  } else {
+    coachMsg = `You scored ${pct}%. Don't be discouraged — every JAMB champion started here. Your top areas to revise:\n• ${weakTopics.join('\n• ')}\n\nStudy these topics in Study Mode for guided explanations.`;
   }
-}
+  document.getElementById('coachText').textContent = coachMsg;
 
-/* ================================================================
-   HELPERS
-================================================================ */
+  /* Share text */
+  const shareText = `I just scored ${pct}% (${totalCorrect}/${totalQ}) on UTMESchools! 🎯\nSubject: ${subjectIds.map(s => SUBJECT_NAMES[s]||s).join(', ')}\nMode: ${modeLabel}\n\nPractise JAMB past questions free at utmeschools.ng`;
+  document.getElementById('shareTextBox').textContent = shareText;
+  document.getElementById('waShareBtn').href = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
-function escapeHTML(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+  /* Correction panel */
+  buildCorrectionPanel();
 
-/* ================================================================
-   BUTTONS
-================================================================ */
-
-document.getElementById('backBtn').addEventListener('click', () => {
-  history.back();
+  /* Action buttons */
+  document.getElementById('viewCorrectionBtn').addEventListener('click', openCorrection);
+  document.getElementById('corrCloseBtn').addEventListener('click', closeCorrection);
+  document.getElementById('shareBtn').addEventListener('click', openShare);
+  document.getElementById('shareCloseBtn').addEventListener('click', closeShare);
+  document.getElementById('shareOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('shareOverlay')) closeShare();
+  });
+  document.getElementById('copyShareBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(shareText).then(() => showToast('Copied!')).catch(() => showToast('Copy failed'));
+  });
 });
 
-document.getElementById('correctionsBtn').addEventListener(
-  'click',
-  openCorrections
-);
+function formatSecs(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  if (h) return `${h}h ${m}m`;
+  if (m) return `${m}m ${sec}s`;
+  return `${sec}s`;
+}
 
-document.getElementById('prevCorrection').addEventListener(
-  'click',
-  previousCorrection
-);
-
-document.getElementById('nextCorrection').addEventListener(
-  'click',
-  nextCorrection
-);
-
-document.getElementById('coachBtn').addEventListener('click', () => {
-  window.location.href = 'coach.html';
-});
 /* ================================================================
-   START
-================================================================ */
+   CORRECTION PANEL
+   ================================================================ */
+function buildCorrectionPanel() {
+  const list = document.getElementById('correctionList');
+  list.innerHTML = '';
+  const letters = ['A','B','C','D'];
 
-renderMainScore();
-renderSubjectResults();
+  result.subjectIds.forEach(sid => {
+    const qs = result.subjectResults[sid].questions || [];
+    qs.forEach((q, i) => {
+      const item = document.createElement('div');
+      item.className = 'correction-item';
+
+      const optionsHtml = (q.options || []).map((opt, oi) => {
+        const letter = letters[oi];
+        let cls = 'neutral';
+        if (letter === q.correct) cls = 'correct';
+        else if (letter === q.userAnswer) cls = 'wrong';
+        const icons = letter === q.correct ? '✓' : (letter === q.userAnswer ? '✗' : '');
+        return `<div class="corr-opt ${cls}"><span class="corr-opt-letter">${letter}</span><span>${icons} ${opt}</span></div>`;
+      }).join('');
+
+      item.innerHTML = `
+        <div class="corr-num">Q${i+1} · ${q.year || ''} · ${q.topic || ''}</div>
+        <div class="corr-text">${q.text}</div>
+        <div class="corr-options">${optionsHtml}</div>
+        ${q.userAnswer ? `<div style="font-size:12px;margin-bottom:6px;color:var(--ink-soft);">Your answer: <b>${q.userAnswer}</b> · Correct: <b>${q.correct}</b></div>` : '<div style="font-size:12px;margin-bottom:6px;color:var(--ink-soft);">Not answered · Correct: <b>'+q.correct+'</b></div>'}
+        ${q.explanation ? `<div class="corr-expl">💡 ${q.explanation}</div>` : ''}
+      `;
+      list.appendChild(item);
+    });
+  });
+}
+
+function openCorrection()  { document.getElementById('correctionOverlay').classList.add('open'); }
+function closeCorrection() { document.getElementById('correctionOverlay').classList.remove('open'); }
+function openShare()  { document.getElementById('shareOverlay').classList.add('open'); document.body.style.overflow = 'hidden'; }
+function closeShare() { document.getElementById('shareOverlay').classList.remove('open'); document.body.style.overflow = ''; }

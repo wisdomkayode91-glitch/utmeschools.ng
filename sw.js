@@ -1,10 +1,11 @@
 /* ============================================================
-   UTMESchools — Service Worker
-   v4 — fresh app files, safe API handling
+   UTMESchools v2 — sw.js
+   Service Worker. Makes the app work offline.
    ============================================================ */
 
-const CACHE_NAME = 'utmeschools-v4';
+const CACHE_NAME = 'utmeschools-v2';
 
+/* Files to cache immediately when app is installed */
 const CORE_FILES = [
   '/utmeschools.ng/',
   '/utmeschools.ng/index.html',
@@ -30,150 +31,72 @@ const CORE_FILES = [
   '/utmeschools.ng/icons/icon-512.png'
 ];
 
-/* ============================================================
-   INSTALL
-   ============================================================ */
-
+/* ---- Install: cache all core files ---- */
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(CORE_FILES))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => {
+      console.log('UTMESchools: Caching core files');
+      return cache.addAll(CORE_FILES);
+    }).then(() => self.skipWaiting())
   );
 });
 
-/* ============================================================
-   ACTIVATE
-   ============================================================ */
-
+/* ---- Activate: remove old caches ---- */
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys()
-      .then(keys =>
-        Promise.all(
-          keys
-            .filter(key => key !== CACHE_NAME)
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.filter(key => key !== CACHE_NAME)
             .map(key => caches.delete(key))
-        )
       )
-      .then(() => self.clients.claim())
+    ).then(() => self.clients.claim())
   );
 });
 
-/* ============================================================
-   FETCH
-   ============================================================ */
-
+/* ---- Fetch: serve from cache, fall back to network ---- */
 self.addEventListener('fetch', event => {
-  const request = event.request;
+  const url = new URL(event.request.url);
 
-  /* Only handle GET requests */
-  if (request.method !== 'GET') return;
-
-  const url = new URL(request.url);
-
-  /* ----------------------------------------------------------
-     Backend / API — NEVER use service-worker cache
-     ---------------------------------------------------------- */
-
-  if (
-    url.hostname === 'utmeschools-ng.onrender.com' ||
-    url.hostname.includes('supabase.co')
-  ) {
+  /* For Supabase API calls — network only, no cache */
+  if (url.hostname.includes('supabase.co')) {
     event.respondWith(
-      fetch(request, {
-        cache: 'no-store'
-      }).catch(() => {
-        return new Response(
-          JSON.stringify([]),
-          {
-            status: 200,
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
+      fetch(event.request).catch(() => {
+        /* If offline and Supabase fails, return empty questions array */
+        return new Response(JSON.stringify([]), {
+          headers: { 'Content-Type': 'application/json' }
+        });
       })
     );
-
     return;
   }
 
-  /* ----------------------------------------------------------
-     HTML — NETWORK FIRST
-     ---------------------------------------------------------- */
-
-  if (request.destination === 'document') {
-    event.respondWith(
-      fetch(request, {
-        cache: 'no-cache'
-      })
-        .then(response => {
-          if (response && response.ok) {
-            const copy = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then(cache => cache.put(request, copy));
-
-            return response;
-          }
-
-          return caches.match(request);
-        })
-        .catch(() => caches.match(request))
-    );
-
-    return;
-  }
-
-  /* ----------------------------------------------------------
-     JavaScript / CSS — NETWORK FIRST
-     ---------------------------------------------------------- */
-
-  if (
-    request.destination === 'script' ||
-    request.destination === 'style'
-  ) {
-    event.respondWith(
-      fetch(request, {
-        cache: 'no-cache'
-      })
-        .then(response => {
-          if (response && response.ok) {
-            const copy = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then(cache => cache.put(request, copy));
-          }
-
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
-
-    return;
-  }
-
-  /* ----------------------------------------------------------
-     Images / icons — CACHE FIRST
-     ---------------------------------------------------------- */
-
+  /* For everything else — cache first, then network */
   event.respondWith(
-    caches.match(request)
-      .then(cached => {
-        if (cached) return cached;
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
 
-        return fetch(request)
-          .then(response => {
-            if (response && response.ok) {
-              const copy = response.clone();
-
-              caches.open(CACHE_NAME)
-                .then(cache => cache.put(request, copy));
-            }
-
-            return response;
-          });
-      })
+      /* Not in cache — fetch from network and cache it */
+      return fetch(event.request).then(response => {
+        /* Only cache valid responses */
+        if (!response || response.status !== 200 || response.type === 'opaque') {
+          return response;
+        }
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        return response;
+      }).catch(() => {
+        /* Offline fallback for HTML pages */
+        if (event.request.destination === 'document') {
+          return caches.match('/utmeschools.ng/index.html');
+        }
+      });
+    })
   );
+});
+
+/* ---- Background sync for bookmarks ---- */
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-bookmarks') {
+    console.log('UTMESchools: Syncing bookmarks');
+  }
 });
