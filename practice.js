@@ -1,42 +1,71 @@
 /* ============================================================
    UTMESchools v2 — practice.js
-   Reads questions from /questions/[subject].json
-   No Supabase needed. Works on GitHub Pages.
+   Reads questions from new Supabase project.
+   Access code auth. SdashAPI-populated database.
    ============================================================ */
 
-/* ================================================================
-   MODE RULES
-   practice : no answers shown during session. Submit → result saved.
-   mock     : no answers shown during session. Submit → analysis only, NOT saved.
-   study    : click "Show Answer" to reveal. No submit button. NOT saved.
-   All modes: can freely change selected answer anytime.
-   ================================================================ */
+const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
 
+/* ================================================================
+   PARSE URL PARAMS
+   ================================================================ */
 const urlP       = new URLSearchParams(window.location.search);
 const subjectIds = (urlP.get('subjects') || 'english').split(',');
 const mode       = urlP.get('mode') || 'practice';
 const timerH     = parseInt(urlP.get('h') || '2', 10);
 const timerM     = parseInt(urlP.get('m') || '0', 10);
 const shuffleQ   = urlP.get('shuffleQ') !== '0';
+const examType   = urlP.get('exam') || 'jamb';
 
 /* ================================================================
-   FETCH QUESTIONS FROM JSON FILE
+   CHECK ACCESS
    ================================================================ */
-async function fetchQuestionsFromJSON(subjectId, year, count, topicsParam) {
+function getAccess() {
+  const isPaid = localStorage.getItem('utme_is_paid') === 'true';
+  const plan   = localStorage.getItem('utme_plan') || 'jamb';
+  const expires = localStorage.getItem('utme_expires');
+  const isExpired = expires && new Date(expires) < new Date();
+  return {
+    isPaid: isPaid && !isExpired,
+    plan,
+    freeLimit: 10
+  };
+}
+
+/* ================================================================
+   FETCH QUESTIONS FROM SUPABASE
+   ================================================================ */
+async function fetchQuestions(subjectId, year, count, topicsParam) {
   try {
-    const res = await fetch(`questions/${subjectId}.json`);
+    const access = getAccess();
+    const limit  = access.isPaid ? count : access.freeLimit;
+
+    let url = `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&exam_type=eq.${examType}&select=*&limit=${limit}`;
+
+    if (year && year !== 'Random') {
+      url += `&year=eq.${year}`;
+    }
+    if (topicsParam) {
+      /* Filter by topic — gets applied client-side after fetch */
+    }
+
+    const res = await fetch(url, {
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type':  'application/json'
+      }
+    });
+
     if (!res.ok) {
-      console.warn(`No question file found for ${subjectId}`);
+      console.error('Supabase fetch error:', res.status);
       return [];
     }
+
     let questions = await res.json();
 
-    /* Filter by year */
-    if (year && year !== 'Random') {
-      questions = questions.filter(q => String(q.year) === String(year));
-    }
-
-    /* Filter by topics */
+    /* Filter by topics if selected */
     if (topicsParam) {
       const allowed = topicsParam.split('||');
       questions = questions.filter(q =>
@@ -44,19 +73,11 @@ async function fetchQuestionsFromJSON(subjectId, year, count, topicsParam) {
       );
     }
 
-    /* Sort by year desc, then by id to keep similar questions together */
-    questions.sort((a, b) => {
-      if (b.year !== a.year) return b.year - a.year;
-      return String(a.topic).localeCompare(String(b.topic));
-    });
-
-    /* Limit count */
-    questions = questions.slice(0, count);
-
     /* Map to app format */
     return questions.map(q => ({
       id:          String(q.id),
       subjectId:   q.subject_id,
+      examType:    q.exam_type,
       year:        q.year,
       topic:       q.topic || '',
       subtopic:    q.subtopic || '',
@@ -71,26 +92,24 @@ async function fetchQuestionsFromJSON(subjectId, year, count, topicsParam) {
     }));
 
   } catch(e) {
-    console.error(`Error loading ${subjectId}.json:`, e);
+    console.error('Fetch error:', e);
     return [];
   }
 }
 
 /* ================================================================
-   DEMO QUESTIONS — shown only when JSON file has no questions
+   DEMO QUESTIONS — shown when database is empty
    ================================================================ */
 function getDemoQuestions(subjectId) {
-  return [
-    {
-      id: 'demo_1', subjectId: subjectId, year: 2024,
-      topic: 'DEMO', subtopic: '', difficulty: 'Basic',
-      text: 'This is a demo question. Real JAMB past questions will appear here once loaded.',
-      options: ['Option A', 'Option B', 'Option C', 'Option D'],
-      correct: 'A',
-      explanation: 'This is a demo. Real explanations will be detailed and educational.',
-      svg_code: '', image_file: '', passage: ''
-    }
-  ];
+  return [{
+    id: 'demo_1', subjectId, year: 2025,
+    topic: 'DEMO', subtopic: '', difficulty: 'Basic',
+    text: 'This is a demo question. Questions are being loaded into the database.',
+    options: ['Option A', 'Option B', 'Option C', 'Option D'],
+    correct: 'A',
+    explanation: 'Real questions from SdashAPI will appear here once the database is seeded.',
+    svg_code: '', image_file: '', passage: ''
+  }];
 }
 
 /* ================================================================
@@ -102,7 +121,6 @@ let answers         = {};
 let bookmarks       = {};
 let showExplanation = false;
 
-const FREE_LIMIT = 5;
 try { bookmarks = JSON.parse(localStorage.getItem('utme_bookmarks') || '{}'); } catch(e) {}
 
 /* ================================================================
@@ -137,39 +155,41 @@ function startTimer() {
 }
 
 /* ================================================================
-   LOAD QUESTIONS
+   LOAD ALL QUESTIONS
    ================================================================ */
 async function loadAllQuestions() {
   showLoadingState(true);
-  try {
-    const user    = JSON.parse(localStorage.getItem('utme_user') || 'null');
-    const hasPaid = user && user.has_paid;
 
+  try {
     for (const sid of subjectIds) {
       const year       = urlP.get('year_'   + sid) || 'Random';
       const count      = parseInt(urlP.get('count_' + sid) || '40', 10);
       const topicParam = urlP.get('topics_' + sid) || '';
 
-      let qs = await fetchQuestionsFromJSON(sid, year, count, topicParam);
+      let qs = await fetchQuestions(sid, year, count, topicParam);
 
       if (qs.length === 0) {
         qs = getDemoQuestions(sid);
-        showToast('Demo questions shown — add real questions to questions/' + sid + '.json');
+        showToast('Demo mode — database is being populated');
       }
 
-      if (!hasPaid) qs = qs.slice(0, FREE_LIMIT);
-      if (shuffleQ)  qs.sort(() => Math.random() - 0.5);
-
+      if (shuffleQ) qs.sort(() => Math.random() - 0.5);
       qs.forEach((q, i) => { q.qNum = allQuestions.length + i + 1; q.subjectId = sid; });
       allQuestions.push(...qs);
     }
-  } catch(e) { console.error('loadAllQuestions error:', e); }
+  } catch(e) { console.error(e); }
 
   if (allQuestions.length === 0) allQuestions = getDemoQuestions(subjectIds[0]);
 
-  /* Hide submit button in study mode */
+  /* Hide submit in study mode */
   if (mode === 'study') {
     document.getElementById('submitBtn').style.display = 'none';
+  }
+
+  /* Show paywall banner if free user */
+  const access = getAccess();
+  if (!access.isPaid) {
+    showFreeNotice(access.freeLimit);
   }
 
   showLoadingState(false);
@@ -178,12 +198,19 @@ async function loadAllQuestions() {
   startTimer();
 }
 
+function showFreeNotice(limit) {
+  const banner = document.createElement('div');
+  banner.style.cssText = 'background:#FFF4DC;border-bottom:1px solid #F0D58C;padding:10px 14px;font-size:13px;color:#A6760A;text-align:center;';
+  banner.innerHTML = `You are on free mode (${limit} questions per subject). <a href="auth.html" style="color:var(--navy);font-weight:700;">Get full access →</a>`;
+  document.body.insertBefore(banner, document.body.firstChild);
+}
+
 function showLoadingState(loading) {
   const qCard = document.getElementById('qCard');
   if (loading) {
     qCard.innerHTML = `
       <div style="text-align:center;padding:40px 20px;">
-        <div style="font-size:32px;margin-bottom:12px;">⏳</div>
+        <div style="font-size:36px;margin-bottom:12px;">⏳</div>
         <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;">Loading questions...</div>
         <div style="font-size:13px;color:var(--ink-soft);">Please wait</div>
       </div>`;
@@ -246,15 +273,15 @@ function renderQuestion() {
   if (q.topic)      metaEl.innerHTML += `<span class="q-meta-tag">${q.topic}</span>`;
   if (q.year)       metaEl.innerHTML += `<span class="q-meta-tag">📅 ${q.year}</span>`;
   if (q.difficulty) metaEl.innerHTML += `<span class="q-meta-tag">${q.difficulty}</span>`;
+  if (q.examType)   metaEl.innerHTML += `<span class="q-meta-tag">${q.examType.toUpperCase()}</span>`;
 
   document.getElementById('qText').textContent = q.text;
 
   const svgEl = document.getElementById('qSvg');
-  if (q.svg_code)      svgEl.innerHTML = q.svg_code;
+  if (q.svg_code)       svgEl.innerHTML = q.svg_code;
   else if (q.image_file) svgEl.innerHTML = `<img src="images/${q.image_file}" alt="Diagram" style="max-width:100%;border-radius:8px;margin-top:8px;">`;
   else svgEl.innerHTML = '';
 
-  /* Passage */
   const passCard = document.getElementById('passageCard');
   if (q.passage) {
     document.getElementById('passageText').textContent = q.passage;
@@ -274,15 +301,14 @@ function renderQuestion() {
 
   if (mode === 'study') {
     studyActions.classList.add('visible');
-    document.getElementById('showAnswerBtn').textContent = showExplanation ? '🙈 Hide Answer' : '👁 Show Answer';
+    document.getElementById('showAnswerBtn').textContent = showExplanation ? '🙈 Hide Answer' : '👁️ Show Answer';
     if (showExplanation) {
       explanBox.classList.add('visible');
-      document.getElementById('explanationText').textContent = q.explanation || 'No explanation available yet.';
+      document.getElementById('explanationText').textContent = q.explanation || 'No explanation available.';
     } else {
       explanBox.classList.remove('visible');
     }
   } else {
-    /* Practice and Mock: NEVER show answer during session */
     studyActions.classList.remove('visible');
     explanBox.classList.remove('visible');
   }
@@ -295,9 +321,9 @@ function renderQuestion() {
 
 /* ================================================================
    RENDER OPTIONS
-   Practice/Mock: highlight selection only. No correct/wrong colours.
+   Practice/Mock: show selection only. Never show correct/wrong.
    Study + showExplanation: green = correct, red = wrong.
-   ALL modes: clicking always updates answer (freely changeable).
+   All modes: always changeable.
    ================================================================ */
 function renderOptions(q) {
   const list    = document.getElementById('optionsList');
@@ -327,9 +353,6 @@ function renderOptions(q) {
   });
 }
 
-/* ================================================================
-   SELECT ANSWER — always changeable
-   ================================================================ */
 function selectAnswer(q, letter) {
   answers[q.id]   = letter;
   showExplanation = false;
@@ -370,7 +393,7 @@ function toggleBookmark() {
 }
 
 /* ================================================================
-   QUESTION GRID
+   GRID
    ================================================================ */
 function openGrid() {
   const grid = document.getElementById('gridNums');
@@ -424,6 +447,7 @@ function buildResult(saveToHistory) {
 
   const result = {
     id: 'r_' + Date.now(), mode, subjectIds, subjectResults,
+    examType,
     totalAnswered: Object.keys(answers).length,
     totalQuestions: allQuestions.length,
     timeTaken: (timerH * 3600 + timerM * 60) - totalSeconds,
@@ -453,9 +477,8 @@ function openCalc()  { document.getElementById('calcOverlay').classList.add('ope
 function closeCalc() { document.getElementById('calcOverlay').classList.remove('open'); }
 function updateCalcDisplay() { document.getElementById('calcDisplay').textContent = calcDisplay; }
 function calcPress(val) {
-  if (val === 'C') {
-    calcDisplay = '0'; calcExpr = ''; calcJustEvaled = false;
-  } else if (val === 'DEL') {
+  if (val === 'C') { calcDisplay = '0'; calcExpr = ''; calcJustEvaled = false; }
+  else if (val === 'DEL') {
     if (calcExpr.length <= 1) { calcDisplay = '0'; calcExpr = ''; }
     else { calcExpr = calcExpr.slice(0,-1); calcDisplay = calcExpr; }
   } else if (val === '=') {

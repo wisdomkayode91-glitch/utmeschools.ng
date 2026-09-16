@@ -3,113 +3,301 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Log In — UTMESchools</title>
+<title>UTMESchools — Get Access</title>
 <link rel="stylesheet" href="shared.css">
 <style>
-.auth-wrap {
+.auth-page {
   min-height: 100vh;
+  background: var(--navy);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  background: var(--paper);
 }
 .auth-logo {
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 800;
-  color: var(--navy);
+  color: #fff;
   margin-bottom: 4px;
   text-align: center;
 }
-.auth-logo span { color: var(--orange); }
-.auth-tagline { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 28px; text-align: center; }
-.auth-card {
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  width: 100%;
-  max-width: 360px;
-  box-shadow: var(--shadow-card);
+.auth-logo span { color: var(--gold); }
+.auth-tagline {
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 32px;
+  text-align: center;
 }
-.auth-tabs { display: flex; border-bottom: 2px solid var(--line); margin-bottom: 20px; }
+.auth-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 20px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.auth-tabs {
+  display: flex;
+  background: var(--paper-dim);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  margin-bottom: 24px;
+  gap: 2px;
+}
 .auth-tab {
   flex: 1;
   text-align: center;
-  padding: 10px;
-  font-size: 14px;
+  padding: 9px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
   font-weight: 600;
   color: var(--ink-soft);
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.auth-tab.active { color: var(--navy); border-bottom-color: var(--orange); }
-.auth-form { display: flex; flex-direction: column; gap: 14px; }
-.forgot-link { font-size: 12.5px; color: var(--ink-soft); text-align: right; margin-top: -8px; }
-.guest-link { text-align: center; margin-top: 16px; font-size: 13px; color: var(--ink-soft); }
-.guest-link a { color: var(--navy); font-weight: 600; }
+.auth-tab.active {
+  background: var(--navy);
+  color: #fff;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Code input with eye */
+.code-wrap {
+  position: relative;
+  margin-bottom: 12px;
+}
+.code-wrap input {
+  width: 100%;
+  background: var(--paper-dim);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 44px 12px 14px;
+  font-size: 16px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+  text-transform: uppercase;
+  transition: border-color 0.15s;
+}
+.code-wrap input:focus { border-color: var(--navy); outline: none; }
+.eye-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  line-height: 1;
+}
+
+/* Plan selector */
+.plan-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.plan-card {
+  border: 2px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  position: relative;
+}
+.plan-card.selected {
+  border-color: var(--navy);
+  background: #EEF4FF;
+}
+.plan-card.popular::before {
+  content: 'Popular';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--orange);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.plan-name { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.plan-price { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--navy); }
+.plan-sub { font-size: 10px; color: var(--ink-soft); }
+
+/* Code display after payment */
+.code-display {
+  display: none;
+  background: #E8F8F1;
+  border: 2px solid var(--green);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.code-display p { font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; }
+.code-big {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--navy);
+  letter-spacing: 0.08em;
+  word-break: break-all;
+}
+.code-note { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+
+/* Divider */
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
 </style>
 </head>
 <body>
 
-<div class="auth-wrap">
+<div class="auth-page">
   <div class="auth-logo">UTME<span>Schools</span></div>
-  <div class="auth-tagline">Welcome! Practice JAMB. Pass JAMB.</div>
+  <div class="auth-tagline">Nigeria's smartest JAMB preparation app</div>
 
   <div class="auth-card">
+
+    <!-- TABS -->
     <div class="auth-tabs">
-      <div class="auth-tab active" data-form="login">Log In</div>
-      <div class="auth-tab" data-form="signup">Sign Up</div>
+      <div class="auth-tab active" onclick="switchTab('activate')">I Have a Code</div>
+      <div class="auth-tab" onclick="switchTab('pay')">Get Full Access</div>
     </div>
 
-    <!-- LOGIN FORM -->
-    <form class="auth-form" id="loginForm">
-      <div class="form-group">
-        <label class="form-label">Email address</label>
-        <input class="form-input" type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
-        <div class="form-error">Enter a valid email address</div>
+    <!-- TAB 1: ACTIVATE CODE -->
+    <div class="tab-content active" id="tab-activate">
+      <div style="text-align:center; margin-bottom:16px;">
+        <div style="font-size:32px; margin-bottom:6px;">🔑</div>
+        <div style="font-size:15px; font-weight:700; color:var(--ink);">Enter Your Access Code</div>
+        <div style="font-size:12px; color:var(--ink-soft); margin-top:4px;">Enter the code you received after payment</div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input class="form-input" type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password">
-        <div class="form-error">Password is required</div>
-      </div>
-      <div class="forgot-link"><a href="#" style="color:var(--navy);">Forgot password?</a></div>
-      <button type="submit" class="btn btn-primary btn-block">Log In</button>
-    </form>
 
-    <!-- SIGNUP FORM -->
-    <form class="auth-form" id="signupForm" style="display:none;">
-      <div class="form-group">
-        <label class="form-label">Full name</label>
-        <input class="form-input" type="text" id="signupName" placeholder="Your full name" autocomplete="name">
-        <div class="form-error">Enter your full name</div>
+      <div class="code-wrap">
+        <input type="password" id="accessCodeInput" placeholder="UTME-XXXX-XXXX-2025" autocomplete="off" autocapitalize="characters">
+        <button class="eye-btn" id="eyeToggle" title="Show/hide code">👁️</button>
       </div>
-      <div class="form-group">
-        <label class="form-label">Email address</label>
-        <input class="form-input" type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email">
-        <div class="form-error">Enter a valid email address</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password (min 6 characters)</label>
-        <input class="form-input" type="password" id="signupPassword" placeholder="Create a password" autocomplete="new-password">
-        <div class="form-error">Password must be at least 6 characters</div>
-      </div>
-      <button type="submit" class="btn btn-primary btn-block">Create Account</button>
-    </form>
 
-    <div class="guest-link">
-      <a href="select-subjects.html">Continue as guest →</a>
+      <button class="btn btn-primary btn-block" id="activateBtn" style="margin-bottom:16px;">
+        ✅ Activate My Access
+      </button>
+
+      <div class="or-divider">or</div>
+
+      <button class="btn btn-ghost btn-block" id="freeBtn">
+        🎯 Try 10 Free Questions
+      </button>
+
+      <div style="text-align:center; margin-top:14px; font-size:12px; color:var(--ink-soft);">
+        Don't have a code? <span style="color:var(--navy); font-weight:600; cursor:pointer;" onclick="switchTab('pay')">Get full access →</span>
+      </div>
     </div>
+
+    <!-- TAB 2: PAY -->
+    <div class="tab-content" id="tab-pay">
+      <div style="text-align:center; margin-bottom:16px;">
+        <div style="font-size:32px; margin-bottom:6px;">🎓</div>
+        <div style="font-size:15px; font-weight:700; color:var(--ink);">Choose Your Plan</div>
+        <div style="font-size:12px; color:var(--ink-soft); margin-top:4px;">1 year full access. Works offline after activation.</div>
+      </div>
+
+      <div class="plan-grid">
+        <div class="plan-card popular selected" onclick="selectPlan(this, 'jamb')">
+          <div class="plan-name">JAMB Only</div>
+          <div class="plan-price">₦2,500</div>
+          <div class="plan-sub">1 year</div>
+        </div>
+        <div class="plan-card" onclick="selectPlan(this, 'waec')">
+          <div class="plan-name">WAEC Only</div>
+          <div class="plan-price">₦2,500</div>
+          <div class="plan-sub">1 year</div>
+        </div>
+        <div class="plan-card" onclick="selectPlan(this, 'jamb_waec')">
+          <div class="plan-name">JAMB + WAEC</div>
+          <div class="plan-price">₦4,000</div>
+          <div class="plan-sub">Save ₦1,000</div>
+        </div>
+        <div class="plan-card" onclick="selectPlan(this, 'all_four')">
+          <div class="plan-name">All 4 Exams</div>
+          <div class="plan-price">₦7,000</div>
+          <div class="plan-sub">Best value</div>
+        </div>
+      </div>
+
+      <input type="hidden" id="planSelect" value="jamb">
+
+      <div class="form-group" style="margin-bottom:12px;">
+        <div style="font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;">WhatsApp Number (to receive your code)</div>
+        <input class="form-input" type="tel" id="phoneInput" placeholder="08012345678">
+      </div>
+
+      <!-- Code display after successful payment -->
+      <div class="code-display" id="codeDisplay">
+        <p>✅ Payment successful! Your access code:</p>
+        <div class="code-big" id="codeValue">UTME-XXXX-XXXX-2025</div>
+        <div class="code-note">Screenshot this code and save it. You will need it if you change devices.</div>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="payBtn">
+        💳 Pay Now with Paystack
+      </button>
+
+      <div style="text-align:center; margin-top:12px; font-size:11px; color:var(--ink-soft);">
+        🔒 Secure payment by Paystack · No card stored · Instant activation
+      </div>
+
+      <div class="or-divider">or</div>
+
+      <a href="https://wa.me/2347065732365?text=I want to pay for UTMESchools" target="_blank" class="btn btn-ghost btn-block" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+        💬 Pay via WhatsApp
+      </a>
+    </div>
+
+  </div>
+
+  <div style="margin-top:20px; font-size:11px; color:rgba(255,255,255,0.4); text-align:center;">
+    Not affiliated with JAMB · © 2025 UTMESchools
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 <script src="shared.js"></script>
 <script src="auth.js"></script>
+<script>
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0 && tab==='activate') || (i===1 && tab==='pay'));
+  });
+  document.getElementById('tab-activate').classList.toggle('active', tab==='activate');
+  document.getElementById('tab-pay').classList.toggle('active', tab==='pay');
+}
+
+function selectPlan(el, plan) {
+  document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('planSelect').value = plan;
+}
+</script>
 </body>
 </html>
