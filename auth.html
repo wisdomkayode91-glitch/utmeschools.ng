@@ -6,156 +6,236 @@
 <title>UTMESchools — Get Access</title>
 <link rel="stylesheet" href="shared.css">
 <style>
-.auth-page {
+body { background: #0B2545; min-height: 100vh; }
+
+.auth-wrap {
   min-height: 100vh;
-  background: var(--navy);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
+  padding: 0 0 40px;
+}
+
+/* Hero top */
+.auth-hero {
+  background: linear-gradient(160deg, #0B2545, #163461);
+  padding: 40px 20px 32px;
+  text-align: center;
 }
 .auth-logo {
   font-family: var(--font-display);
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 800;
   color: #fff;
-  margin-bottom: 4px;
-  text-align: center;
+  margin-bottom: 6px;
 }
 .auth-logo span { color: var(--gold); }
-.auth-tagline {
-  font-size: 13px;
-  color: rgba(255,255,255,0.6);
-  margin-bottom: 32px;
-  text-align: center;
-}
+.auth-tagline { font-size: 13px; color: rgba(255,255,255,0.55); }
+
+/* Card */
 .auth-card {
-  background: #fff;
-  border-radius: 20px;
-  padding: 28px 20px;
-  width: 100%;
-  max-width: 380px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  background: var(--paper);
+  border-radius: 28px 28px 0 0;
+  margin-top: -16px;
+  flex: 1;
+  padding: 28px 16px;
 }
+
+/* Tabs */
 .auth-tabs {
   display: flex;
   background: var(--paper-dim);
   border-radius: var(--radius-pill);
   padding: 3px;
-  margin-bottom: 24px;
-  gap: 2px;
+  margin-bottom: 28px;
 }
 .auth-tab {
   flex: 1;
   text-align: center;
-  padding: 9px 8px;
+  padding: 10px;
   border-radius: var(--radius-pill);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--ink-soft);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.auth-tab.active {
-  background: var(--navy);
-  color: #fff;
-}
-.tab-content { display: none; }
-.tab-content.active { display: block; }
+.auth-tab.active { background: var(--navy); color: #fff; }
 
-/* Code input with eye */
-.code-wrap {
-  position: relative;
-  margin-bottom: 12px;
-}
-.code-wrap input {
-  width: 100%;
-  background: var(--paper-dim);
-  border: 2px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 12px 44px 12px 14px;
+/* Section headings */
+.section-heading {
+  font-family: var(--font-display);
   font-size: 16px;
+  font-weight: 800;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+.section-sub { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 18px; }
+
+/* Code input */
+.code-field-wrap {
+  position: relative;
+  margin-bottom: 14px;
+}
+.code-field {
+  width: 100%;
+  background: var(--white);
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 50px 14px 16px;
+  font-size: 18px;
   font-family: var(--font-mono);
   font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--ink);
+  letter-spacing: 0.08em;
+  color: var(--navy);
   text-transform: uppercase;
   transition: border-color 0.15s;
+  box-shadow: 0 2px 8px rgba(11,37,69,0.06);
 }
-.code-wrap input:focus { border-color: var(--navy); outline: none; }
-.eye-btn {
+.code-field::placeholder { color: var(--line); font-size: 15px; letter-spacing: 0.04em; }
+.code-field:focus { border-color: var(--navy); outline: none; background: #fff; }
+.eye-toggle {
   position: absolute;
-  right: 12px;
+  right: 14px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 20px;
+  font-size: 22px;
   cursor: pointer;
-  background: none;
   border: none;
+  background: none;
   line-height: 1;
+  padding: 4px;
 }
 
-/* Plan selector */
-.plan-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* Free button */
+.free-cta {
+  background: var(--white);
+  border: 2px dashed var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+  margin-top: 16px;
+  cursor: pointer;
+}
+.free-cta-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.free-cta-sub { font-size: 12px; color: var(--ink-soft); }
+
+/* ---- PLAN SELECTOR ---- */
+.plan-selector-wrap { margin-bottom: 20px; }
+.plan-selector-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.plan-checkboxes {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
   margin-bottom: 16px;
 }
-.plan-card {
+.plan-check-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--white);
   border: 2px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 12px 10px;
-  text-align: center;
+  border-radius: 14px;
+  padding: 14px 16px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
-  position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
-.plan-card.selected {
+.plan-check-row.checked {
   border-color: var(--navy);
   background: #EEF4FF;
 }
-.plan-card.popular::before {
-  content: 'Popular';
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--orange);
+.plan-check-left { display: flex; align-items: center; gap: 12px; }
+.plan-check-icon { font-size: 22px; }
+.plan-check-info { }
+.plan-check-name { font-size: 14px; font-weight: 700; color: var(--navy); }
+.plan-check-desc { font-size: 11.5px; color: var(--ink-soft); }
+.plan-check-box {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  border: 2px solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
   color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
 }
-.plan-name { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
-.plan-price { font-family: var(--font-mono); font-size: 18px; font-weight: 700; color: var(--navy); }
-.plan-sub { font-size: 10px; color: var(--ink-soft); }
+.plan-check-row.checked .plan-check-box {
+  background: var(--navy);
+  border-color: var(--navy);
+}
 
-/* Code display after payment */
-.code-display {
+/* Price calculator */
+.price-calc {
+  background: var(--navy);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.price-calc-left { }
+.price-calc-label { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 2px; }
+.price-calc-breakdown { font-size: 11px; color: rgba(255,255,255,0.4); }
+.price-calc-amount {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.price-calc-saving {
+  font-size: 11px;
+  color: #0FA968;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* Phone input */
+.phone-wrap { margin-bottom: 14px; }
+.phone-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; display: block; }
+.phone-input {
+  width: 100%;
+  background: var(--white);
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  padding: 13px 16px;
+  font-size: 15px;
+  color: var(--ink);
+  transition: border-color 0.15s;
+}
+.phone-input:focus { border-color: var(--navy); outline: none; }
+
+/* Success code display */
+.success-code {
   display: none;
   background: #E8F8F1;
   border: 2px solid var(--green);
-  border-radius: var(--radius-md);
-  padding: 16px;
+  border-radius: 16px;
+  padding: 20px;
   text-align: center;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
-.code-display p { font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; }
-.code-big {
+.success-code-title { font-size: 14px; font-weight: 700; color: #0A6B40; margin-bottom: 8px; }
+.success-code-value {
   font-family: var(--font-mono);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--navy);
   letter-spacing: 0.08em;
   word-break: break-all;
+  margin-bottom: 8px;
 }
-.code-note { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+.success-code-note { font-size: 11.5px; color: var(--ink-soft); }
 
 /* Divider */
-.or-divider {
+.or-line {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -163,121 +243,183 @@
   color: var(--ink-soft);
   font-size: 12px;
 }
-.or-divider::before,
-.or-divider::after {
+.or-line::before, .or-line::after {
   content: '';
   flex: 1;
   height: 1px;
   background: var(--line);
 }
+
+/* Trust badges */
+.trust-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
 </style>
 </head>
 <body>
+<div class="auth-wrap">
 
-<div class="auth-page">
-  <div class="auth-logo">UTME<span>Schools</span></div>
-  <div class="auth-tagline">Nigeria's smartest JAMB preparation app</div>
+  <!-- HERO -->
+  <div class="auth-hero">
+    <div class="auth-logo">UTME<span>Schools</span></div>
+    <div class="auth-tagline">Practice smart. Pass every exam.</div>
+  </div>
 
+  <!-- CARD -->
   <div class="auth-card">
 
     <!-- TABS -->
     <div class="auth-tabs">
-      <div class="auth-tab active" onclick="switchTab('activate')">I Have a Code</div>
-      <div class="auth-tab" onclick="switchTab('pay')">Get Full Access</div>
+      <div class="auth-tab active" id="tabActivate" onclick="showTab('activate')">🔑 I Have a Code</div>
+      <div class="auth-tab" id="tabPay" onclick="showTab('pay')">💳 Get Full Access</div>
     </div>
 
-    <!-- TAB 1: ACTIVATE CODE -->
-    <div class="tab-content active" id="tab-activate">
-      <div style="text-align:center; margin-bottom:16px;">
-        <div style="font-size:32px; margin-bottom:6px;">🔑</div>
-        <div style="font-size:15px; font-weight:700; color:var(--ink);">Enter Your Access Code</div>
-        <div style="font-size:12px; color:var(--ink-soft); margin-top:4px;">Enter the code you received after payment</div>
+    <!-- ===== TAB: ACTIVATE ===== -->
+    <div id="panelActivate">
+      <div class="section-heading">Enter Your Access Code</div>
+      <div class="section-sub">Enter the code you received after payment. It activates this device permanently.</div>
+
+      <div class="code-field-wrap">
+        <input class="code-field" type="password" id="codeInput"
+          placeholder="UTME-XXXX-XXXX-2025"
+          autocomplete="off" autocapitalize="characters" spellcheck="false">
+        <button class="eye-toggle" id="eyeBtn" onclick="toggleEye()">👁️</button>
       </div>
 
-      <div class="code-wrap">
-        <input type="password" id="accessCodeInput" placeholder="UTME-XXXX-XXXX-2025" autocomplete="off" autocapitalize="characters">
-        <button class="eye-btn" id="eyeToggle" title="Show/hide code">👁️</button>
+      <button class="btn btn-primary btn-block" onclick="activateCode()" style="margin-bottom:12px;padding:14px;font-size:15px;">
+        ✅ Activate My Device
+      </button>
+
+      <div class="or-line">or</div>
+
+      <div class="free-cta" onclick="startFree()">
+        <div class="free-cta-title">🎯 Try 10 Free Questions</div>
+        <div class="free-cta-sub">No code needed · Start practising immediately</div>
       </div>
 
-      <button class="btn btn-primary btn-block" id="activateBtn" style="margin-bottom:16px;">
-        ✅ Activate My Access
-      </button>
-
-      <div class="or-divider">or</div>
-
-      <button class="btn btn-ghost btn-block" id="freeBtn">
-        🎯 Try 10 Free Questions
-      </button>
-
-      <div style="text-align:center; margin-top:14px; font-size:12px; color:var(--ink-soft);">
-        Don't have a code? <span style="color:var(--navy); font-weight:600; cursor:pointer;" onclick="switchTab('pay')">Get full access →</span>
+      <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--ink-soft);">
+        Don't have a code?
+        <span onclick="showTab('pay')" style="color:var(--navy);font-weight:700;cursor:pointer;">Get full access →</span>
       </div>
     </div>
 
-    <!-- TAB 2: PAY -->
-    <div class="tab-content" id="tab-pay">
-      <div style="text-align:center; margin-bottom:16px;">
-        <div style="font-size:32px; margin-bottom:6px;">🎓</div>
-        <div style="font-size:15px; font-weight:700; color:var(--ink);">Choose Your Plan</div>
-        <div style="font-size:12px; color:var(--ink-soft); margin-top:4px;">1 year full access. Works offline after activation.</div>
+    <!-- ===== TAB: PAY ===== -->
+    <div id="panelPay" style="display:none;">
+      <div class="section-heading">Choose What You Need</div>
+      <div class="section-sub">Tick the exams you are preparing for. Price adjusts automatically.</div>
+
+      <!-- PLAN CHECKBOXES -->
+      <div class="plan-selector-wrap">
+        <div class="plan-selector-label">Select exam bodies</div>
+        <div class="plan-checkboxes">
+
+          <div class="plan-check-row checked" id="plan-jamb" onclick="togglePlan('jamb')">
+            <div class="plan-check-left">
+              <div class="plan-check-icon">🎯</div>
+              <div class="plan-check-info">
+                <div class="plan-check-name">JAMB UTME</div>
+                <div class="plan-check-desc">All subjects · 1988–2025 · 300K+ questions</div>
+              </div>
+            </div>
+            <div class="plan-check-box" id="box-jamb">✓</div>
+          </div>
+
+          <div class="plan-check-row" id="plan-waec" onclick="togglePlan('waec')">
+            <div class="plan-check-left">
+              <div class="plan-check-icon">📘</div>
+              <div class="plan-check-info">
+                <div class="plan-check-name">WAEC</div>
+                <div class="plan-check-desc">Senior School Certificate · All subjects</div>
+              </div>
+            </div>
+            <div class="plan-check-box" id="box-waec"></div>
+          </div>
+
+          <div class="plan-check-row" id="plan-neco" onclick="togglePlan('neco')">
+            <div class="plan-check-left">
+              <div class="plan-check-icon">📗</div>
+              <div class="plan-check-info">
+                <div class="plan-check-name">NECO</div>
+                <div class="plan-check-desc">National Examinations Council · All subjects</div>
+              </div>
+            </div>
+            <div class="plan-check-box" id="box-neco"></div>
+          </div>
+
+          <div class="plan-check-row" id="plan-postutme" onclick="togglePlan('postutme')">
+            <div class="plan-check-left">
+              <div class="plan-check-icon">🏛️</div>
+              <div class="plan-check-info">
+                <div class="plan-check-name">Post UTME</div>
+                <div class="plan-check-desc">University screening · Multiple institutions</div>
+              </div>
+            </div>
+            <div class="plan-check-box" id="box-postutme"></div>
+          </div>
+
+        </div>
       </div>
 
-      <div class="plan-grid">
-        <div class="plan-card popular selected" onclick="selectPlan(this, 'jamb')">
-          <div class="plan-name">JAMB Only</div>
-          <div class="plan-price">₦2,500</div>
-          <div class="plan-sub">1 year</div>
+      <!-- PRICE DISPLAY -->
+      <div class="price-calc">
+        <div class="price-calc-left">
+          <div class="price-calc-label">Total to pay</div>
+          <div class="price-calc-breakdown" id="priceBreakdown">JAMB only</div>
+          <div class="price-calc-saving" id="priceSaving" style="display:none;"></div>
         </div>
-        <div class="plan-card" onclick="selectPlan(this, 'waec')">
-          <div class="plan-name">WAEC Only</div>
-          <div class="plan-price">₦2,500</div>
-          <div class="plan-sub">1 year</div>
-        </div>
-        <div class="plan-card" onclick="selectPlan(this, 'jamb_waec')">
-          <div class="plan-name">JAMB + WAEC</div>
-          <div class="plan-price">₦4,000</div>
-          <div class="plan-sub">Save ₦1,000</div>
-        </div>
-        <div class="plan-card" onclick="selectPlan(this, 'all_four')">
-          <div class="plan-name">All 4 Exams</div>
-          <div class="plan-price">₦7,000</div>
-          <div class="plan-sub">Best value</div>
-        </div>
+        <div class="price-calc-amount" id="priceDisplay">₦2,500</div>
       </div>
 
-      <input type="hidden" id="planSelect" value="jamb">
-
-      <div class="form-group" style="margin-bottom:12px;">
-        <div style="font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:6px;">WhatsApp Number (to receive your code)</div>
-        <input class="form-input" type="tel" id="phoneInput" placeholder="08012345678">
+      <!-- PHONE -->
+      <div class="phone-wrap">
+        <label class="phone-label">WhatsApp number (to receive your code)</label>
+        <input class="phone-input" type="tel" id="phoneInput" placeholder="08012345678">
       </div>
 
-      <!-- Code display after successful payment -->
-      <div class="code-display" id="codeDisplay">
-        <p>✅ Payment successful! Your access code:</p>
-        <div class="code-big" id="codeValue">UTME-XXXX-XXXX-2025</div>
-        <div class="code-note">Screenshot this code and save it. You will need it if you change devices.</div>
+      <!-- SUCCESS CODE -->
+      <div class="success-code" id="successCode">
+        <div class="success-code-title">✅ Payment Successful!</div>
+        <div class="success-code-value" id="successCodeValue">UTME-XXXX-XXXX-2025</div>
+        <div class="success-code-note">📸 Screenshot this code. You'll need it to activate another device.</div>
       </div>
 
-      <button class="btn btn-primary btn-block" id="payBtn">
+      <!-- PAY BUTTON -->
+      <button class="btn btn-primary btn-block" onclick="payNow()"
+        style="padding:15px;font-size:15px;margin-bottom:10px;">
         💳 Pay Now with Paystack
       </button>
 
-      <div style="text-align:center; margin-top:12px; font-size:11px; color:var(--ink-soft);">
-        🔒 Secure payment by Paystack · No card stored · Instant activation
+      <div class="trust-row">
+        <div class="trust-item">🔒 Secure payment</div>
+        <div class="trust-item">⚡ Instant activation</div>
+        <div class="trust-item">📱 Works offline</div>
       </div>
 
-      <div class="or-divider">or</div>
+      <div class="or-line">or</div>
 
-      <a href="https://wa.me/2347065732365?text=I want to pay for UTMESchools" target="_blank" class="btn btn-ghost btn-block" style="text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px;">
-        💬 Pay via WhatsApp
+      <a href="https://wa.me/2347065732365?text=I want to pay for UTMESchools"
+        target="_blank"
+        class="btn btn-ghost btn-block"
+        style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;">
+        💬 Pay via WhatsApp Instead
       </a>
+
+      <div style="text-align:center;margin-top:14px;font-size:11px;color:var(--ink-soft);">
+        1 year full access · Works on 2 devices · Cancel anytime
+      </div>
     </div>
 
-  </div>
-
-  <div style="margin-top:20px; font-size:11px; color:rgba(255,255,255,0.4); text-align:center;">
-    Not affiliated with JAMB · © 2025 UTMESchools
   </div>
 </div>
 
@@ -285,18 +427,98 @@
 <script src="shared.js"></script>
 <script src="auth.js"></script>
 <script>
-function switchTab(tab) {
-  document.querySelectorAll('.auth-tab').forEach((t,i) => {
-    t.classList.toggle('active', (i===0 && tab==='activate') || (i===1 && tab==='pay'));
-  });
-  document.getElementById('tab-activate').classList.toggle('active', tab==='activate');
-  document.getElementById('tab-pay').classList.toggle('active', tab==='pay');
+/* ---- Tab switching ---- */
+function showTab(tab) {
+  document.getElementById('panelActivate').style.display = tab === 'activate' ? 'block' : 'none';
+  document.getElementById('panelPay').style.display      = tab === 'pay'      ? 'block' : 'none';
+  document.getElementById('tabActivate').classList.toggle('active', tab === 'activate');
+  document.getElementById('tabPay').classList.toggle('active', tab === 'pay');
 }
 
-function selectPlan(el, plan) {
-  document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  document.getElementById('planSelect').value = plan;
+/* ---- Eye toggle ---- */
+function toggleEye() {
+  const inp = document.getElementById('codeInput');
+  const btn = document.getElementById('eyeBtn');
+  inp.type  = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁️' : '🙈';
+}
+
+/* ---- Plan selection ---- */
+const selected = new Set(['jamb']);
+const prices   = { 1: 2500, 2: 4000, 3: 5500, 4: 7000 };
+const names    = { jamb:'JAMB', waec:'WAEC', neco:'NECO', postutme:'Post UTME' };
+
+function togglePlan(plan) {
+  if (selected.has(plan)) {
+    if (selected.size === 1) return; /* must have at least 1 */
+    selected.delete(plan);
+    document.getElementById('plan-' + plan).classList.remove('checked');
+    document.getElementById('box-'  + plan).textContent = '';
+  } else {
+    selected.add(plan);
+    document.getElementById('plan-' + plan).classList.add('checked');
+    document.getElementById('box-'  + plan).textContent = '✓';
+  }
+  updatePrice();
+}
+
+function updatePrice() {
+  const count   = selected.size;
+  const total   = prices[count];
+  const saving  = (count * 2500) - total;
+  const selNames = [...selected].map(p => names[p]).join(' + ');
+
+  document.getElementById('priceDisplay').textContent   = '₦' + total.toLocaleString();
+  document.getElementById('priceBreakdown').textContent = selNames;
+
+  const savEl = document.getElementById('priceSaving');
+  if (saving > 0) {
+    savEl.textContent = `You save ₦${saving.toLocaleString()}!`;
+    savEl.style.display = 'block';
+  } else {
+    savEl.style.display = 'none';
+  }
+}
+
+/* ---- Pay ---- */
+function payNow() {
+  const phone = document.getElementById('phoneInput').value.trim();
+  if (!phone) { showToast('Please enter your WhatsApp number'); return; }
+
+  const count  = selected.size;
+  const amount = prices[count] * 100; /* kobo */
+  const plan   = [...selected].join(',');
+
+  if (typeof PaystackPop === 'undefined') {
+    const s = document.createElement('script');
+    s.src = 'https://js.paystack.co/v1/inline.js';
+    s.onload = () => launchPaystack(amount, plan, phone);
+    document.head.appendChild(s);
+  } else {
+    launchPaystack(amount, plan, phone);
+  }
+}
+
+function launchPaystack(amount, plan, phone) {
+  const handler = PaystackPop.setup({
+    key:      'pk_test_79cdf7943af134f028eacba68108922699a830fe',
+    amount,
+    currency: 'NGN',
+    ref:      'UTME-' + Date.now(),
+    metadata: { plan, phone, device_id: getDeviceId() },
+    callback: (res) => verifyPayment(res.reference, plan, phone),
+    onClose:  () => showToast('Payment cancelled.')
+  });
+  handler.openIframe();
+}
+
+/* Show toast */
+let _tt;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(() => t.classList.remove('show'), 3000);
 }
 </script>
 </body>
