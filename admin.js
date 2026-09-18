@@ -1,143 +1,280 @@
 /* ============================================================
-   UTMESchools v2 — admin.js
-   Admin panel. Password protected. localStorage-based.
+   UTMESchools v2 — auth.js
+   Access code system. No email required.
+   Eye toggle for password visibility.
    ============================================================ */
 
-const ADMIN_PASSWORD = 'utmeschools2026'; // Change this!
+const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
+
+/* ================================================================
+   CHECK IF ALREADY ACTIVATED ON THIS DEVICE
+   If yes, skip auth entirely and go straight to app
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  const deviceCode = localStorage.getItem('utme_access_code');
+  const devicePaid = localStorage.getItem('utme_is_paid');
+
+  /* If device is already activated, go straight to app */
+  if (deviceCode && devicePaid === 'true') {
+    window.location.href = 'select-subjects.html';
+    return;
+  }
+
+  /* Wire up eye toggle */
+  const toggle = document.getElementById('eyeToggle');
+  const codeInput = document.getElementById('accessCodeInput');
+  if (toggle && codeInput) {
+    toggle.addEventListener('click', () => {
+      const isHidden = codeInput.type === 'password';
+      codeInput.type = isHidden ? 'text' : 'password';
+      toggle.textContent = isHidden ? '🙈' : '👁️';
+    });
+  }
+
+  /* Wire activate button */
+  const activateBtn = document.getElementById('activateBtn');
+  if (activateBtn) {
+    activateBtn.addEventListener('click', activateCode);
+  }
+
+  /* Wire free start button */
+  const freeBtn = document.getElementById('freeBtn');
+  if (freeBtn) {
+    freeBtn.addEventListener('click', startFree);
+  }
+
+  /* Wire pay button */
+  const payBtn = document.getElementById('payBtn');
+  if (payBtn) {
+    payBtn.addEventListener('click', openPayment);
+  }
+});
+
+/* ================================================================
+   ACTIVATE ACCESS CODE
+   ================================================================ */
+async function activateCode() {
+  const input = document.getElementById('accessCodeInput');
+  const code  = (input?.value || '').trim().toUpperCase();
+
+  if (!code) {
+    showToast('Please enter your access code');
+    return;
+  }
+
+  showToast('Checking code...');
+
+  try {
+    /* Check code in Supabase */
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/access_codes?code=eq.${code}&select=*`,
+      {
+        headers: {
+          'apikey':        SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        }
+      }
+    );
+
+    const data = await res.json();
+
+    if (!data || data.length === 0) {
+      showToast('Invalid code. Please check and try again.');
+      return;
+    }
+
+    const record = data[0];
+
+    /* Check if code is expired */
+    if (record.expires_at && new Date(record.expires_at) < new Date()) {
+      showToast('This code has expired. Please renew your subscription.');
+      return;
+    }
+
+    /* Check device limit */
+    const devices = record.activated_devices || [];
+    const deviceId = getDeviceId();
+
+    if (!devices.includes(deviceId) && devices.length >= record.max_devices) {
+      showToast(`This code is already active on ${record.max_devices} device(s). Contact support to add more.`);
+      return;
+    }
+
+    /* Add this device if not already there */
+    if (!devices.includes(deviceId)) {
+      devices.push(deviceId);
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/access_codes?code=eq.${code}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey':        SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type':  'application/json',
+          },
+          body: JSON.stringify({ activated_devices: devices })
+        }
+      );
+    }
+
+    /* Save to localStorage — device is now activated */
+    localStorage.setItem('utme_access_code', code);
+    localStorage.setItem('utme_is_paid', 'true');
+    localStorage.setItem('utme_plan', record.plan || 'jamb');
+    localStorage.setItem('utme_expires', record.expires_at || '');
+    localStorage.setItem('utme_device_id', deviceId);
+
+    showToast('Access activated! Welcome to UTMESchools 🎉');
+    setTimeout(() => { window.location.href = 'select-subjects.html'; }, 1200);
+
+  } catch(e) {
+    console.error(e);
+    showToast('Connection error. Please check your internet and try again.');
+  }
+}
+
+/* ================================================================
+   START FREE (10 questions per subject)
+   ================================================================ */
+function startFree() {
+  localStorage.setItem('utme_is_paid', 'false');
+  window.location.href = 'select-subjects.html';
+}
+
+/* ================================================================
+   OPEN PAYSTACK PAYMENT
+   ================================================================ */
+function openPayment() {
+  /* Check if Paystack script is loaded */
+  if (typeof PaystackPop === 'undefined') {
+    showToast('Loading payment system...');
+    const script = document.createElement('script');
+    script.src = 'https://js.paystack.co/v1/inline.js';
+    script.onload = () => launchPaystack();
+    document.head.appendChild(script);
+  } else {
+    launchPaystack();
+  }
+}
+
+function launchPaystack() {
+  const plan = document.getElementById('planSelect')?.value || 'jamb';
+  const phone = document.getElementById('phoneInput')?.value?.trim() || '';
+
+  const prices = {
+    jamb:     250000,  /* ₦2,500 in kobo */
+    waec:     250000,
+    neco:     250000,
+    postutme: 250000,
+    jamb_waec: 400000, /* ₦4,000 bundle */
+    all_four:  700000, /* ₦7,000 bundle */
+  };
+
+  const amount = prices[plan] || 250000;
+
+  const handler = PaystackPop.setup({
+    key:    'pk_test_79cdf7943af134f028eacba68108922699a830fe',
+    amount: amount,
+    currency: 'NGN',
+    ref:    'UTME-' + Date.now(),
+    metadata: { plan, phone, device_id: getDeviceId() },
+    callback: function(response) {
+      /* Payment successful — verify and activate */
+      verifyPayment(response.reference, plan, phone);
+    },
+    onClose: function() {
+      showToast('Payment cancelled.');
+    }
+  });
+  handler.openIframe();
+}
+
+/* ================================================================
+   VERIFY PAYMENT AND GENERATE ACCESS CODE
+   ================================================================ */
+async function verifyPayment(reference, plan, phone) {
+  showToast('Verifying payment...');
+  try {
+    /* Generate access code */
+    const code = generateCode();
+
+    /* Save code to Supabase */
+    const deviceId = getDeviceId();
+    const expires  = new Date();
+    expires.setFullYear(expires.getFullYear() + 1); /* 1 year access */
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/access_codes`, {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type':  'application/json',
+        'Prefer':        'return=minimal',
+      },
+      body: JSON.stringify({
+        code,
+        plan,
+        phone,
+        paystack_ref:       reference,
+        activated_devices:  [deviceId],
+        max_devices:        2,
+        expires_at:         expires.toISOString(),
+        created_at:         new Date().toISOString(),
+      })
+    });
+
+    if (res.ok || res.status === 201) {
+      /* Activate on this device immediately */
+      localStorage.setItem('utme_access_code', code);
+      localStorage.setItem('utme_is_paid', 'true');
+      localStorage.setItem('utme_plan', plan);
+      localStorage.setItem('utme_expires', expires.toISOString());
+      localStorage.setItem('utme_device_id', deviceId);
+
+      /* Show code to student */
+      const codeDisplay = document.getElementById('codeDisplay');
+      const codeValue   = document.getElementById('codeValue');
+      if (codeDisplay && codeValue) {
+        codeValue.textContent = code;
+        codeDisplay.style.display = 'block';
+      }
+
+      showToast('Payment successful! Your code: ' + code);
+      setTimeout(() => { window.location.href = 'select-subjects.html'; }, 3000);
+    } else {
+      showToast('Payment received but activation failed. Contact support with ref: ' + reference);
+    }
+  } catch(e) {
+    showToast('Error activating. Save this reference: ' + reference);
+  }
+}
+
+/* ================================================================
+   HELPERS
+   ================================================================ */
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const seg   = () => Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+  return `UTME-${seg()}-${seg()}-${new Date().getFullYear()}`;
+}
+
+function getDeviceId() {
+  let id = localStorage.getItem('utme_device_id');
+  if (!id) {
+    id = 'DEV-' + Date.now() + '-' + Math.random().toString(36).slice(2,8).toUpperCase();
+    localStorage.setItem('utme_device_id', id);
+  }
+  return id;
+}
 
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
-}
-
-function getUsers() { try { return JSON.parse(localStorage.getItem('utme_users')||'[]'); } catch(e) { return []; } }
-function saveUsers(users) { localStorage.setItem('utme_users', JSON.stringify(users)); }
-function getHistory() { try { return JSON.parse(localStorage.getItem('utme_history')||'[]'); } catch(e) { return []; } }
-
-function checkAdmin() {
-  const user = JSON.parse(localStorage.getItem('utme_user')||'null');
-  return user && user.is_admin;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const isAdmin = checkAdmin();
-  const isSessionAuthed = sessionStorage.getItem('admin_authed') === '1';
-
-  if (isAdmin || isSessionAuthed) {
-    showAdminPanel();
-  } else {
-    document.getElementById('adminGate').style.display = 'block';
-    document.getElementById('adminLoginBtn').addEventListener('click', () => {
-      const pass = document.getElementById('adminPass').value;
-      if (pass === ADMIN_PASSWORD) {
-        sessionStorage.setItem('admin_authed', '1');
-        document.getElementById('adminGate').style.display = 'none';
-        showAdminPanel();
-      } else {
-        showToast('Wrong password.');
-      }
-    });
-    document.getElementById('adminPass').addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById('adminLoginBtn').click();
-    });
-  }
-});
-
-function showAdminPanel() {
-  document.getElementById('adminContent').style.display = 'block';
-  loadStats();
-  renderStudents();
-  loadSeasonDate();
-
-  document.getElementById('studentSearch').addEventListener('input', function() {
-    renderStudents(this.value.toLowerCase());
-  });
-  document.getElementById('saveSeasonBtn').addEventListener('click', () => {
-    const d = document.getElementById('seasonDate').value;
-    if (!d) { showToast('Pick a date first.'); return; }
-    localStorage.setItem('utme_season_end', d);
-    showToast('Season end date saved: ' + d);
-  });
-}
-
-function loadSeasonDate() {
-  const d = localStorage.getItem('utme_season_end');
-  if (d) document.getElementById('seasonDate').value = d;
-}
-
-function loadStats() {
-  const users   = getUsers();
-  const history = getHistory();
-  document.getElementById('statTotal').textContent    = users.length;
-  document.getElementById('statPaid').textContent     = users.filter(u=>u.has_paid).length;
-  document.getElementById('statAttempts').textContent = history.length;
-}
-
-function initials(name) {
-  return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-}
-
-function renderStudents(query) {
-  const users = getUsers();
-  let list = query
-    ? users.filter(u => (u.name||u.full_name||'').toLowerCase().includes(query) || (u.email||'').toLowerCase().includes(query))
-    : users;
-
-  const container = document.getElementById('studentList');
-  if (list.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-title">${query?'No results':'No users yet'}</div></div>`;
-    return;
-  }
-  container.innerHTML = '';
-  list.forEach(u => {
-    const row = document.createElement('div');
-    row.className = 'student-row';
-    const joined = u.created_at ? new Date(u.created_at).toLocaleDateString('en-NG') : '—';
-    row.innerHTML = `
-      <div class="student-avatar">${initials(u.full_name||u.name)}</div>
-      <div class="student-info">
-        <div class="student-name">${u.full_name||u.name||'Unknown'}${u.is_admin?'<span class="badge badge-navy" style="margin-left:6px;font-size:10px;">ADMIN</span>':''}</div>
-        <div class="student-email">${u.email||'—'} · ${joined}</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        ${u.has_paid
-          ? `<button class="btn btn-sm" style="color:var(--red);border:1px solid var(--red);border-radius:var(--radius-pill);padding:6px 12px;" data-deactivate="${u.id}">Deactivate</button>`
-          : `<button class="btn btn-green btn-sm" data-activate="${u.id}">Activate</button>`}
-      </div>`;
-
-    const actBtn = row.querySelector('[data-activate]');
-    const deactBtn = row.querySelector('[data-deactivate]');
-    if (actBtn) actBtn.addEventListener('click', () => {
-      setUserPaid(u.id, true);
-      showToast(`${u.full_name||u.name} activated ✓`);
-      renderStudents(query);
-    });
-    if (deactBtn) deactBtn.addEventListener('click', () => {
-      setUserPaid(u.id, false);
-      showToast(`${u.full_name||u.name} deactivated`);
-      renderStudents(query);
-    });
-    container.appendChild(row);
-  });
-}
-
-function setUserPaid(userId, paid) {
-  const users = getUsers();
-  const idx = users.findIndex(u => u.id === userId);
-  if (idx < 0) return;
-  users[idx].has_paid = paid;
-  users[idx].paid_until = paid ? localStorage.getItem('utme_season_end') || null : null;
-  saveUsers(users);
-  loadStats();
-  /* Update current session if same user */
-  try {
-    const cur = JSON.parse(localStorage.getItem('utme_user')||'null');
-    if (cur && cur.id === userId) {
-      cur.has_paid = paid;
-      localStorage.setItem('utme_user', JSON.stringify(cur));
-    }
-  } catch(e) {}
-}
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+                 }
+     
