@@ -167,8 +167,15 @@ function showLoadingState(loading) {
         <div style="font-size:13px;color:var(--ink-soft);">Please wait</div>
       </div>`;
     document.getElementById('optionsList').innerHTML = '';
+  } else {
+    /* ✅ RESTORE the original card structure so renderQuestion can find its elements */
+    qCard.innerHTML = `
+      <div class="q-tags"  id="qTags"></div>
+      <div class="q-text"  id="qText">Loading question...</div>
+      <div class="q-image" id="qImage" style="display:none;"></div>`;
   }
 }
+
 
 function renderSubjectTabs() {
   const container = document.getElementById('subjTabs');
