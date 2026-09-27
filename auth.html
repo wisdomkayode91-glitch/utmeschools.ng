@@ -502,6 +502,7 @@ function payNow() {
 function launchPaystack(amount, plan, phone) {
   const handler = PaystackPop.setup({
     key:      'pk_test_79cdf7943af134f028eacba68108922699a830fe',
+    email:    'student@utmeschools.ng',        /* ✅ REQUIRED by Paystack */
     amount,
     currency: 'NGN',
     ref:      'UTME-' + Date.now(),
@@ -522,4 +523,4 @@ function showToast(msg) {
 }
 </script>
 </body>
-</html>
+  </html>
