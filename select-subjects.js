@@ -316,13 +316,15 @@ function startSession() {
   const h = document.getElementById('timerH')?.value || '2';
   const m = document.getElementById('timerM')?.value || '0';
   const shuffleQ = document.getElementById('shuffleQToggle')?.classList.contains('on') ? '1' : '0';
+  const shuffleO = document.getElementById('shuffleOToggle')?.classList.contains('on') ? '1' : '0';
 
   const params = new URLSearchParams({
     subjects: selectedIds.join(','),
     mode:     currentMode,
     exam:     currentExam,
-    h, m, shuffleQ
+    h, m, shuffleQ, shuffleO
   });
+  ...
 
   selectedIds.forEach(id => {
     const cfg = subjectConfig[id] || {};
