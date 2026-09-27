@@ -175,6 +175,7 @@ function launchPaystack() {
 
   const handler = PaystackPop.setup({
     key:    'pk_test_79cdf7943af134f028eacba68108922699a830fe',
+    email:  'student@utmeschools.ng',   /* ✅ REQUIRED by Paystack */
     amount: amount,
     currency: 'NGN',
     ref:    'UTME-' + Date.now(),
@@ -276,4 +277,4 @@ function showToast(msg) {
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
-}
+             }
