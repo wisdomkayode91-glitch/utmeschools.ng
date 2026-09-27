@@ -1,6 +1,6 @@
 /* ============================================================
-   UTMESchools v2 — select-subjects.js
-   Fixed: sheet opens, English pre-selected, all bugs fixed
+   UTMESchools v2 — select-subjects.js  (clean version)
+   No forced subjects. User picks freely.
    ============================================================ */
 
 const ALL_SUBJECTS = [
@@ -16,39 +16,31 @@ const ALL_SUBJECTS = [
   { id:'commerce',    name:'Commerce',              icon:'🛒', max:60  },
   { id:'accounts',    name:'Accounts',              icon:'🧾', max:60  },
   { id:'agriculture', name:'Agriculture',           icon:'🌾', max:60  },
-  { id:'crk',         name:'CRK',                  icon:'✝️', max:60  },
-  { id:'irk',         name:'IRK',                  icon:'☪️', max:60  },
-  { id:'history',     name:'History',              icon:'🏺', max:60  },
+  { id:'crk',         name:'CRK',                   icon:'✝️', max:60  },
+  { id:'irk',         name:'IRK',                   icon:'☪️', max:60  },
+  { id:'history',     name:'History',               icon:'🏺', max:60  },
   { id:'computer',    name:'Computer Studies',      icon:'💻', max:60  },
-  { id:'french',      name:'French',               icon:'🇫🇷', max:60  },
-  { id:'hausa',       name:'Hausa',                icon:'📜', max:60  },
-  { id:'igbo',        name:'Igbo',                 icon:'📖', max:60  },
-  { id:'yoruba',      name:'Yoruba',               icon:'🌺', max:60  },
+  { id:'french',      name:'French',                icon:'🇫🇷', max:60  },
+  { id:'hausa',       name:'Hausa',                 icon:'📜', max:60  },
+  { id:'igbo',        name:'Igbo',                  icon:'📖', max:60  },
+  { id:'yoruba',      name:'Yoruba',                icon:'🌺', max:60  },
 ];
 
-/* ---- State ---- */
-/* English pre-selected by default */
-let selectedIds   = ['english'];
-let pendingIds    = ['english'];
+/* ---- State — starts EMPTY ---- */
+let selectedIds   = [];
+let pendingIds    = [];
 let currentMode   = 'practice';
 let currentExam   = 'jamb';
-let subjectConfig = {
-  english: { year: 'Random', count: 40 }
-};
+let subjectConfig = {};
 
 /* ================================================================
    INIT
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
 
-  renderSelectedBar();
-
-  /* Selected subjects bar — open sheet on tap */
-  const selectedBar = document.getElementById('selectedBar') ||
-                      document.querySelector('.selected-bar');
-  if (selectedBar) {
-    selectedBar.addEventListener('click', openSheet);
-  }
+  /* Wire selected bar — opens subject sheet */
+  const selectedBar = document.querySelector('.selected-bar');
+  if (selectedBar) selectedBar.addEventListener('click', openSheet);
 
   /* Sheet buttons */
   document.getElementById('sheetCancelBtn')?.addEventListener('click', closeSheet);
@@ -81,12 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
   /* Exam switcher */
   document.querySelectorAll('.exam-switch-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const exam = btn.dataset.exam;
       if (btn.classList.contains('disabled')) {
         showToast('Coming soon! Focus on JAMB for now.');
         return;
       }
-      currentExam = exam;
+      currentExam = btn.dataset.exam;
       document.querySelectorAll('.exam-switch-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     });
@@ -105,8 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => calcPress(btn.dataset.val));
   });
 
-  /* Pre-open subject sheet so student sees subjects immediately */
-  /* Actually just show the selected bar with English already there */
+  /* Initial render */
   renderSelectedBar();
   renderConfigCards();
 });
@@ -115,9 +105,9 @@ document.addEventListener('DOMContentLoaded', () => {
    SELECTED BAR
    ================================================================ */
 function renderSelectedBar() {
-  const pillsEl = document.getElementById('selectedPills');
-  const infoTop = document.getElementById('startInfoTop');
-  const infoSub = document.getElementById('startInfoSub');
+  const pillsEl  = document.getElementById('selectedPills');
+  const infoTop  = document.getElementById('startInfoTop');
+  const infoSub  = document.getElementById('startInfoSub');
   const startBtn = document.getElementById('startBtn');
 
   if (!pillsEl) return;
@@ -139,11 +129,11 @@ function renderSelectedBar() {
 }
 
 /* ================================================================
-   CONFIG CARDS (Year / Count per subject)
+   CONFIG CARDS
    ================================================================ */
 function renderConfigCards() {
-  const wrap = document.getElementById('configWrap');
-  const cards = document.getElementById('configCards');
+  const wrap    = document.getElementById('configWrap');
+  const cards   = document.getElementById('configCards');
   const optSect = document.getElementById('optionsSection');
 
   if (!wrap || !cards) return;
@@ -164,13 +154,11 @@ function renderConfigCards() {
     const cfg = subjectConfig[id] || { year: 'Random', count: 40 };
     subjectConfig[id] = cfg;
 
-    /* Year options */
     const yearOpts = ['Random', ...Array.from({length: 2026 - 1988 + 1}, (_,i) => String(2026 - i))];
     const yearSel  = yearOpts.map(y =>
       `<option value="${y}" ${cfg.year === y ? 'selected' : ''}>${y === 'Random' ? '🔀 Random (all years)' : y}</option>`
     ).join('');
 
-    /* Count options */
     const counts = [];
     for (let n = 10; n <= s.max; n += 10) counts.push(n);
     if (counts[counts.length-1] !== s.max) counts.push(s.max);
@@ -196,7 +184,6 @@ function renderConfigCards() {
       </div>`;
     cards.appendChild(card);
 
-    /* Wire config changes */
     card.querySelector('[data-field="year"]').addEventListener('change', e => {
       subjectConfig[id].year = e.target.value;
     });
@@ -204,11 +191,6 @@ function renderConfigCards() {
       subjectConfig[id].count = parseInt(e.target.value);
     });
     card.querySelector('[data-remove]').addEventListener('click', () => {
-      /* Cannot remove English if it's the only one */
-      if (id === 'english' && selectedIds.length === 1) {
-        showToast('English Language cannot be removed');
-        return;
-      }
       selectedIds = selectedIds.filter(x => x !== id);
       delete subjectConfig[id];
       renderSelectedBar();
@@ -222,7 +204,8 @@ function renderConfigCards() {
    ================================================================ */
 function openSheet() {
   pendingIds = [...selectedIds];
-  document.getElementById('sheetSearch').value = '';
+  const search = document.getElementById('sheetSearch');
+  if (search) search.value = '';
   renderSheetItems('');
   document.getElementById('sheetOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
@@ -234,16 +217,14 @@ function closeSheet() {
 }
 
 function confirmSheet() {
+  /* No subjects = just close without applying */
   if (pendingIds.length === 0) {
-    showToast('Select at least one subject');
+    showToast('Select at least one subject to continue');
     return;
   }
-  /* Ensure English is always first */
-  if (!pendingIds.includes('english')) pendingIds.unshift('english');
 
   selectedIds = [...pendingIds];
 
-  /* Init config for new subjects */
   selectedIds.forEach(id => {
     if (!subjectConfig[id]) {
       const s = ALL_SUBJECTS.find(x => x.id === id);
@@ -257,13 +238,12 @@ function confirmSheet() {
 }
 
 function toggleSelectAll() {
-  const q      = document.getElementById('sheetSearch').value.toLowerCase();
+  const q       = (document.getElementById('sheetSearch')?.value || '').toLowerCase();
   const visible = ALL_SUBJECTS.filter(s => s.name.toLowerCase().includes(q)).map(s => s.id);
   const allSelected = visible.every(id => pendingIds.includes(id));
 
   if (allSelected) {
-    /* Deselect all except English */
-    pendingIds = pendingIds.filter(id => !visible.includes(id) || id === 'english');
+    pendingIds = pendingIds.filter(id => !visible.includes(id));
     document.getElementById('sheetSelectAllBtn').textContent = 'Select All';
   } else {
     visible.forEach(id => { if (!pendingIds.includes(id)) pendingIds.push(id); });
@@ -273,7 +253,7 @@ function toggleSelectAll() {
 }
 
 function renderSheetItems(filter) {
-  const body    = document.getElementById('sheetBody');
+  const body = document.getElementById('sheetBody');
   if (!body) return;
   const q       = (filter || '').toLowerCase();
   const visible = ALL_SUBJECTS.filter(s => s.name.toLowerCase().includes(q));
@@ -281,16 +261,14 @@ function renderSheetItems(filter) {
   body.innerHTML = '';
   visible.forEach(s => {
     const checked = pendingIds.includes(s.id);
-    const isEnglish = s.id === 'english';
     const row = document.createElement('div');
     row.className = 'sheet-item' + (checked ? ' checked' : '');
     row.innerHTML = `
       <div class="sheet-item-icon">${s.icon}</div>
-      <div class="sheet-item-name">${s.name}${isEnglish ? ' <span style="font-size:10px;color:#0FA968;font-weight:700;">Required</span>' : ''}</div>
+      <div class="sheet-item-name">${s.name}</div>
       <div class="sheet-check">${checked ? '✓' : ''}</div>`;
 
     row.addEventListener('click', () => {
-      if (isEnglish) { showToast('English Language is required'); return; }
       if (pendingIds.includes(s.id)) {
         pendingIds = pendingIds.filter(id => id !== s.id);
         row.classList.remove('checked');
@@ -324,7 +302,6 @@ function startSession() {
     exam:     currentExam,
     h, m, shuffleQ, shuffleO
   });
-  ...
 
   selectedIds.forEach(id => {
     const cfg = subjectConfig[id] || {};
@@ -390,4 +367,4 @@ function showToast(msg) {
   if (!t) { t = document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); }
   t.textContent = msg; t.classList.add('show');
   clearTimeout(_tt); _tt = setTimeout(() => t.classList.remove('show'), 2500);
-}
+     }
