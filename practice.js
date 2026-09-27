@@ -1,15 +1,10 @@
 /* ============================================================
-   UTMESchools v2 — practice.js
-   Reads questions from new Supabase project.
-   Access code auth. SdashAPI-populated database.
+   UTMESchools v2 — practice.js (FIXED VERSION)
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
 
-/* ================================================================
-   PARSE URL PARAMS
-   ================================================================ */
 const urlP       = new URLSearchParams(window.location.search);
 const subjectIds = (urlP.get('subjects') || 'english').split(',');
 const mode       = urlP.get('mode') || 'practice';
@@ -18,37 +13,21 @@ const timerM     = parseInt(urlP.get('m') || '0', 10);
 const shuffleQ   = urlP.get('shuffleQ') !== '0';
 const examType   = urlP.get('exam') || 'jamb';
 
-/* ================================================================
-   CHECK ACCESS
-   ================================================================ */
 function getAccess() {
   const isPaid = localStorage.getItem('utme_is_paid') === 'true';
   const plan   = localStorage.getItem('utme_plan') || 'jamb';
   const expires = localStorage.getItem('utme_expires');
   const isExpired = expires && new Date(expires) < new Date();
-  return {
-    isPaid: isPaid && !isExpired,
-    plan,
-    freeLimit: 10
-  };
+  return { isPaid: isPaid && !isExpired, plan, freeLimit: 10 };
 }
 
-/* ================================================================
-   FETCH QUESTIONS FROM SUPABASE
-   ================================================================ */
 async function fetchQuestions(subjectId, year, count, topicsParam) {
   try {
     const access = getAccess();
     const limit  = access.isPaid ? count : access.freeLimit;
 
     let url = `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&exam_type=eq.${examType}&select=*&limit=${limit}`;
-
-    if (year && year !== 'Random') {
-      url += `&year=eq.${year}`;
-    }
-    if (topicsParam) {
-      /* Filter by topic — gets applied client-side after fetch */
-    }
+    if (year && year !== 'Random') url += `&year=eq.${year}`;
 
     const res = await fetch(url, {
       headers: {
@@ -58,14 +37,10 @@ async function fetchQuestions(subjectId, year, count, topicsParam) {
       }
     });
 
-    if (!res.ok) {
-      console.error('Supabase fetch error:', res.status);
-      return [];
-    }
+    if (!res.ok) { console.error('Supabase fetch error:', res.status); return []; }
 
     let questions = await res.json();
 
-    /* Filter by topics if selected */
     if (topicsParam) {
       const allowed = topicsParam.split('||');
       questions = questions.filter(q =>
@@ -73,7 +48,6 @@ async function fetchQuestions(subjectId, year, count, topicsParam) {
       );
     }
 
-    /* Map to app format */
     return questions.map(q => ({
       id:          String(q.id),
       subjectId:   q.subject_id,
@@ -90,16 +64,9 @@ async function fetchQuestions(subjectId, year, count, topicsParam) {
       image_file:  q.image_file || '',
       passage:     q.passage || '',
     }));
-
-  } catch(e) {
-    console.error('Fetch error:', e);
-    return [];
-  }
+  } catch(e) { console.error('Fetch error:', e); return []; }
 }
 
-/* ================================================================
-   DEMO QUESTIONS — shown when database is empty
-   ================================================================ */
 function getDemoQuestions(subjectId) {
   return [{
     id: 'demo_1', subjectId, year: 2025,
@@ -112,9 +79,6 @@ function getDemoQuestions(subjectId) {
   }];
 }
 
-/* ================================================================
-   STATE
-   ================================================================ */
 let allQuestions    = [];
 let currentQIndex   = 0;
 let answers         = {};
@@ -123,9 +87,6 @@ let showExplanation = false;
 
 try { bookmarks = JSON.parse(localStorage.getItem('utme_bookmarks') || '{}'); } catch(e) {}
 
-/* ================================================================
-   TIMER
-   ================================================================ */
 let totalSeconds  = (timerH * 3600) + (timerM * 60);
 let timerInterval = null;
 
@@ -154,12 +115,8 @@ function startTimer() {
   }, 1000);
 }
 
-/* ================================================================
-   LOAD ALL QUESTIONS
-   ================================================================ */
 async function loadAllQuestions() {
   showLoadingState(true);
-
   try {
     for (const sid of subjectIds) {
       const year       = urlP.get('year_'   + sid) || 'Random';
@@ -167,7 +124,6 @@ async function loadAllQuestions() {
       const topicParam = urlP.get('topics_' + sid) || '';
 
       let qs = await fetchQuestions(sid, year, count, topicParam);
-
       if (qs.length === 0) {
         qs = getDemoQuestions(sid);
         showToast('Demo mode — database is being populated');
@@ -181,16 +137,12 @@ async function loadAllQuestions() {
 
   if (allQuestions.length === 0) allQuestions = getDemoQuestions(subjectIds[0]);
 
-  /* Hide submit in study mode */
   if (mode === 'study') {
     document.getElementById('submitBtn').style.display = 'none';
   }
 
-  /* Show paywall banner if free user */
   const access = getAccess();
-  if (!access.isPaid) {
-    showFreeNotice(access.freeLimit);
-  }
+  if (!access.isPaid) showFreeNotice(access.freeLimit);
 
   showLoadingState(false);
   renderSubjectTabs();
@@ -218,9 +170,6 @@ function showLoadingState(loading) {
   }
 }
 
-/* ================================================================
-   SUBJECT TABS
-   ================================================================ */
 function renderSubjectTabs() {
   const container = document.getElementById('subjTabs');
   if (subjectIds.length <= 1) { container.style.display = 'none'; return; }
@@ -249,68 +198,79 @@ function updateSubjectTabs() {
     const el     = tab.querySelector('.subj-tab-count');
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
-}
-
+                     }
 /* ================================================================
-   RENDER QUESTION
+   RENDER QUESTION — FIXED
    ================================================================ */
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
   if (!q) return;
 
-  const qCard = document.getElementById('qCard');
-  if (!qCard.querySelector('#qMeta')) {
-    qCard.innerHTML = `
-      <div class="q-meta" id="qMeta"></div>
-      <div class="q-text" id="qText"></div>
-      <div class="q-svg"  id="qSvg"></div>`;
-  }
-
   document.getElementById('qLabel').textContent = `Q ${currentQIndex + 1} / ${allQuestions.length}`;
 
-  const metaEl = document.getElementById('qMeta');
-  metaEl.innerHTML = '';
-  if (q.topic)      metaEl.innerHTML += `<span class="q-meta-tag">${q.topic}</span>`;
-  if (q.year)       metaEl.innerHTML += `<span class="q-meta-tag">📅 ${q.year}</span>`;
-  if (q.difficulty) metaEl.innerHTML += `<span class="q-meta-tag">${q.difficulty}</span>`;
-  if (q.examType)   metaEl.innerHTML += `<span class="q-meta-tag">${q.examType.toUpperCase()}</span>`;
+  const tagsEl = document.getElementById('qTags');
+  if (tagsEl) {
+    tagsEl.innerHTML = '';
+    if (q.topic)      tagsEl.innerHTML += `<span class="q-tag topic">${q.topic}</span>`;
+    if (q.year)       tagsEl.innerHTML += `<span class="q-tag year">📅 ${q.year}</span>`;
+    if (q.difficulty) tagsEl.innerHTML += `<span class="q-tag difficulty-${(q.difficulty||'').toLowerCase()}">${q.difficulty}</span>`;
+    if (q.examType)   tagsEl.innerHTML += `<span class="q-tag">${q.examType.toUpperCase()}</span>`;
+  }
 
-  document.getElementById('qText').textContent = q.text;
+  const qTextEl = document.getElementById('qText');
+  if (qTextEl) qTextEl.textContent = q.text;
 
-  const svgEl = document.getElementById('qSvg');
-  if (q.svg_code)       svgEl.innerHTML = q.svg_code;
-  else if (q.image_file) svgEl.innerHTML = `<img src="images/${q.image_file}" alt="Diagram" style="max-width:100%;border-radius:8px;margin-top:8px;">`;
-  else svgEl.innerHTML = '';
+  const imgEl = document.getElementById('qImage');
+  if (imgEl) {
+    if (q.svg_code) {
+      imgEl.innerHTML = q.svg_code;
+      imgEl.style.display = 'block';
+    } else if (q.image_file) {
+      imgEl.innerHTML = `<img src="images/${q.image_file}" alt="Diagram" style="max-width:100%;border-radius:8px;margin-top:8px;">`;
+      imgEl.style.display = 'block';
+    } else {
+      imgEl.innerHTML = '';
+      imgEl.style.display = 'none';
+    }
+  }
 
-  const passCard = document.getElementById('passageCard');
-  if (q.passage) {
-    document.getElementById('passageText').textContent = q.passage;
-    passCard.classList.add('visible');
-  } else {
-    passCard.classList.remove('visible');
+  /* FIXED: passageBox + class "show" */
+  const passCard = document.getElementById('passageBox');
+  if (passCard) {
+    if (q.passage) {
+      const passTextEl = document.getElementById('passageText');
+      if (passTextEl) passTextEl.textContent = q.passage;
+      passCard.classList.add('show');
+    } else {
+      passCard.classList.remove('show');
+    }
   }
 
   renderOptions(q);
 
   document.getElementById('prevBtn').disabled = currentQIndex === 0;
   document.getElementById('nextBtn').disabled = currentQIndex === allQuestions.length - 1;
-  document.getElementById('bookmarkBtn').style.color = bookmarks[q.id] ? 'var(--gold)' : '';
+  const bkBtn = document.getElementById('bookmarkBtn');
+  if (bkBtn) bkBtn.style.color = bookmarks[q.id] ? 'var(--gold)' : '';
 
-  const studyActions = document.getElementById('studyActions');
-  const explanBox    = document.getElementById('explanationBox');
+  /* FIXED: showAnswerWrap + class "show" */
+  const studyWrap = document.getElementById('showAnswerWrap');
+  const explanBox = document.getElementById('explanationBox');
 
-  if (mode === 'study') {
-    studyActions.classList.add('visible');
-    document.getElementById('showAnswerBtn').textContent = showExplanation ? '🙈 Hide Answer' : '👁️ Show Answer';
-    if (showExplanation) {
-      explanBox.classList.add('visible');
-      document.getElementById('explanationText').textContent = q.explanation || 'No explanation available.';
-    } else {
-      explanBox.classList.remove('visible');
+  if (mode === 'study' && studyWrap) {
+    studyWrap.classList.add('show');
+    const saBtn = document.getElementById('showAnswerBtn');
+    if (saBtn) saBtn.textContent = showExplanation ? '🙈 Hide Answer' : '👁️ Show Answer';
+    if (showExplanation && explanBox) {
+      explanBox.classList.add('show');
+      const explText = document.getElementById('explanationText');
+      if (explText) explText.textContent = q.explanation || 'No explanation available.';
+    } else if (explanBox) {
+      explanBox.classList.remove('show');
     }
   } else {
-    studyActions.classList.remove('visible');
-    explanBox.classList.remove('visible');
+    if (studyWrap) studyWrap.classList.remove('show');
+    if (explanBox) explanBox.classList.remove('show');
   }
 
   document.getElementById('answeredCount').textContent = Object.keys(answers).length;
@@ -320,21 +280,20 @@ function renderQuestion() {
 }
 
 /* ================================================================
-   RENDER OPTIONS
-   Practice/Mock: show selection only. Never show correct/wrong.
-   Study + showExplanation: green = correct, red = wrong.
-   All modes: always changeable.
+   RENDER OPTIONS — FIXED
    ================================================================ */
 function renderOptions(q) {
   const list    = document.getElementById('optionsList');
   const letters = ['A','B','C','D','E'];
   const userAns = answers[q.id];
 
+  if (!list) return;
   list.innerHTML = '';
+
   (q.options || []).forEach((opt, i) => {
     const letter = letters[i];
     const row    = document.createElement('div');
-    row.className = 'option-row';
+    row.className = 'option-btn';
 
     if (mode === 'study' && showExplanation) {
       if (letter === q.correct)    row.classList.add('correct');
@@ -345,7 +304,7 @@ function renderOptions(q) {
     }
 
     row.innerHTML = `
-      <div class="option-letter">${letter}</div>
+      <div class="option-letter-box">${letter}</div>
       <div class="option-text">${opt}</div>`;
 
     row.addEventListener('click', () => selectAnswer(q, letter));
@@ -359,9 +318,6 @@ function selectAnswer(q, letter) {
   renderQuestion();
 }
 
-/* ================================================================
-   NAVIGATION
-   ================================================================ */
 function goToQuestion(index) {
   if (index < 0 || index >= allQuestions.length) return;
   showExplanation = false;
@@ -370,9 +326,6 @@ function goToQuestion(index) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* ================================================================
-   BOOKMARK
-   ================================================================ */
 function toggleBookmark() {
   const q = allQuestions[currentQIndex];
   if (!q) return;
@@ -389,12 +342,10 @@ function toggleBookmark() {
     showToast('Question bookmarked ⭐');
   }
   try { localStorage.setItem('utme_bookmarks', JSON.stringify(bookmarks)); } catch(e) {}
-  document.getElementById('bookmarkBtn').style.color = bookmarks[q.id] ? 'var(--gold)' : '';
+  const bkBtn = document.getElementById('bookmarkBtn');
+  if (bkBtn) bkBtn.style.color = bookmarks[q.id] ? 'var(--gold)' : '';
 }
 
-/* ================================================================
-   GRID
-   ================================================================ */
 function openGrid() {
   const grid = document.getElementById('gridNums');
   grid.innerHTML = '';
@@ -411,9 +362,6 @@ function openGrid() {
 }
 function closeGrid() { document.getElementById('gridOverlay').classList.remove('open'); }
 
-/* ================================================================
-   SUBMIT
-   ================================================================ */
 function openSubmitDialog() {
   const answered = Object.keys(answers).length;
   const total    = allQuestions.length;
@@ -469,9 +417,6 @@ function buildResult(saveToHistory) {
 function submitExam()  { buildResult(mode === 'practice'); }
 function finishStudy() { buildResult(false); }
 
-/* ================================================================
-   CALCULATOR
-   ================================================================ */
 let calcDisplay = '0', calcExpr = '', calcJustEvaled = false;
 function openCalc()  { document.getElementById('calcOverlay').classList.add('open'); }
 function closeCalc() { document.getElementById('calcOverlay').classList.remove('open'); }
@@ -502,9 +447,6 @@ function calcPress(val) {
   updateCalcDisplay();
 }
 
-/* ================================================================
-   TOAST
-   ================================================================ */
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -514,9 +456,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-/* ================================================================
-   TEXT TO SPEECH
-   ================================================================ */
 function speakQuestion() {
   const q = allQuestions[currentQIndex];
   if (!q || !window.speechSynthesis) { showToast('Text-to-speech not supported'); return; }
@@ -526,11 +465,9 @@ function speakQuestion() {
   speechSynthesis.speak(utt);
 }
 
-/* ================================================================
-   KEYBOARD SHORTCUTS
-   ================================================================ */
 document.addEventListener('keydown', e => {
-  if (document.getElementById('calcOverlay').classList.contains('open')) return;
+  const calcOv = document.getElementById('calcOverlay');
+  if (calcOv && calcOv.classList.contains('open')) return;
   if (e.key === 'ArrowRight') goToQuestion(currentQIndex + 1);
   if (e.key === 'ArrowLeft')  goToQuestion(currentQIndex - 1);
   const q = allQuestions[currentQIndex];
@@ -541,9 +478,6 @@ document.addEventListener('keydown', e => {
   if (e.key === '4') selectAnswer(q, 'D');
 });
 
-/* ================================================================
-   DOMContentLoaded
-   ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('backBtn').addEventListener('click', () => {
     if (confirm('Leave? Your progress will be lost.')) {
@@ -560,7 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('calcOverlay').addEventListener('click', e => {
     if (e.target === document.getElementById('calcOverlay')) closeCalc();
   });
-  document.querySelectorAll('.calc-btn').forEach(btn => {
+  document.querySelectorAll('.calc-key').forEach(btn => {
     btn.addEventListener('click', () => calcPress(btn.dataset.val));
   });
   document.getElementById('speakerBtn').addEventListener('click', speakQuestion);
