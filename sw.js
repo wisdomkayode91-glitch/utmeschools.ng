@@ -3,7 +3,7 @@
    Service Worker. Makes the app work offline.
    ============================================================ */
 
-const CACHE_NAME = 'utmeschools-v2';
+const CACHE_NAME = 'utmeschools-v3';
 
 /* Files to cache immediately when app is installed */
 const CORE_FILES = [
