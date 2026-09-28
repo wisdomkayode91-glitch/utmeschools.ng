@@ -1,37 +1,37 @@
 /* ============================================================
    UTMESchools v2 — select-subjects.js
-   Clean version. No topic picker. English auto-selected.
-   27 SdashAPI subjects. Shuffle options.
+   English auto-selected but removable.
+   27 subjects. English capped at 60, others at 40.
    ============================================================ */
 
 const ALL_SUBJECTS = [
   { id:'english',            name:'English Language',   icon:'🔤', max:60  },
-  { id:'mathematics',        name:'Mathematics',        icon:'📐', max:60  },
-  { id:'english-literature', name:'Literature',         icon:'📚', max:60  },
-  { id:'biology',            name:'Biology',            icon:'🧬', max:60  },
-  { id:'chemistry',          name:'Chemistry',          icon:'⚗️', max:60  },
-  { id:'physics',            name:'Physics',            icon:'⚛️', max:60  },
-  { id:'agriculture',        name:'Agriculture',        icon:'🌾', max:60  },
-  { id:'accounting',         name:'Accounting',         icon:'🧾', max:60  },
-  { id:'commerce',           name:'Commerce',           icon:'🛒', max:60  },
-  { id:'economics',          name:'Economics',          icon:'📈', max:60  },
-  { id:'government',         name:'Government',         icon:'🏛️', max:60  },
-  { id:'geography',          name:'Geography',          icon:'🌍', max:60  },
-  { id:'geology',            name:'Geology',            icon:'🪨', max:60  },
-  { id:'history',            name:'History',            icon:'🏺', max:60  },
-  { id:'civic-education',    name:'Civic Education',    icon:'🏛️', max:60  },
-  { id:'current-affairs',    name:'Current Affairs',    icon:'📰', max:60  },
-  { id:'computer-studies',   name:'Computer Studies',   icon:'💻', max:60  },
-  { id:'crk',                name:'CRK',                icon:'✝️', max:60  },
-  { id:'irk',                name:'IRK',                icon:'☪️', max:60  },
-  { id:'insurance',          name:'Insurance',          icon:'📋', max:60  },
-  { id:'home-economics',     name:'Home Economics',     icon:'🏠', max:60  },
-  { id:'fine-art',           name:'Fine Art',           icon:'🎨', max:60  },
-  { id:'music',              name:'Music',              icon:'🎵', max:60  },
-  { id:'arabic-studies',     name:'Arabic Studies',     icon:'🕌', max:60  },
-  { id:'hausa',              name:'Hausa',              icon:'📜', max:60  },
-  { id:'igbo',               name:'Igbo',               icon:'📖', max:60  },
-  { id:'yoruba',             name:'Yoruba',             icon:'🌺', max:60  },
+  { id:'mathematics',        name:'Mathematics',        icon:'📐', max:40  },
+  { id:'english-literature', name:'Literature',         icon:'📚', max:40  },
+  { id:'biology',            name:'Biology',            icon:'🧬', max:40  },
+  { id:'chemistry',          name:'Chemistry',          icon:'⚗️', max:40  },
+  { id:'physics',            name:'Physics',            icon:'⚛️', max:40  },
+  { id:'agriculture',        name:'Agriculture',        icon:'🌾', max:40  },
+  { id:'accounting',         name:'Accounting',         icon:'🧾', max:40  },
+  { id:'commerce',           name:'Commerce',           icon:'🛒', max:40  },
+  { id:'economics',          name:'Economics',          icon:'📈', max:40  },
+  { id:'government',         name:'Government',         icon:'🏛️', max:40  },
+  { id:'geography',          name:'Geography',          icon:'🌍', max:40  },
+  { id:'geology',            name:'Geology',            icon:'🪨', max:40  },
+  { id:'history',            name:'History',            icon:'🏺', max:40  },
+  { id:'civic-education',    name:'Civic Education',    icon:'🏛️', max:40  },
+  { id:'current-affairs',    name:'Current Affairs',    icon:'📰', max:40  },
+  { id:'computer-studies',   name:'Computer Studies',   icon:'💻', max:40  },
+  { id:'crk',                name:'CRK',                icon:'✝️', max:40  },
+  { id:'irk',                name:'IRK',                icon:'☪️', max:40  },
+  { id:'insurance',          name:'Insurance',          icon:'📋', max:40  },
+  { id:'home-economics',     name:'Home Economics',     icon:'🏠', max:40  },
+  { id:'fine-art',           name:'Fine Art',           icon:'🎨', max:40  },
+  { id:'music',              name:'Music',              icon:'🎵', max:40  },
+  { id:'arabic-studies',     name:'Arabic Studies',     icon:'🕌', max:40  },
+  { id:'hausa',              name:'Hausa',              icon:'📜', max:40  },
+  { id:'igbo',               name:'Igbo',               icon:'📖', max:40  },
+  { id:'yoruba',             name:'Yoruba',             icon:'🌺', max:40  },
 ];
 
 /* ---- State ---- */
@@ -167,11 +167,13 @@ function renderConfigCards() {
     const cfg = subjectConfig[id] || { year: 'Random', count: 40 };
     subjectConfig[id] = cfg;
 
+    /* Year options */
     const yearOpts = ['Random', ...Array.from({length: 2026 - 1988 + 1}, (_,i) => String(2026 - i))];
     const yearSel  = yearOpts.map(y =>
       `<option value="${y}" ${cfg.year === y ? 'selected' : ''}>${y === 'Random' ? '🔀 Random (all years)' : y}</option>`
     ).join('');
 
+    /* Count options (10 up to max, in steps of 10) */
     const counts = [];
     for (let n = 10; n <= s.max; n += 10) counts.push(n);
     if (counts[counts.length-1] !== s.max) counts.push(s.max);
