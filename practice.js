@@ -1,13 +1,11 @@
 /* ============================================================
-   UTMESchools v2 — practice.js  (FULLY FIXED)
+   UTMESchools v2 — practice.js  (FINAL — section_instruction)
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
 
-/* ================================================================
-   URL PARAMS
-   ================================================================ */
+/* URL PARAMS */
 const urlP             = new URLSearchParams(window.location.search);
 const subjectIds       = (urlP.get('subjects') || 'english').split(',');
 const mode             = urlP.get('mode') || 'practice';
@@ -20,26 +18,16 @@ const filterLiterature = urlP.get('filter_literature') === '1';
 const topicsParam      = urlP.get('topics') || '';
 const subtopicsParam   = urlP.get('subtopics') || '';
 
-/* ================================================================
-   ACCESS
-   ================================================================ */
+/* ACCESS */
 function getAccess() {
-  /* ⚠️ TEMPORARY: Paywall disabled for testing. */
-  /* Restore the original body before launch (see comment below). */
-  return { isPaid: true, plan: 'jamb', freeLimit: 9999 };
-
-  /* ORIGINAL (uncomment before launch):
   const isPaid  = localStorage.getItem('utme_is_paid') === 'true';
   const plan    = localStorage.getItem('utme_plan') || 'jamb';
   const expires = localStorage.getItem('utme_expires');
   const isExpired = expires && new Date(expires) < new Date();
   return { isPaid: isPaid && !isExpired, plan, freeLimit: 10 };
-  */
 }
 
-/* ================================================================
-   FETCH QUESTIONS
-   ================================================================ */
+/* FETCH QUESTIONS */
 async function fetchQuestions(subjectId, year, count, topicParam) {
   try {
     const access = getAccess();
@@ -60,7 +48,6 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
 
     let questions = await res.json();
 
-    /* Filter by URL-level topics param (from topic tree) */
     if (topicsParam) {
       const allowed = topicsParam.split('||');
       questions = questions.filter(q => allowed.includes(q.topic));
@@ -69,16 +56,12 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
       const allowed = subtopicsParam.split('||');
       questions = questions.filter(q => allowed.includes(q.subtopic));
     }
-
-    /* Filter by per-subject topic param (legacy) */
     if (topicParam) {
       const allowed = topicParam.split('||');
       questions = questions.filter(q =>
         allowed.some(t => q.topic === t || (q.topic + ' : ' + q.subtopic) === t)
       );
     }
-
-    /* Filter literature-only when requested */
     if (filterLiterature && typeof LITERATURE_CONFIG !== 'undefined') {
       questions = questions.filter(q => {
         const text = ((q.topic || '') + ' ' + (q.subtopic || '') + ' ' + (q.passage || '')).toLowerCase();
@@ -89,27 +72,26 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
     }
 
     return questions.map(q => ({
-      id:          String(q.id),
-      subjectId:   q.subject_id,
-      examType:    q.exam_type,
-      year:        q.year,
-      topic:       q.topic || '',
-      subtopic:    q.subtopic || '',
-      difficulty:  q.difficulty || 'Intermediate',
-      text:        q.text,
-      options:     [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
-      correct:     q.correct,
-      explanation: q.explanation || '',
-      svg_code:    q.svg_code || '',
-      image_file:  q.image_file || '',
-      passage:     q.passage || '',
+      id:                 String(q.id),
+      subjectId:          q.subject_id,
+      examType:           q.exam_type,
+      year:               q.year,
+      topic:              q.topic || '',
+      subtopic:           q.subtopic || '',
+      difficulty:         q.difficulty || 'Intermediate',
+      text:               q.text,
+      options:            [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
+      correct:            q.correct,
+      explanation:        q.explanation || '',
+      svg_code:           q.svg_code || '',
+      image_file:         q.image_file || '',
+      passage:            q.passage || '',
+      sectionInstruction: q.section_instruction || '',
     }));
   } catch(e) { console.error('Fetch error:', e); return []; }
 }
 
-/* ================================================================
-   DEMO FALLBACK
-   ================================================================ */
+/* DEMO */
 function getDemoQuestions(subjectId) {
   return [{
     id: 'demo_1', subjectId, year: 2025,
@@ -118,13 +100,11 @@ function getDemoQuestions(subjectId) {
     options: ['Option A', 'Option B', 'Option C', 'Option D'],
     correct: 'A',
     explanation: 'Real questions from SdashAPI will appear here once the database is seeded.',
-    svg_code: '', image_file: '', passage: ''
+    svg_code: '', image_file: '', passage: '', sectionInstruction: ''
   }];
 }
 
-/* ================================================================
-   STATE
-   ================================================================ */
+/* STATE */
 let allQuestions    = [];
 let currentQIndex   = 0;
 let answers         = {};
@@ -133,9 +113,7 @@ let showExplanation = false;
 
 try { bookmarks = JSON.parse(localStorage.getItem('utme_bookmarks') || '{}'); } catch(e) {}
 
-/* ================================================================
-   TIMER
-   ================================================================ */
+/* TIMER */
 let totalSeconds  = (timerH * 3600) + (timerM * 60);
 let timerInterval = null;
 
@@ -164,9 +142,7 @@ function startTimer() {
   }, 1000);
 }
 
-/* ================================================================
-   SHUFFLE OPTIONS HELPER
-   ================================================================ */
+/* SHUFFLE OPTIONS */
 function shuffleQuestionOptions(q) {
   if (!q.options || q.options.length < 2) return q;
   const letters = ['A','B','C','D','E'];
@@ -187,9 +163,7 @@ function shuffleQuestionOptions(q) {
   };
 }
 
-/* ================================================================
-   LOAD ALL QUESTIONS
-   ================================================================ */
+/* LOAD */
 async function loadAllQuestions() {
   showLoadingState(true);
 
@@ -235,9 +209,7 @@ function showFreeNotice(limit) {
   document.body.insertBefore(banner, document.body.firstChild);
 }
 
-/* ================================================================
-   LOADING STATE — FIXED (restores qCard on false)
-   ================================================================ */
+/* LOADING STATE */
 function showLoadingState(loading) {
   const qCard = document.getElementById('qCard');
   if (!qCard) return;
@@ -252,7 +224,6 @@ function showLoadingState(loading) {
     const opts = document.getElementById('optionsList');
     if (opts) opts.innerHTML = '';
   } else {
-    /* Restore original structure so renderQuestion can find its elements */
     qCard.innerHTML = `
       <div class="q-tags"  id="qTags"></div>
       <div class="q-text"  id="qText">Loading question...</div>
@@ -260,9 +231,7 @@ function showLoadingState(loading) {
   }
 }
 
-/* ================================================================
-   SUBJECT TABS
-   ================================================================ */
+/* SUBJECT TABS */
 function renderSubjectTabs() {
   const container = document.getElementById('subjTabs');
   if (!container) return;
@@ -293,7 +262,7 @@ function updateSubjectTabs() {
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
   }/* ================================================================
-   RENDER QUESTION
+   RENDER QUESTION — with section instruction
    ================================================================ */
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
@@ -314,6 +283,25 @@ function renderQuestion() {
     if (q.year)       tagsEl.innerHTML += `<span class="q-tag year">📅 ${q.year}</span>`;
     if (q.difficulty) tagsEl.innerHTML += `<span class="q-tag difficulty-${(q.difficulty||'').toLowerCase()}">${q.difficulty}</span>`;
     if (q.examType)   tagsEl.innerHTML += `<span class="q-tag">${q.examType.toUpperCase()}</span>`;
+  }
+
+  /* Section instruction (above question) */
+  let instrEl = document.getElementById('qInstruction');
+  if (!instrEl) {
+    instrEl = document.createElement('div');
+    instrEl.id = 'qInstruction';
+    instrEl.style.cssText = 'font-size:12.5px;color:#5C6B82;line-height:1.5;margin-bottom:10px;padding:8px 12px;background:#F4F6FA;border-left:3px solid #8A94A6;border-radius:6px;display:none;';
+    const qTextEl = document.getElementById('qText');
+    if (qTextEl && qTextEl.parentNode) {
+      qTextEl.parentNode.insertBefore(instrEl, qTextEl);
+    }
+  }
+  if (q.sectionInstruction && q.sectionInstruction.trim()) {
+    instrEl.textContent = q.sectionInstruction;
+    instrEl.style.display = 'block';
+  } else {
+    instrEl.textContent = '';
+    instrEl.style.display = 'none';
   }
 
   /* Question text */
@@ -339,10 +327,10 @@ function renderQuestion() {
     }
   }
 
-  /* Passage */
+  /* Passage (only real passages) */
   const passCard = document.getElementById('passageBox');
   if (passCard) {
-    if (q.passage) {
+    if (q.passage && q.passage.trim()) {
       const passTextEl = document.getElementById('passageText');
       if (passTextEl) {
         passTextEl.textContent = (typeof applyLiteratureReplacement === 'function')
@@ -362,7 +350,7 @@ function renderQuestion() {
   const bkBtn = document.getElementById('bookmarkBtn');
   if (bkBtn) bkBtn.style.color = bookmarks[q.id] ? 'var(--gold)' : '';
 
-  /* Study mode controls */
+  /* Study mode */
   const studyWrap = document.getElementById('showAnswerWrap');
   const explanBox = document.getElementById('explanationBox');
 
@@ -392,9 +380,7 @@ function renderQuestion() {
   updateSubjectTabs();
 }
 
-/* ================================================================
-   RENDER OPTIONS
-   ================================================================ */
+/* RENDER OPTIONS */
 function renderOptions(q) {
   const list    = document.getElementById('optionsList');
   const letters = ['A','B','C','D','E'];
@@ -435,9 +421,7 @@ function selectAnswer(q, letter) {
   renderQuestion();
 }
 
-/* ================================================================
-   NAVIGATION
-   ================================================================ */
+/* NAVIGATION */
 function goToQuestion(index) {
   if (index < 0 || index >= allQuestions.length) return;
   showExplanation = false;
@@ -446,9 +430,7 @@ function goToQuestion(index) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* ================================================================
-   BOOKMARK
-   ================================================================ */
+/* BOOKMARK */
 function toggleBookmark() {
   const q = allQuestions[currentQIndex];
   if (!q) return;
@@ -469,9 +451,7 @@ function toggleBookmark() {
   if (bkBtn) bkBtn.style.color = bookmarks[q.id] ? 'var(--gold)' : '';
 }
 
-/* ================================================================
-   GRID
-   ================================================================ */
+/* GRID */
 function openGrid() {
   const grid = document.getElementById('gridNums');
   grid.innerHTML = '';
@@ -488,9 +468,7 @@ function openGrid() {
 }
 function closeGrid() { document.getElementById('gridOverlay').classList.remove('open'); }
 
-/* ================================================================
-   SUBMIT
-   ================================================================ */
+/* SUBMIT */
 function openSubmitDialog() {
   const answered = Object.keys(answers).length;
   const total    = allQuestions.length;
@@ -546,9 +524,7 @@ function buildResult(saveToHistory) {
 function submitExam()  { buildResult(mode === 'practice'); }
 function finishStudy() { buildResult(false); }
 
-/* ================================================================
-   CALCULATOR
-   ================================================================ */
+/* CALCULATOR */
 let calcDisplay = '0', calcExpr = '', calcJustEvaled = false;
 function openCalc()  { document.getElementById('calcOverlay').classList.add('open'); }
 function closeCalc() { document.getElementById('calcOverlay').classList.remove('open'); }
@@ -579,9 +555,7 @@ function calcPress(val) {
   updateCalcDisplay();
 }
 
-/* ================================================================
-   TOAST
-   ================================================================ */
+/* TOAST */
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -591,9 +565,7 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-/* ================================================================
-   TEXT TO SPEECH
-   ================================================================ */
+/* TEXT TO SPEECH */
 function speakQuestion() {
   const q = allQuestions[currentQIndex];
   if (!q || !window.speechSynthesis) { showToast('Text-to-speech not supported'); return; }
@@ -603,9 +575,7 @@ function speakQuestion() {
   speechSynthesis.speak(utt);
 }
 
-/* ================================================================
-   KEYBOARD SHORTCUTS
-   ================================================================ */
+/* KEYBOARD */
 document.addEventListener('keydown', e => {
   const calcOv = document.getElementById('calcOverlay');
   if (calcOv && calcOv.classList.contains('open')) return;
@@ -619,9 +589,7 @@ document.addEventListener('keydown', e => {
   if (e.key === '4') selectAnswer(q, 'D');
 });
 
-/* ================================================================
-   DOMContentLoaded
-   ================================================================ */
+/* DOMContentLoaded */
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('backBtn').addEventListener('click', () => {
     if (confirm('Leave? Your progress will be lost.')) {
