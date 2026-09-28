@@ -1,27 +1,40 @@
 /* ============================================================
-   UTMESchools v2 — practice.js (FIXED VERSION)
+   UTMESchools v2 — practice.js  (FULLY FIXED)
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
 
-const urlP       = new URLSearchParams(window.location.search);
-const subjectIds = (urlP.get('subjects') || 'english').split(',');
-const mode       = urlP.get('mode') || 'practice';
-const timerH     = parseInt(urlP.get('h') || '2', 10);
-const timerM     = parseInt(urlP.get('m') || '0', 10);
-const shuffleQ   = urlP.get('shuffleQ') !== '0';
-const examType   = urlP.get('exam') || 'jamb';
+/* ================================================================
+   URL PARAMS
+   ================================================================ */
+const urlP             = new URLSearchParams(window.location.search);
+const subjectIds       = (urlP.get('subjects') || 'english').split(',');
+const mode             = urlP.get('mode') || 'practice';
+const timerH           = parseInt(urlP.get('h') || '2', 10);
+const timerM           = parseInt(urlP.get('m') || '0', 10);
+const shuffleQ         = urlP.get('shuffleQ') !== '0';
+const shuffleO         = urlP.get('shuffleO') === '1';
+const examType         = urlP.get('exam') || 'utme';
+const filterLiterature = urlP.get('filter_literature') === '1';
+const topicsParam      = urlP.get('topics') || '';
+const subtopicsParam   = urlP.get('subtopics') || '';
 
+/* ================================================================
+   ACCESS
+   ================================================================ */
 function getAccess() {
-  const isPaid = localStorage.getItem('utme_is_paid') === 'true';
-  const plan   = localStorage.getItem('utme_plan') || 'jamb';
+  const isPaid  = localStorage.getItem('utme_is_paid') === 'true';
+  const plan    = localStorage.getItem('utme_plan') || 'jamb';
   const expires = localStorage.getItem('utme_expires');
   const isExpired = expires && new Date(expires) < new Date();
   return { isPaid: isPaid && !isExpired, plan, freeLimit: 10 };
 }
 
-async function fetchQuestions(subjectId, year, count, topicsParam) {
+/* ================================================================
+   FETCH QUESTIONS
+   ================================================================ */
+async function fetchQuestions(subjectId, year, count, topicParam) {
   try {
     const access = getAccess();
     const limit  = access.isPaid ? count : access.freeLimit;
@@ -41,11 +54,32 @@ async function fetchQuestions(subjectId, year, count, topicsParam) {
 
     let questions = await res.json();
 
+    /* Filter by URL-level topics param (from topic tree) */
     if (topicsParam) {
       const allowed = topicsParam.split('||');
+      questions = questions.filter(q => allowed.includes(q.topic));
+    }
+    if (subtopicsParam) {
+      const allowed = subtopicsParam.split('||');
+      questions = questions.filter(q => allowed.includes(q.subtopic));
+    }
+
+    /* Filter by per-subject topic param (legacy) */
+    if (topicParam) {
+      const allowed = topicParam.split('||');
       questions = questions.filter(q =>
         allowed.some(t => q.topic === t || (q.topic + ' : ' + q.subtopic) === t)
       );
+    }
+
+    /* Filter literature-only when requested */
+    if (filterLiterature && typeof LITERATURE_CONFIG !== 'undefined') {
+      questions = questions.filter(q => {
+        const text = ((q.topic || '') + ' ' + (q.subtopic || '') + ' ' + (q.passage || '')).toLowerCase();
+        return LITERATURE_CONFIG.replaceWith.some(slug => text.includes(slug.replace(/-/g, ' ')))
+            || text.includes('lekki')
+            || text.includes('literature');
+      });
     }
 
     return questions.map(q => ({
@@ -67,6 +101,9 @@ async function fetchQuestions(subjectId, year, count, topicsParam) {
   } catch(e) { console.error('Fetch error:', e); return []; }
 }
 
+/* ================================================================
+   DEMO FALLBACK
+   ================================================================ */
 function getDemoQuestions(subjectId) {
   return [{
     id: 'demo_1', subjectId, year: 2025,
@@ -79,6 +116,9 @@ function getDemoQuestions(subjectId) {
   }];
 }
 
+/* ================================================================
+   STATE
+   ================================================================ */
 let allQuestions    = [];
 let currentQIndex   = 0;
 let answers         = {};
@@ -87,6 +127,9 @@ let showExplanation = false;
 
 try { bookmarks = JSON.parse(localStorage.getItem('utme_bookmarks') || '{}'); } catch(e) {}
 
+/* ================================================================
+   TIMER
+   ================================================================ */
 let totalSeconds  = (timerH * 3600) + (timerM * 60);
 let timerInterval = null;
 
@@ -105,8 +148,8 @@ function startTimer() {
   timerInterval = setInterval(() => {
     totalSeconds--;
     pill.textContent = formatTime(totalSeconds);
-    if (totalSeconds <= 300)      pill.className = 'timer-pill danger';
-    else if (totalSeconds <= 600) pill.className = 'timer-pill warn';
+    if (totalSeconds <= 300)      pill.className = 'tb-timer danger';
+    else if (totalSeconds <= 600) pill.className = 'tb-timer warn';
     if (totalSeconds <= 0) {
       clearInterval(timerInterval);
       showToast('Time up! Submitting...');
@@ -115,8 +158,35 @@ function startTimer() {
   }, 1000);
 }
 
+/* ================================================================
+   SHUFFLE OPTIONS HELPER
+   ================================================================ */
+function shuffleQuestionOptions(q) {
+  if (!q.options || q.options.length < 2) return q;
+  const letters = ['A','B','C','D','E'];
+  const correctIdx = letters.indexOf(q.correct);
+  if (correctIdx === -1 || correctIdx >= q.options.length) return q;
+
+  const pairs = q.options.map((text, i) => ({ text, original: i }));
+  for (let i = pairs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pairs[i], pairs[j]] = [pairs[j], pairs[i]];
+  }
+  const newCorrectIdx = pairs.findIndex(p => p.original === correctIdx);
+
+  return {
+    ...q,
+    options: pairs.map(p => p.text),
+    correct: letters[newCorrectIdx]
+  };
+}
+
+/* ================================================================
+   LOAD ALL QUESTIONS
+   ================================================================ */
 async function loadAllQuestions() {
   showLoadingState(true);
+
   try {
     for (const sid of subjectIds) {
       const year       = urlP.get('year_'   + sid) || 'Random';
@@ -124,12 +194,14 @@ async function loadAllQuestions() {
       const topicParam = urlP.get('topics_' + sid) || '';
 
       let qs = await fetchQuestions(sid, year, count, topicParam);
+
       if (qs.length === 0) {
         qs = getDemoQuestions(sid);
         showToast('Demo mode — database is being populated');
       }
 
       if (shuffleQ) qs.sort(() => Math.random() - 0.5);
+      if (shuffleO) qs = qs.map(shuffleQuestionOptions);
       qs.forEach((q, i) => { q.qNum = allQuestions.length + i + 1; q.subjectId = sid; });
       allQuestions.push(...qs);
     }
@@ -157,8 +229,13 @@ function showFreeNotice(limit) {
   document.body.insertBefore(banner, document.body.firstChild);
 }
 
+/* ================================================================
+   LOADING STATE — FIXED (restores qCard on false)
+   ================================================================ */
 function showLoadingState(loading) {
   const qCard = document.getElementById('qCard');
+  if (!qCard) return;
+
   if (loading) {
     qCard.innerHTML = `
       <div style="text-align:center;padding:40px 20px;">
@@ -166,9 +243,10 @@ function showLoadingState(loading) {
         <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px;">Loading questions...</div>
         <div style="font-size:13px;color:var(--ink-soft);">Please wait</div>
       </div>`;
-    document.getElementById('optionsList').innerHTML = '';
+    const opts = document.getElementById('optionsList');
+    if (opts) opts.innerHTML = '';
   } else {
-    /* ✅ RESTORE the original card structure so renderQuestion can find its elements */
+    /* Restore original structure so renderQuestion can find its elements */
     qCard.innerHTML = `
       <div class="q-tags"  id="qTags"></div>
       <div class="q-text"  id="qText">Loading question...</div>
@@ -176,9 +254,12 @@ function showLoadingState(loading) {
   }
 }
 
-
+/* ================================================================
+   SUBJECT TABS
+   ================================================================ */
 function renderSubjectTabs() {
   const container = document.getElementById('subjTabs');
+  if (!container) return;
   if (subjectIds.length <= 1) { container.style.display = 'none'; return; }
   subjectIds.forEach(sid => {
     const subjQs = allQuestions.filter(q => q.subjectId === sid);
@@ -205,9 +286,8 @@ function updateSubjectTabs() {
     const el     = tab.querySelector('.subj-tab-count');
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
-                     }
-/* ================================================================
-   RENDER QUESTION — FIXED
+  }/* ================================================================
+   RENDER QUESTION
    ================================================================ */
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
@@ -215,18 +295,30 @@ function renderQuestion() {
 
   document.getElementById('qLabel').textContent = `Q ${currentQIndex + 1} / ${allQuestions.length}`;
 
+  /* Tags */
   const tagsEl = document.getElementById('qTags');
   if (tagsEl) {
     tagsEl.innerHTML = '';
-    if (q.topic)      tagsEl.innerHTML += `<span class="q-tag topic">${q.topic}</span>`;
+    if (q.topic) {
+      const shownTopic = (typeof applyLiteratureReplacement === 'function')
+        ? applyLiteratureReplacement(q.topic, examType)
+        : q.topic;
+      tagsEl.innerHTML += `<span class="q-tag topic">${shownTopic}</span>`;
+    }
     if (q.year)       tagsEl.innerHTML += `<span class="q-tag year">📅 ${q.year}</span>`;
     if (q.difficulty) tagsEl.innerHTML += `<span class="q-tag difficulty-${(q.difficulty||'').toLowerCase()}">${q.difficulty}</span>`;
     if (q.examType)   tagsEl.innerHTML += `<span class="q-tag">${q.examType.toUpperCase()}</span>`;
   }
 
+  /* Question text */
   const qTextEl = document.getElementById('qText');
-  if (qTextEl) qTextEl.textContent = q.text;
+  if (qTextEl) {
+    qTextEl.textContent = (typeof applyLiteratureReplacement === 'function')
+      ? applyLiteratureReplacement(q.text, examType)
+      : q.text;
+  }
 
+  /* Image / SVG */
   const imgEl = document.getElementById('qImage');
   if (imgEl) {
     if (q.svg_code) {
@@ -241,12 +333,16 @@ function renderQuestion() {
     }
   }
 
-  /* FIXED: passageBox + class "show" */
+  /* Passage */
   const passCard = document.getElementById('passageBox');
   if (passCard) {
     if (q.passage) {
       const passTextEl = document.getElementById('passageText');
-      if (passTextEl) passTextEl.textContent = q.passage;
+      if (passTextEl) {
+        passTextEl.textContent = (typeof applyLiteratureReplacement === 'function')
+          ? applyLiteratureReplacement(q.passage, examType)
+          : q.passage;
+      }
       passCard.classList.add('show');
     } else {
       passCard.classList.remove('show');
@@ -260,7 +356,7 @@ function renderQuestion() {
   const bkBtn = document.getElementById('bookmarkBtn');
   if (bkBtn) bkBtn.style.color = bookmarks[q.id] ? 'var(--gold)' : '';
 
-  /* FIXED: showAnswerWrap + class "show" */
+  /* Study mode controls */
   const studyWrap = document.getElementById('showAnswerWrap');
   const explanBox = document.getElementById('explanationBox');
 
@@ -271,7 +367,11 @@ function renderQuestion() {
     if (showExplanation && explanBox) {
       explanBox.classList.add('show');
       const explText = document.getElementById('explanationText');
-      if (explText) explText.textContent = q.explanation || 'No explanation available.';
+      if (explText) {
+        explText.textContent = (typeof applyLiteratureReplacement === 'function')
+          ? applyLiteratureReplacement(q.explanation || 'No explanation available.', examType)
+          : (q.explanation || 'No explanation available.');
+      }
     } else if (explanBox) {
       explanBox.classList.remove('show');
     }
@@ -287,7 +387,7 @@ function renderQuestion() {
 }
 
 /* ================================================================
-   RENDER OPTIONS — FIXED
+   RENDER OPTIONS
    ================================================================ */
 function renderOptions(q) {
   const list    = document.getElementById('optionsList');
@@ -310,9 +410,13 @@ function renderOptions(q) {
       if (userAns === letter) row.classList.add('selected');
     }
 
+    const optText = (typeof applyLiteratureReplacement === 'function')
+      ? applyLiteratureReplacement(opt, examType)
+      : opt;
+
     row.innerHTML = `
       <div class="option-letter-box">${letter}</div>
-      <div class="option-text">${opt}</div>`;
+      <div class="option-text">${optText}</div>`;
 
     row.addEventListener('click', () => selectAnswer(q, letter));
     list.appendChild(row);
@@ -325,6 +429,9 @@ function selectAnswer(q, letter) {
   renderQuestion();
 }
 
+/* ================================================================
+   NAVIGATION
+   ================================================================ */
 function goToQuestion(index) {
   if (index < 0 || index >= allQuestions.length) return;
   showExplanation = false;
@@ -333,6 +440,9 @@ function goToQuestion(index) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+/* ================================================================
+   BOOKMARK
+   ================================================================ */
 function toggleBookmark() {
   const q = allQuestions[currentQIndex];
   if (!q) return;
@@ -353,6 +463,9 @@ function toggleBookmark() {
   if (bkBtn) bkBtn.style.color = bookmarks[q.id] ? 'var(--gold)' : '';
 }
 
+/* ================================================================
+   GRID
+   ================================================================ */
 function openGrid() {
   const grid = document.getElementById('gridNums');
   grid.innerHTML = '';
@@ -369,6 +482,9 @@ function openGrid() {
 }
 function closeGrid() { document.getElementById('gridOverlay').classList.remove('open'); }
 
+/* ================================================================
+   SUBMIT
+   ================================================================ */
 function openSubmitDialog() {
   const answered = Object.keys(answers).length;
   const total    = allQuestions.length;
@@ -424,6 +540,9 @@ function buildResult(saveToHistory) {
 function submitExam()  { buildResult(mode === 'practice'); }
 function finishStudy() { buildResult(false); }
 
+/* ================================================================
+   CALCULATOR
+   ================================================================ */
 let calcDisplay = '0', calcExpr = '', calcJustEvaled = false;
 function openCalc()  { document.getElementById('calcOverlay').classList.add('open'); }
 function closeCalc() { document.getElementById('calcOverlay').classList.remove('open'); }
@@ -454,6 +573,9 @@ function calcPress(val) {
   updateCalcDisplay();
 }
 
+/* ================================================================
+   TOAST
+   ================================================================ */
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -463,6 +585,9 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+/* ================================================================
+   TEXT TO SPEECH
+   ================================================================ */
 function speakQuestion() {
   const q = allQuestions[currentQIndex];
   if (!q || !window.speechSynthesis) { showToast('Text-to-speech not supported'); return; }
@@ -472,6 +597,9 @@ function speakQuestion() {
   speechSynthesis.speak(utt);
 }
 
+/* ================================================================
+   KEYBOARD SHORTCUTS
+   ================================================================ */
 document.addEventListener('keydown', e => {
   const calcOv = document.getElementById('calcOverlay');
   if (calcOv && calcOv.classList.contains('open')) return;
@@ -485,6 +613,9 @@ document.addEventListener('keydown', e => {
   if (e.key === '4') selectAnswer(q, 'D');
 });
 
+/* ================================================================
+   DOMContentLoaded
+   ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('backBtn').addEventListener('click', () => {
     if (confirm('Leave? Your progress will be lost.')) {
