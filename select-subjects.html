@@ -500,9 +500,7 @@ body { background: #F4F6FA; }
 .calc-key.clr { background:#FFF0EB; color:#C0392B; }
 </style>
 </head>
-<body>
-
-<!-- HERO -->
+<body><!-- HERO -->
 <div class="ss-hero">
   <div class="ss-hero-top">
     <a href="index.html" class="ss-back">←</a>
@@ -512,9 +510,9 @@ body { background: #F4F6FA; }
 
   <!-- Exam type selector -->
   <div class="exam-switcher">
-    <button class="exam-switch-btn active" data-exam="jamb" onclick="switchExam('jamb', this)">🎯 JAMB</button>
-    <button class="exam-switch-btn disabled" data-exam="postutme" onclick="switchExam('postutme', this)">🏛️ Post UTME <span style="font-size:9px;opacity:0.7;">Soon</span></button>
-    <button class="exam-switch-btn disabled" data-exam="waec" onclick="switchExam('waec', this)">📘 WAEC <span style="font-size:9px;opacity:0.7;">Soon</span></button>
+    <button class="exam-switch-btn active" data-exam="utme" onclick="switchExam('utme', this)">🎯 JAMB</button>
+    <button class="exam-switch-btn disabled" data-exam="post-utme" onclick="switchExam('post-utme', this)">🏛️ Post UTME <span style="font-size:9px;opacity:0.7;">Soon</span></button>
+    <button class="exam-switch-btn disabled" data-exam="wassce" onclick="switchExam('wassce', this)">📘 WAEC <span style="font-size:9px;opacity:0.7;">Soon</span></button>
     <button class="exam-switch-btn disabled" data-exam="neco" onclick="switchExam('neco', this)">📗 NECO <span style="font-size:9px;opacity:0.7;">Soon</span></button>
   </div>
 </div>
@@ -563,14 +561,14 @@ body { background: #F4F6FA; }
     </div>
 
     <div class="option-row-item">
-  <div class="option-row-label">🔀 Shuffle questions</div>
-  <div class="toggle-sw on" id="shuffleQToggle" onclick="this.classList.toggle('on')"></div>
-</div>
+      <div class="option-row-label">🔀 Shuffle questions</div>
+      <div class="toggle-sw on" id="shuffleQToggle" onclick="this.classList.toggle('on')"></div>
+    </div>
 
-<div class="option-row-item">
-  <div class="option-row-label">🎲 Shuffle options</div>
-  <div class="toggle-sw" id="shuffleOToggle" onclick="this.classList.toggle('on')"></div>
-</div>
+    <div class="option-row-item">
+      <div class="option-row-label">🎲 Shuffle options</div>
+      <div class="toggle-sw" id="shuffleOToggle" onclick="this.classList.toggle('on')"></div>
+    </div>
 
     <div class="option-row-item" style="border-top:1px solid #F4F6FA;">
       <div class="option-row-label">🧮 Calculator</div>
@@ -666,3 +664,4 @@ body { background: #F4F6FA; }
 <script src="select-subjects.js"></script>
 </body>
 </html>
+  
