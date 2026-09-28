@@ -24,11 +24,17 @@ const subtopicsParam   = urlP.get('subtopics') || '';
    ACCESS
    ================================================================ */
 function getAccess() {
+  /* ⚠️ TEMPORARY: Paywall disabled for testing. */
+  /* Restore the original body before launch (see comment below). */
+  return { isPaid: true, plan: 'jamb', freeLimit: 9999 };
+
+  /* ORIGINAL (uncomment before launch):
   const isPaid  = localStorage.getItem('utme_is_paid') === 'true';
   const plan    = localStorage.getItem('utme_plan') || 'jamb';
   const expires = localStorage.getItem('utme_expires');
   const isExpired = expires && new Date(expires) < new Date();
   return { isPaid: isPaid && !isExpired, plan, freeLimit: 10 };
+  */
 }
 
 /* ================================================================
