@@ -1,61 +1,78 @@
 /* ============================================================
-   UTMESchools v2 — select-subjects.js  (clean version)
-   No forced subjects. User picks freely.
+   UTMESchools v2 — select-subjects.js  (FULL CLEAN)
+   English auto-selected but removable.
+   27 SdashAPI subjects. Shuffle options support.
    ============================================================ */
 
 const ALL_SUBJECTS = [
-  { id:'english',     name:'English Language',     icon:'🔤', max:100 },
-  { id:'mathematics', name:'Mathematics',           icon:'📐', max:60  },
-  { id:'physics',     name:'Physics',               icon:'⚛️', max:60  },
-  { id:'chemistry',   name:'Chemistry',             icon:'⚗️', max:60  },
-  { id:'biology',     name:'Biology',               icon:'🧬', max:60  },
-  { id:'government',  name:'Government',            icon:'🏛️', max:60  },
-  { id:'economics',   name:'Economics',             icon:'📈', max:60  },
-  { id:'literature',  name:'Literature',            icon:'📚', max:60  },
-  { id:'geography',   name:'Geography',             icon:'🌍', max:60  },
-  { id:'commerce',    name:'Commerce',              icon:'🛒', max:60  },
-  { id:'accounts',    name:'Accounts',              icon:'🧾', max:60  },
-  { id:'agriculture', name:'Agriculture',           icon:'🌾', max:60  },
-  { id:'crk',         name:'CRK',                   icon:'✝️', max:60  },
-  { id:'irk',         name:'IRK',                   icon:'☪️', max:60  },
-  { id:'history',     name:'History',               icon:'🏺', max:60  },
-  { id:'computer',    name:'Computer Studies',      icon:'💻', max:60  },
-  { id:'french',      name:'French',                icon:'🇫🇷', max:60  },
-  { id:'hausa',       name:'Hausa',                 icon:'📜', max:60  },
-  { id:'igbo',        name:'Igbo',                  icon:'📖', max:60  },
-  { id:'yoruba',      name:'Yoruba',                icon:'🌺', max:60  },
+  { id:'english',            name:'English Language',   icon:'🔤', max:100 },
+  { id:'mathematics',        name:'Mathematics',        icon:'📐', max:60  },
+  { id:'english-literature', name:'Literature',         icon:'📚', max:60  },
+  { id:'biology',            name:'Biology',            icon:'🧬', max:60  },
+  { id:'chemistry',          name:'Chemistry',          icon:'⚗️', max:60  },
+  { id:'physics',            name:'Physics',            icon:'⚛️', max:60  },
+  { id:'agriculture',        name:'Agriculture',        icon:'🌾', max:60  },
+  { id:'accounting',         name:'Accounting',         icon:'🧾', max:60  },
+  { id:'commerce',           name:'Commerce',           icon:'🛒', max:60  },
+  { id:'economics',          name:'Economics',          icon:'📈', max:60  },
+  { id:'government',         name:'Government',         icon:'🏛️', max:60  },
+  { id:'geography',          name:'Geography',          icon:'🌍', max:60  },
+  { id:'geology',            name:'Geology',            icon:'🪨', max:60  },
+  { id:'history',            name:'History',            icon:'🏺', max:60  },
+  { id:'civic-education',    name:'Civic Education',    icon:'🏛️', max:60  },
+  { id:'current-affairs',    name:'Current Affairs',    icon:'📰', max:60  },
+  { id:'computer-studies',   name:'Computer Studies',   icon:'💻', max:60  },
+  { id:'crk',                name:'CRK',                icon:'✝️', max:60  },
+  { id:'irk',                name:'IRK',                icon:'☪️', max:60  },
+  { id:'insurance',          name:'Insurance',          icon:'📋', max:60  },
+  { id:'home-economics',     name:'Home Economics',     icon:'🏠', max:60  },
+  { id:'fine-art',           name:'Fine Art',           icon:'🎨', max:60  },
+  { id:'music',              name:'Music',              icon:'🎵', max:60  },
+  { id:'arabic-studies',     name:'Arabic Studies',     icon:'🕌', max:60  },
+  { id:'hausa',              name:'Hausa',              icon:'📜', max:60  },
+  { id:'igbo',               name:'Igbo',               icon:'📖', max:60  },
+  { id:'yoruba',             name:'Yoruba',             icon:'🌺', max:60  },
 ];
 
-/* ---- State — starts EMPTY ---- */
-let selectedIds   = [];
-let pendingIds    = [];
+/* ---- State — English preselected but removable ---- */
+let selectedIds   = ['english'];
+let pendingIds    = ['english'];
 let currentMode   = 'practice';
-let currentExam   = 'jamb';
-let subjectConfig = {};
+let currentExam   = 'utme';
+let subjectConfig = {
+  english: { year: 'Random', count: 40 }
+};
 
 /* ================================================================
    INIT
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
 
-  /* Wire selected bar — opens subject sheet */
+  /* Selected subjects bar — opens sheet on tap */
   const selectedBar = document.querySelector('.selected-bar');
   if (selectedBar) selectedBar.addEventListener('click', openSheet);
 
   /* Sheet buttons */
-  document.getElementById('sheetCancelBtn')?.addEventListener('click', closeSheet);
-  document.getElementById('sheetDoneBtn')?.addEventListener('click', confirmSheet);
-  document.getElementById('sheetSelectAllBtn')?.addEventListener('click', toggleSelectAll);
+  const sheetCancel = document.getElementById('sheetCancelBtn');
+  const sheetDone   = document.getElementById('sheetDoneBtn');
+  const sheetAll    = document.getElementById('sheetSelectAllBtn');
+  if (sheetCancel) sheetCancel.addEventListener('click', closeSheet);
+  if (sheetDone)   sheetDone.addEventListener('click', confirmSheet);
+  if (sheetAll)    sheetAll.addEventListener('click', toggleSelectAll);
 
   /* Search */
-  document.getElementById('sheetSearch')?.addEventListener('input', e => {
-    renderSheetItems(e.target.value);
-  });
+  const search = document.getElementById('sheetSearch');
+  if (search) {
+    search.addEventListener('input', e => renderSheetItems(e.target.value));
+  }
 
   /* Close sheet on overlay tap */
-  document.getElementById('sheetOverlay')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('sheetOverlay')) closeSheet();
-  });
+  const sheetOverlay = document.getElementById('sheetOverlay');
+  if (sheetOverlay) {
+    sheetOverlay.addEventListener('click', e => {
+      if (e.target === sheetOverlay) closeSheet();
+    });
+  }
 
   /* Mode buttons */
   document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -70,28 +87,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  /* Exam switcher */
+  /* Exam switcher buttons */
   document.querySelectorAll('.exam-switch-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const exam = btn.dataset.exam;
       if (btn.classList.contains('disabled')) {
         showToast('Coming soon! Focus on JAMB for now.');
         return;
       }
-      currentExam = btn.dataset.exam;
+      currentExam = exam;
       document.querySelectorAll('.exam-switch-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     });
   });
 
   /* Start button */
-  document.getElementById('startBtn')?.addEventListener('click', startSession);
+  const startBtn = document.getElementById('startBtn');
+  if (startBtn) startBtn.addEventListener('click', startSession);
 
   /* Calculator */
-  document.getElementById('calcOpenBtn')?.addEventListener('click', openCalc);
-  document.getElementById('calcCloseBtn')?.addEventListener('click', closeCalc);
-  document.getElementById('calcOverlay')?.addEventListener('click', e => {
-    if (e.target === document.getElementById('calcOverlay')) closeCalc();
-  });
+  const calcOpen  = document.getElementById('calcOpenBtn');
+  const calcClose = document.getElementById('calcCloseBtn');
+  const calcOv    = document.getElementById('calcOverlay');
+  if (calcOpen)  calcOpen.addEventListener('click', openCalc);
+  if (calcClose) calcClose.addEventListener('click', closeCalc);
+  if (calcOv) {
+    calcOv.addEventListener('click', e => {
+      if (e.target === calcOv) closeCalc();
+    });
+  }
   document.querySelectorAll('.calc-key').forEach(btn => {
     btn.addEventListener('click', () => calcPress(btn.dataset.val));
   });
@@ -149,16 +173,18 @@ function renderConfigCards() {
   cards.innerHTML = '';
 
   selectedIds.forEach(id => {
-    const s   = ALL_SUBJECTS.find(x => x.id === id);
+    const s = ALL_SUBJECTS.find(x => x.id === id);
     if (!s) return;
     const cfg = subjectConfig[id] || { year: 'Random', count: 40 };
     subjectConfig[id] = cfg;
 
+    /* Year options */
     const yearOpts = ['Random', ...Array.from({length: 2026 - 1988 + 1}, (_,i) => String(2026 - i))];
     const yearSel  = yearOpts.map(y =>
       `<option value="${y}" ${cfg.year === y ? 'selected' : ''}>${y === 'Random' ? '🔀 Random (all years)' : y}</option>`
     ).join('');
 
+    /* Count options */
     const counts = [];
     for (let n = 10; n <= s.max; n += 10) counts.push(n);
     if (counts[counts.length-1] !== s.max) counts.push(s.max);
@@ -184,12 +210,15 @@ function renderConfigCards() {
       </div>`;
     cards.appendChild(card);
 
+    /* Wire config changes */
     card.querySelector('[data-field="year"]').addEventListener('change', e => {
       subjectConfig[id].year = e.target.value;
     });
     card.querySelector('[data-field="count"]').addEventListener('change', e => {
       subjectConfig[id].count = parseInt(e.target.value);
     });
+
+    /* Remove subject — English is removable too */
     card.querySelector('[data-remove]').addEventListener('click', () => {
       selectedIds = selectedIds.filter(x => x !== id);
       delete subjectConfig[id];
@@ -207,17 +236,18 @@ function openSheet() {
   const search = document.getElementById('sheetSearch');
   if (search) search.value = '';
   renderSheetItems('');
-  document.getElementById('sheetOverlay').classList.add('open');
+  const sheetOverlay = document.getElementById('sheetOverlay');
+  if (sheetOverlay) sheetOverlay.classList.add('open');
   document.body.style.overflow = 'hidden';
 }
 
 function closeSheet() {
-  document.getElementById('sheetOverlay').classList.remove('open');
+  const sheetOverlay = document.getElementById('sheetOverlay');
+  if (sheetOverlay) sheetOverlay.classList.remove('open');
   document.body.style.overflow = '';
 }
 
 function confirmSheet() {
-  /* No subjects = just close without applying */
   if (pendingIds.length === 0) {
     showToast('Select at least one subject to continue');
     return;
@@ -244,10 +274,12 @@ function toggleSelectAll() {
 
   if (allSelected) {
     pendingIds = pendingIds.filter(id => !visible.includes(id));
-    document.getElementById('sheetSelectAllBtn').textContent = 'Select All';
+    const btn = document.getElementById('sheetSelectAllBtn');
+    if (btn) btn.textContent = 'Select All';
   } else {
     visible.forEach(id => { if (!pendingIds.includes(id)) pendingIds.push(id); });
-    document.getElementById('sheetSelectAllBtn').textContent = 'Deselect All';
+    const btn = document.getElementById('sheetSelectAllBtn');
+    if (btn) btn.textContent = 'Deselect All';
   }
   renderSheetItems(q);
 }
@@ -281,9 +313,7 @@ function renderSheetItems(filter) {
     });
     body.appendChild(row);
   });
-}
-
-/* ================================================================
+         }/* ================================================================
    START SESSION
    ================================================================ */
 function startSession() {
@@ -331,7 +361,10 @@ function switchExam(exam, btn) {
 let calcDisplay = '0', calcExpr = '', calcEvaled = false;
 function openCalc()  { document.getElementById('calcOverlay').classList.add('open'); }
 function closeCalc() { document.getElementById('calcOverlay').classList.remove('open'); }
-function updateCalcDisplay() { document.getElementById('calcDisplay').textContent = calcDisplay; }
+function updateCalcDisplay() {
+  const el = document.getElementById('calcDisplay');
+  if (el) el.textContent = calcDisplay;
+}
 function calcPress(val) {
   if (val === 'C') { calcDisplay = '0'; calcExpr = ''; calcEvaled = false; }
   else if (val === 'DEL') {
@@ -364,7 +397,14 @@ function calcPress(val) {
 let _tt;
 function showToast(msg) {
   let t = document.getElementById('toast');
-  if (!t) { t = document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); }
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(_tt); _tt = setTimeout(() => t.classList.remove('show'), 2500);
-     }
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_tt);
+  _tt = setTimeout(() => t.classList.remove('show'), 2500);
+}
