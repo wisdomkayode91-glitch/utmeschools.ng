@@ -658,7 +658,24 @@ body { background: #F4F6FA; }
   </div>
   <button class="start-btn" id="startBtn" disabled>Start ▶</button>
 </div>
-
+<!-- TOPIC PICKER SHEET -->
+<div class="sheet-overlay" id="topicSheetOverlay">
+  <div class="sheet-panel">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div class="sheet-head-title" id="topicSheetTitle">Select Topics</div>
+      <input class="sheet-search" type="text" id="topicSearch" placeholder="🔍 Search topics..." autocomplete="off">
+    </div>
+    <div class="sheet-body" id="topicBody">
+      <div style="padding:20px;text-align:center;color:#8A94A6;">Loading topics...</div>
+    </div>
+    <div class="sheet-footer">
+      <button class="btn btn-ghost" id="topicCancelBtn">Cancel</button>
+      <button class="btn btn-ghost" id="topicSelectAllBtn">Select All</button>
+      <button class="btn btn-primary" id="topicDoneBtn">Done</button>
+    </div>
+  </div>
+  </div>
 <div class="toast" id="toast"></div>
 <script src="shared.js"></script>
 <script src="select-subjects.js"></script>
