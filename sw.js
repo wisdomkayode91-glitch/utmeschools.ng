@@ -3,7 +3,7 @@
    Service Worker. Makes the app work offline.
    ============================================================ */
 
-const CACHE_NAME = 'utmeschools-v4';
+const CACHE_NAME = 'utmeschools-v5';
 
 /* Files to cache immediately when app is installed */
 const CORE_FILES = [
@@ -12,6 +12,7 @@ const CORE_FILES = [
   '/utmeschools.ng/shared.css',
   '/utmeschools.ng/shared.js',
   '/utmeschools.ng/script.js',
+  '/utmeschools.ng/literature-config.js',
   '/utmeschools.ng/auth.html',
   '/utmeschools.ng/auth.js',
   '/utmeschools.ng/select-subjects.html',
@@ -24,6 +25,8 @@ const CORE_FILES = [
   '/utmeschools.ng/dashboard.js',
   '/utmeschools.ng/bookmarks.html',
   '/utmeschools.ng/bookmarks.js',
+  '/utmeschools.ng/coach.html',
+  '/utmeschools.ng/coach.js',
   '/utmeschools.ng/discussion.html',
   '/utmeschools.ng/discussion.js',
   '/utmeschools.ng/manifest.json',
@@ -53,15 +56,14 @@ self.addEventListener('activate', event => {
   );
 });
 
-/* ---- Fetch: serve from cache, fall back to network ---- */
+/* ---- Fetch: network-first for HTML, cache-first for assets ---- */
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  /* For Supabase API calls — network only, no cache */
+  /* Supabase API — network only, no cache */
   if (url.hostname.includes('supabase.co')) {
     event.respondWith(
       fetch(event.request).catch(() => {
-        /* If offline and Supabase fails, return empty questions array */
         return new Response(JSON.stringify([]), {
           headers: { 'Content-Type': 'application/json' }
         });
@@ -70,14 +72,33 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  /* For everything else — cache first, then network */
+  /* SdashAPI — network only, no cache */
+  if (url.hostname.includes('sdashapi.com')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  /* HTML pages: network-first, fall back to cache */
+  if (event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+        .then(cached => cached || caches.match('/utmeschools.ng/index.html'))
+    );
+    return;
+  }
+
+  /* Everything else — cache first, then network */
   event.respondWith(
     caches.match(event.request).then(cached => {
       if (cached) return cached;
 
-      /* Not in cache — fetch from network and cache it */
       return fetch(event.request).then(response => {
-        /* Only cache valid responses */
         if (!response || response.status !== 200 || response.type === 'opaque') {
           return response;
         }
@@ -85,7 +106,6 @@ self.addEventListener('fetch', event => {
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         return response;
       }).catch(() => {
-        /* Offline fallback for HTML pages */
         if (event.request.destination === 'document') {
           return caches.match('/utmeschools.ng/index.html');
         }
