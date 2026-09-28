@@ -1,8 +1,11 @@
 /* ============================================================
-   UTMESchools v2 — select-subjects.js  (FULL CLEAN)
+   UTMESchools v2 — select-subjects.js  (FULL + Topic Picker)
    English auto-selected but removable.
-   27 SdashAPI subjects. Shuffle options support.
+   27 SdashAPI subjects. Shuffle options. Topic/subtopic filter.
    ============================================================ */
+
+const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
 
 const ALL_SUBJECTS = [
   { id:'english',            name:'English Language',   icon:'🔤', max:100 },
@@ -40,19 +43,22 @@ let pendingIds    = ['english'];
 let currentMode   = 'practice';
 let currentExam   = 'utme';
 let subjectConfig = {
-  english: { year: 'Random', count: 40 }
+  english: { year: 'Random', count: 40, topics: [] }
 };
+
+/* ---- Topic picker state ---- */
+let currentTopicSubject = null;
+let pendingTopics       = new Set();
+let allTopicsCache      = null;
 
 /* ================================================================
    INIT
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
 
-  /* Selected subjects bar — opens sheet on tap */
   const selectedBar = document.querySelector('.selected-bar');
   if (selectedBar) selectedBar.addEventListener('click', openSheet);
 
-  /* Sheet buttons */
   const sheetCancel = document.getElementById('sheetCancelBtn');
   const sheetDone   = document.getElementById('sheetDoneBtn');
   const sheetAll    = document.getElementById('sheetSelectAllBtn');
@@ -60,13 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sheetDone)   sheetDone.addEventListener('click', confirmSheet);
   if (sheetAll)    sheetAll.addEventListener('click', toggleSelectAll);
 
-  /* Search */
   const search = document.getElementById('sheetSearch');
-  if (search) {
-    search.addEventListener('input', e => renderSheetItems(e.target.value));
-  }
+  if (search) search.addEventListener('input', e => renderSheetItems(e.target.value));
 
-  /* Close sheet on overlay tap */
   const sheetOverlay = document.getElementById('sheetOverlay');
   if (sheetOverlay) {
     sheetOverlay.addEventListener('click', e => {
@@ -74,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* Mode buttons */
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
@@ -87,21 +88,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  /* Exam switcher buttons */
   document.querySelectorAll('.exam-switch-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const exam = btn.dataset.exam;
       if (btn.classList.contains('disabled')) {
         showToast('Coming soon! Focus on JAMB for now.');
         return;
       }
-      currentExam = exam;
+      currentExam = btn.dataset.exam;
       document.querySelectorAll('.exam-switch-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     });
   });
 
-  /* Start button */
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.addEventListener('click', startSession);
 
@@ -120,7 +118,32 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => calcPress(btn.dataset.val));
   });
 
-  /* Initial render */
+  /* Topic picker sheet wiring */
+  const topicOverlay  = document.getElementById('topicSheetOverlay');
+  const topicCancel   = document.getElementById('topicCancelBtn');
+  const topicDone     = document.getElementById('topicDoneBtn');
+  const topicSearch   = document.getElementById('topicSearch');
+
+  if (topicCancel) topicCancel.addEventListener('click', closeTopicPicker);
+  if (topicOverlay) {
+    topicOverlay.addEventListener('click', e => {
+      if (e.target === topicOverlay) closeTopicPicker();
+    });
+  }
+  if (topicSearch) {
+    topicSearch.addEventListener('input', e => renderTopicList(e.target.value));
+  }
+  if (topicDone) {
+    topicDone.addEventListener('click', () => {
+      if (currentTopicSubject) {
+        const cfg = subjectConfig[currentTopicSubject] || {};
+        cfg.topics = Array.from(pendingTopics);
+        subjectConfig[currentTopicSubject] = cfg;
+      }
+      closeTopicPicker();
+    });
+  }
+
   renderSelectedBar();
   renderConfigCards();
 });
@@ -175,7 +198,7 @@ function renderConfigCards() {
   selectedIds.forEach(id => {
     const s = ALL_SUBJECTS.find(x => x.id === id);
     if (!s) return;
-    const cfg = subjectConfig[id] || { year: 'Random', count: 40 };
+    const cfg = subjectConfig[id] || { year: 'Random', count: 40, topics: [] };
     subjectConfig[id] = cfg;
 
     /* Year options */
@@ -192,12 +215,18 @@ function renderConfigCards() {
       `<option value="${n}" ${cfg.count === n ? 'selected' : ''}>${n} questions</option>`
     ).join('');
 
+    /* Topic label */
+    const topicCount = (cfg.topics || []).length;
+    const topicLabel = topicCount === 0 ? 'All' : `${topicCount} selected`;
+
     const card = document.createElement('div');
     card.className = 'config-card';
     card.innerHTML = `
       <div class="config-card-head">
         <div class="config-card-icon" style="background:#EEF4FF;">${s.icon}</div>
         <div class="config-card-name">${s.name}</div>
+        <button class="config-edit" data-edit="${id}" aria-label="Select topics"
+          style="width:30px;height:30px;border-radius:8px;background:#EEF4FF;color:#0B2545;font-size:14px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;margin-right:6px;">✏️</button>
         <button class="config-remove" data-remove="${id}" aria-label="Remove">×</button>
       </div>
       <div class="config-row">
@@ -207,18 +236,22 @@ function renderConfigCards() {
       <div class="config-row">
         <span class="config-row-label">🔢 Questions</span>
         <select class="config-select" data-field="count" data-subject="${id}">${countSel}</select>
+      </div>
+      <div class="config-row">
+        <span class="config-row-label">📚 Topics</span>
+        <span style="font-size:12.5px;font-weight:600;color:#0B2545;">${topicLabel}</span>
       </div>`;
     cards.appendChild(card);
 
-    /* Wire config changes */
     card.querySelector('[data-field="year"]').addEventListener('change', e => {
       subjectConfig[id].year = e.target.value;
     });
     card.querySelector('[data-field="count"]').addEventListener('change', e => {
       subjectConfig[id].count = parseInt(e.target.value);
     });
-
-    /* Remove subject — English is removable too */
+    card.querySelector('[data-edit]').addEventListener('click', () => {
+      openTopicPicker(id);
+    });
     card.querySelector('[data-remove]').addEventListener('click', () => {
       selectedIds = selectedIds.filter(x => x !== id);
       delete subjectConfig[id];
@@ -236,14 +269,12 @@ function openSheet() {
   const search = document.getElementById('sheetSearch');
   if (search) search.value = '';
   renderSheetItems('');
-  const sheetOverlay = document.getElementById('sheetOverlay');
-  if (sheetOverlay) sheetOverlay.classList.add('open');
+  document.getElementById('sheetOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
 
 function closeSheet() {
-  const sheetOverlay = document.getElementById('sheetOverlay');
-  if (sheetOverlay) sheetOverlay.classList.remove('open');
+  document.getElementById('sheetOverlay').classList.remove('open');
   document.body.style.overflow = '';
 }
 
@@ -258,7 +289,7 @@ function confirmSheet() {
   selectedIds.forEach(id => {
     if (!subjectConfig[id]) {
       const s = ALL_SUBJECTS.find(x => x.id === id);
-      subjectConfig[id] = { year: 'Random', count: Math.min(40, s?.max || 40) };
+      subjectConfig[id] = { year: 'Random', count: Math.min(40, s?.max || 40), topics: [] };
     }
   });
 
@@ -313,7 +344,135 @@ function renderSheetItems(filter) {
     });
     body.appendChild(row);
   });
-         }/* ================================================================
+   }/* ================================================================
+   TOPIC PICKER
+   ================================================================ */
+async function openTopicPicker(subjectId) {
+  currentTopicSubject = subjectId;
+
+  const s = ALL_SUBJECTS.find(x => x.id === subjectId);
+  const sheetTitle = document.getElementById('topicSheetTitle');
+  if (sheetTitle) sheetTitle.textContent = 'Select Topics — ' + (s?.name || subjectId);
+
+  const cfg = subjectConfig[subjectId] || {};
+  pendingTopics = new Set(cfg.topics || []);
+
+  document.getElementById('topicSheetOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  document.getElementById('topicBody').innerHTML =
+    '<div style="padding:20px;text-align:center;color:#8A94A6;">Loading topics...</div>';
+
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/get_subject_topics`,
+      {
+        method: 'POST',
+        headers: {
+          'apikey':        SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type':  'application/json'
+        },
+        body: JSON.stringify({ p_subject: subjectId })
+      }
+    );
+    allTopicsCache = await res.json();
+    renderTopicList('');
+  } catch(e) {
+    document.getElementById('topicBody').innerHTML =
+      '<div style="padding:20px;text-align:center;color:#E2531F;">Could not load topics. Check connection.</div>';
+  }
+}
+
+function renderTopicList(filter) {
+  const body = document.getElementById('topicBody');
+  if (!body) return;
+
+  const q = (filter || '').toLowerCase();
+
+  const grouped = {};
+  (allTopicsCache || []).forEach(t => {
+    if (!grouped[t.topic]) grouped[t.topic] = [];
+    grouped[t.topic].push(t);
+  });
+
+  const topicNames = Object.keys(grouped).filter(name =>
+    name.toLowerCase().includes(q) ||
+    grouped[name].some(t => (t.subtopic || '').toLowerCase().includes(q))
+  );
+
+  if (topicNames.length === 0) {
+    body.innerHTML = '<div style="padding:20px;text-align:center;color:#8A94A6;">No topics found.</div>';
+    return;
+  }
+
+  body.innerHTML = '';
+
+  /* Select All row */
+  const allRow = document.createElement('div');
+  allRow.className = 'sheet-item';
+  allRow.style.cssText = 'font-weight:700;border-bottom:2px solid #E8EBF0;';
+  allRow.innerHTML = `
+    <div class="sheet-item-icon">☑</div>
+    <div class="sheet-item-name">Select All</div>
+    <div class="sheet-check" style="border-radius:4px;">${pendingTopics.size === 0 ? '✓' : ''}</div>`;
+  allRow.addEventListener('click', () => {
+    if (pendingTopics.size === 0) {
+      (allTopicsCache || []).forEach(t => {
+        pendingTopics.add(t.topic + '|||' + t.subtopic);
+      });
+    } else {
+      pendingTopics.clear();
+    }
+    renderTopicList(filter);
+  });
+  body.appendChild(allRow);
+
+  topicNames.forEach(topicName => {
+    const subtopics = grouped[topicName];
+
+    const topicRow = document.createElement('div');
+    topicRow.className = 'sheet-item';
+    topicRow.style.cssText = 'font-weight:700;background:#F4F6FA;';
+    topicRow.innerHTML = `
+      <div class="sheet-item-icon">📚</div>
+      <div class="sheet-item-name">${topicName.toUpperCase()}</div>`;
+    body.appendChild(topicRow);
+
+    subtopics.forEach(t => {
+      const key = t.topic + '|||' + t.subtopic;
+      const checked = pendingTopics.has(key);
+      const label = t.subtopic || '(general)';
+
+      const row = document.createElement('div');
+      row.className = 'sheet-item' + (checked ? ' checked' : '');
+      row.style.paddingLeft = '40px';
+      row.innerHTML = `
+        <div class="sheet-item-name">${label} <span style="color:#8A94A6;font-size:11px;">(${t.cnt})</span></div>
+        <div class="sheet-check">${checked ? '✓' : ''}</div>`;
+
+      row.addEventListener('click', () => {
+        if (pendingTopics.has(key)) {
+          pendingTopics.delete(key);
+        } else {
+          pendingTopics.add(key);
+        }
+        renderTopicList(filter);
+      });
+      body.appendChild(row);
+    });
+  });
+}
+
+function closeTopicPicker() {
+  const overlay = document.getElementById('topicSheetOverlay');
+  if (overlay) overlay.classList.remove('open');
+  document.body.style.overflow = '';
+  currentTopicSubject = null;
+  allTopicsCache = null;
+}
+
+/* ================================================================
    START SESSION
    ================================================================ */
 function startSession() {
@@ -337,6 +496,14 @@ function startSession() {
     const cfg = subjectConfig[id] || {};
     params.set('year_'  + id, cfg.year  || 'Random');
     params.set('count_' + id, cfg.count || 40);
+
+    /* Pass topics + subtopics */
+    if (cfg.topics && cfg.topics.length > 0) {
+      const topicsArr = cfg.topics.map(t => t.split('|||')[0]).filter(Boolean);
+      const subsArr   = cfg.topics.map(t => t.split('|||')[1]).filter(Boolean);
+      params.set('topics_'    + id, [...new Set(topicsArr)].join('||'));
+      params.set('subtopics_' + id, [...new Set(subsArr)].join('||'));
+    }
   });
 
   window.location.href = 'practice.html?' + params.toString();
@@ -407,4 +574,4 @@ function showToast(msg) {
   t.classList.add('show');
   clearTimeout(_tt);
   _tt = setTimeout(() => t.classList.remove('show'), 2500);
-}
+                                      }
