@@ -1,5 +1,6 @@
 /* ============================================================
-   UTMESchools v2 — practice.js  (FINAL — section_instruction)
+   UTMESchools v2 — practice.js
+   Paywall disabled · section_instruction display
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
@@ -18,13 +19,18 @@ const filterLiterature = urlP.get('filter_literature') === '1';
 const topicsParam      = urlP.get('topics') || '';
 const subtopicsParam   = urlP.get('subtopics') || '';
 
-/* ACCESS */
+/* ACCESS — Paywall disabled for testing */
 function getAccess() {
+  /* ⚠️ TEMPORARY: Paywall disabled. Restore before launch. */
+  return { isPaid: true, plan: 'jamb', freeLimit: 9999 };
+
+  /* ORIGINAL — uncomment before launch:
   const isPaid  = localStorage.getItem('utme_is_paid') === 'true';
   const plan    = localStorage.getItem('utme_plan') || 'jamb';
   const expires = localStorage.getItem('utme_expires');
   const isExpired = expires && new Date(expires) < new Date();
   return { isPaid: isPaid && !isExpired, plan, freeLimit: 10 };
+  */
 }
 
 /* FETCH QUESTIONS */
@@ -91,7 +97,7 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
   } catch(e) { console.error('Fetch error:', e); return []; }
 }
 
-/* DEMO */
+/* DEMO FALLBACK */
 function getDemoQuestions(subjectId) {
   return [{
     id: 'demo_1', subjectId, year: 2025,
@@ -177,7 +183,7 @@ async function loadAllQuestions() {
 
       if (qs.length === 0) {
         qs = getDemoQuestions(sid);
-        showToast('Demo mode — database is being populated');
+        showToast('Demo mode — no questions found for this subject');
       }
 
       if (shuffleQ) qs.sort(() => Math.random() - 0.5);
@@ -261,7 +267,7 @@ function updateSubjectTabs() {
     const el     = tab.querySelector('.subj-tab-count');
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
-  }/* ================================================================
+          }/* ================================================================
    RENDER QUESTION — with section instruction
    ================================================================ */
 function renderQuestion() {
