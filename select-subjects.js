@@ -1,53 +1,59 @@
 /* ============================================================
    UTMESchools v2 — select-subjects.js
-   English auto-selected but removable.
-   27 subjects. English capped at 60, others at 40.
+   16 subjects · Year dropdown shows ONLY years with questions
    ============================================================ */
 
+const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
+
 const ALL_SUBJECTS = [
-  { id:'english',            name:'English Language',   icon:'🔤', max:60  },
-  { id:'mathematics',        name:'Mathematics',        icon:'📐', max:40  },
-  { id:'english-literature', name:'Literature',         icon:'📚', max:40  },
-  { id:'biology',            name:'Biology',            icon:'🧬', max:40  },
-  { id:'chemistry',          name:'Chemistry',          icon:'⚗️', max:40  },
-  { id:'physics',            name:'Physics',            icon:'⚛️', max:40  },
-  { id:'agriculture',        name:'Agriculture',        icon:'🌾', max:40  },
-  { id:'accounting',         name:'Accounting',         icon:'🧾', max:40  },
-  { id:'commerce',           name:'Commerce',           icon:'🛒', max:40  },
-  { id:'economics',          name:'Economics',          icon:'📈', max:40  },
-  { id:'government',         name:'Government',         icon:'🏛️', max:40  },
-  { id:'geography',          name:'Geography',          icon:'🌍', max:40  },
-  { id:'geology',            name:'Geology',            icon:'🪨', max:40  },
-  { id:'history',            name:'History',            icon:'🏺', max:40  },
-  { id:'civic-education',    name:'Civic Education',    icon:'🏛️', max:40  },
-  { id:'current-affairs',    name:'Current Affairs',    icon:'📰', max:40  },
-  { id:'computer-studies',   name:'Computer Studies',   icon:'💻', max:40  },
-  { id:'crk',                name:'CRK',                icon:'✝️', max:40  },
-  { id:'irk',                name:'IRK',                icon:'☪️', max:40  },
-  { id:'insurance',          name:'Insurance',          icon:'📋', max:40  },
-  { id:'home-economics',     name:'Home Economics',     icon:'🏠', max:40  },
-  { id:'fine-art',           name:'Fine Art',           icon:'🎨', max:40  },
-  { id:'music',              name:'Music',              icon:'🎵', max:40  },
-  { id:'arabic-studies',     name:'Arabic Studies',     icon:'🕌', max:40  },
-  { id:'hausa',              name:'Hausa',              icon:'📜', max:40  },
-  { id:'igbo',               name:'Igbo',               icon:'📖', max:40  },
-  { id:'yoruba',             name:'Yoruba',             icon:'🌺', max:40  },
+  { id:'english',            name:'English Language',      icon:'🔤', max:60 },
+  { id:'mathematics',        name:'Mathematics',           icon:'📐', max:40 },
+  { id:'english-literature', name:'Literature in English', icon:'📚', max:40 },
+  { id:'lekki-headmaster',   name:'The Lekki Headmaster',  icon:'📖', max:40 },
+  { id:'biology',            name:'Biology',               icon:'🧬', max:40 },
+  { id:'chemistry',          name:'Chemistry',             icon:'⚗️', max:40 },
+  { id:'physics',            name:'Physics',               icon:'⚛️', max:40 },
+  { id:'economics',          name:'Economics',             icon:'📈', max:40 },
+  { id:'government',         name:'Government',            icon:'🏛️', max:40 },
+  { id:'commerce',           name:'Commerce',              icon:'🛒', max:40 },
+  { id:'accounting',         name:'Accounting',            icon:'🧾', max:40 },
+  { id:'crk',                name:'CRK',                   icon:'✝️', max:40 },
+  { id:'computer-studies',   name:'Computer Studies',      icon:'💻', max:40 },
+  { id:'arabic-studies',     name:'Arabic Studies',        icon:'🕌', max:40 },
+  { id:'fine-art',           name:'Fine Art',              icon:'🎨', max:40 },
+  { id:'yoruba',             name:'Yoruba',                icon:'🌺', max:40 },
 ];
 
-/* ---- State ---- */
 let selectedIds   = ['english'];
 let pendingIds    = ['english'];
 let currentMode   = 'practice';
 let currentExam   = 'utme';
-let subjectConfig = {
-  english: { year: 'Random', count: 40 }
-};
+let subjectConfig = { english: { year: 'Random', count: 40 } };
+let yearsCache    = {};
+
+/* Fetch available years for a subject (uses distinct + count) */
+async function fetchYearsForSubject(subjectId) {
+  if (yearsCache[subjectId]) return yearsCache[subjectId];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&exam_type=eq.${currentExam}&select=year`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    const data = await res.json();
+    const years = [...new Set(data.map(q => q.year).filter(y => y !== null))].sort((a,b) => b - a);
+    yearsCache[subjectId] = years;
+    return years;
+  } catch(e) {
+    console.error('Year fetch error:', e);
+    return [];
+  }
+}
 
 /* ================================================================
    INIT
    ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-
   const selectedBar = document.querySelector('.selected-bar');
   if (selectedBar) selectedBar.addEventListener('click', openSheet);
 
@@ -74,38 +80,31 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.classList.add('active');
       currentMode = btn.dataset.mode;
       const timerRow = document.getElementById('timerRow');
-      if (timerRow) {
-        timerRow.style.display = currentMode === 'study' ? 'none' : 'flex';
-      }
+      if (timerRow) timerRow.style.display = currentMode === 'study' ? 'none' : 'flex';
     });
   });
 
   document.querySelectorAll('.exam-switch-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (btn.classList.contains('disabled')) {
-        showToast('Coming soon! Focus on JAMB for now.');
-        return;
-      }
+      if (btn.classList.contains('disabled')) { showToast('Coming soon!'); return; }
       currentExam = btn.dataset.exam;
       document.querySelectorAll('.exam-switch-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
+      /* Clear cache so years refetch for new exam */
+      yearsCache = {};
+      renderConfigCards();
     });
   });
 
   const startBtn = document.getElementById('startBtn');
   if (startBtn) startBtn.addEventListener('click', startSession);
 
-  /* Calculator */
   const calcOpen  = document.getElementById('calcOpenBtn');
   const calcClose = document.getElementById('calcCloseBtn');
   const calcOv    = document.getElementById('calcOverlay');
   if (calcOpen)  calcOpen.addEventListener('click', openCalc);
   if (calcClose) calcClose.addEventListener('click', closeCalc);
-  if (calcOv) {
-    calcOv.addEventListener('click', e => {
-      if (e.target === calcOv) closeCalc();
-    });
-  }
+  if (calcOv) calcOv.addEventListener('click', e => { if (e.target === calcOv) closeCalc(); });
   document.querySelectorAll('.calc-key').forEach(btn => {
     btn.addEventListener('click', () => calcPress(btn.dataset.val));
   });
@@ -122,7 +121,6 @@ function renderSelectedBar() {
   const infoTop  = document.getElementById('startInfoTop');
   const infoSub  = document.getElementById('startInfoSub');
   const startBtn = document.getElementById('startBtn');
-
   if (!pillsEl) return;
 
   if (selectedIds.length === 0) {
@@ -142,13 +140,12 @@ function renderSelectedBar() {
 }
 
 /* ================================================================
-   CONFIG CARDS
+   CONFIG CARDS — dynamic year dropdown per subject
    ================================================================ */
-function renderConfigCards() {
+async function renderConfigCards() {
   const wrap    = document.getElementById('configWrap');
   const cards   = document.getElementById('configCards');
   const optSect = document.getElementById('optionsSection');
-
   if (!wrap || !cards) return;
 
   if (selectedIds.length === 0) {
@@ -161,26 +158,14 @@ function renderConfigCards() {
   if (optSect) optSect.style.display = 'block';
   cards.innerHTML = '';
 
-  selectedIds.forEach(id => {
+  for (const id of selectedIds) {
     const s = ALL_SUBJECTS.find(x => x.id === id);
-    if (!s) return;
+    if (!s) continue;
+
     const cfg = subjectConfig[id] || { year: 'Random', count: 40 };
     subjectConfig[id] = cfg;
 
-    /* Year options */
-    const yearOpts = ['Random', ...Array.from({length: 2026 - 1988 + 1}, (_,i) => String(2026 - i))];
-    const yearSel  = yearOpts.map(y =>
-      `<option value="${y}" ${cfg.year === y ? 'selected' : ''}>${y === 'Random' ? '🔀 Random (all years)' : y}</option>`
-    ).join('');
-
-    /* Count options (10 up to max, in steps of 10) */
-    const counts = [];
-    for (let n = 10; n <= s.max; n += 10) counts.push(n);
-    if (counts[counts.length-1] !== s.max) counts.push(s.max);
-    const countSel = counts.map(n =>
-      `<option value="${n}" ${cfg.count === n ? 'selected' : ''}>${n} questions</option>`
-    ).join('');
-
+    /* Loading placeholder */
     const card = document.createElement('div');
     card.className = 'config-card';
     card.innerHTML = `
@@ -189,15 +174,48 @@ function renderConfigCards() {
         <div class="config-card-name">${s.name}</div>
         <button class="config-remove" data-remove="${id}" aria-label="Remove">×</button>
       </div>
+      <div class="config-row" style="justify-content:center;color:#8A94A6;font-size:12px;padding:12px 0;">Loading years...</div>`;
+    cards.appendChild(card);
+
+    /* Fetch actual years for this subject */
+    const years = await fetchYearsForSubject(id);
+
+    /* Build year dropdown — ONLY years that exist */
+    let yearOptions = '<option value="Random">🔀 Random (all years)</option>';
+    if (years.length > 0) {
+      yearOptions += years.map(y =>
+        `<option value="${y}" ${String(cfg.year) === String(y) ? 'selected' : ''}>${y}</option>`
+      ).join('');
+    } else {
+      yearOptions = '<option value="Random">No questions yet</option>';
+    }
+
+    /* Count dropdown */
+    const counts = [];
+    for (let n = 10; n <= s.max; n += 10) counts.push(n);
+    if (counts[counts.length-1] !== s.max) counts.push(s.max);
+    const countSel = counts.map(n =>
+      `<option value="${n}" ${cfg.count === n ? 'selected' : ''}>${n} questions</option>`
+    ).join('');
+
+    const yearRange = years.length > 0
+      ? `${years[years.length-1]}–${years[0]}`
+      : 'no data yet';
+
+    card.innerHTML = `
+      <div class="config-card-head">
+        <div class="config-card-icon" style="background:#EEF4FF;">${s.icon}</div>
+        <div class="config-card-name">${s.name}</div>
+        <button class="config-remove" data-remove="${id}" aria-label="Remove">×</button>
+      </div>
       <div class="config-row">
-        <span class="config-row-label">📅 Year</span>
-        <select class="config-select" data-field="year" data-subject="${id}">${yearSel}</select>
+        <span class="config-row-label">📅 Year <span style="color:#8A94A6;font-size:11px;">(${yearRange})</span></span>
+        <select class="config-select" data-field="year" data-subject="${id}">${yearOptions}</select>
       </div>
       <div class="config-row">
         <span class="config-row-label">🔢 Questions</span>
         <select class="config-select" data-field="count" data-subject="${id}">${countSel}</select>
       </div>`;
-    cards.appendChild(card);
 
     card.querySelector('[data-field="year"]').addEventListener('change', e => {
       subjectConfig[id].year = e.target.value;
@@ -211,10 +229,8 @@ function renderConfigCards() {
       renderSelectedBar();
       renderConfigCards();
     });
-  });
-}
-
-/* ================================================================
+  }
+                          }/* ================================================================
    SUBJECT SHEET
    ================================================================ */
 function openSheet() {
@@ -236,16 +252,13 @@ function confirmSheet() {
     showToast('Select at least one subject to continue');
     return;
   }
-
   selectedIds = [...pendingIds];
-
   selectedIds.forEach(id => {
     if (!subjectConfig[id]) {
       const s = ALL_SUBJECTS.find(x => x.id === id);
       subjectConfig[id] = { year: 'Random', count: Math.min(40, s?.max || 40) };
     }
   });
-
   closeSheet();
   renderSelectedBar();
   renderConfigCards();
@@ -255,7 +268,6 @@ function toggleSelectAll() {
   const q       = (document.getElementById('sheetSearch')?.value || '').toLowerCase();
   const visible = ALL_SUBJECTS.filter(s => s.name.toLowerCase().includes(q)).map(s => s.id);
   const allSelected = visible.every(id => pendingIds.includes(id));
-
   if (allSelected) {
     pendingIds = pendingIds.filter(id => !visible.includes(id));
     const btn = document.getElementById('sheetSelectAllBtn');
@@ -283,7 +295,6 @@ function renderSheetItems(filter) {
       <div class="sheet-item-icon">${s.icon}</div>
       <div class="sheet-item-name">${s.name}</div>
       <div class="sheet-check">${checked ? '✓' : ''}</div>`;
-
     row.addEventListener('click', () => {
       if (pendingIds.includes(s.id)) {
         pendingIds = pendingIds.filter(id => id !== s.id);
@@ -333,7 +344,7 @@ function startSession() {
    ================================================================ */
 function switchExam(exam, btn) {
   if (btn.classList.contains('disabled')) {
-    showToast('Coming soon! JAMB is live now.');
+    showToast('Coming soon!');
     return;
   }
   currentExam = exam;
@@ -393,4 +404,4 @@ function showToast(msg) {
   t.classList.add('show');
   clearTimeout(_tt);
   _tt = setTimeout(() => t.classList.remove('show'), 2500);
-     }
+}
