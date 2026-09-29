@@ -1,6 +1,6 @@
 /* ============================================================
    UTMESchools v2 — practice.js
-   Paywall disabled · section_instruction display
+   No difficulty tag · Lekki Headmaster mixed into English
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
@@ -19,9 +19,8 @@ const filterLiterature = urlP.get('filter_literature') === '1';
 const topicsParam      = urlP.get('topics') || '';
 const subtopicsParam   = urlP.get('subtopics') || '';
 
-/* ACCESS — Paywall disabled for testing */
+/* ACCESS — Paywall disabled */
 function getAccess() {
-  /* ⚠️ TEMPORARY: Paywall disabled. Restore before launch. */
   return { isPaid: true, plan: 'jamb', freeLimit: 9999 };
 
   /* ORIGINAL — uncomment before launch:
@@ -97,6 +96,40 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
   } catch(e) { console.error('Fetch error:', e); return []; }
 }
 
+/* FETCH LEKKI HEADMASTER QUESTIONS — used to mix into English */
+async function fetchLekkiQuestions(count) {
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.lekki-headmaster&exam_type=eq.${examType}&select=*&limit=${count}`;
+    const res = await fetch(url, {
+      headers: {
+        'apikey':        SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type':  'application/json'
+      }
+    });
+    if (!res.ok) return [];
+    const questions = await res.json();
+    return questions.map(q => ({
+      id:                 String(q.id),
+      subjectId:          'english',
+      sourceSubject:      'lekki-headmaster',
+      examType:           q.exam_type,
+      year:               q.year,
+      topic:              'The Lekki Headmaster',
+      subtopic:           'Novel',
+      difficulty:         q.difficulty || 'Intermediate',
+      text:               q.text,
+      options:            [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
+      correct:            q.correct,
+      explanation:        q.explanation || '',
+      svg_code:           q.svg_code || '',
+      image_file:         q.image_file || '',
+      passage:            q.passage || '',
+      sectionInstruction: q.section_instruction || '',
+    }));
+  } catch(e) { console.error('Lekki fetch error:', e); return []; }
+}
+
 /* DEMO FALLBACK */
 function getDemoQuestions(subjectId) {
   return [{
@@ -169,27 +202,40 @@ function shuffleQuestionOptions(q) {
   };
 }
 
-/* LOAD */
+/* LOAD ALL QUESTIONS — with Lekki Headmaster mixed into English */
 async function loadAllQuestions() {
   showLoadingState(true);
 
   try {
     for (const sid of subjectIds) {
       const year       = urlP.get('year_'   + sid) || 'Random';
-      const count      = parseInt(urlP.get('count_' + sid) || '40', 10);
+      const totalCount = parseInt(urlP.get('count_' + sid) || '40', 10);
       const topicParam = urlP.get('topics_' + sid) || '';
 
-      let qs = await fetchQuestions(sid, year, count, topicParam);
+      let qs = [];
+      let lekkiQs = [];
 
-      if (qs.length === 0) {
+      if (sid === 'english') {
+        /* English: fetch (total - 5) regular + 5 Lekki Headmaster = total */
+        const regularCount = Math.max(totalCount - 5, 0);
+        qs       = await fetchQuestions(sid, year, regularCount, topicParam);
+        lekkiQs  = await fetchLekkiQuestions(5);
+      } else {
+        qs = await fetchQuestions(sid, year, totalCount, topicParam);
+      }
+
+      if (qs.length === 0 && lekkiQs.length === 0) {
         qs = getDemoQuestions(sid);
         showToast('Demo mode — no questions found for this subject');
       }
 
-      if (shuffleQ) qs.sort(() => Math.random() - 0.5);
-      if (shuffleO) qs = qs.map(shuffleQuestionOptions);
-      qs.forEach((q, i) => { q.qNum = allQuestions.length + i + 1; q.subjectId = sid; });
-      allQuestions.push(...qs);
+      /* Combine: regular + lekki (for English) */
+      let combined = [...qs, ...lekkiQs];
+
+      if (shuffleQ) combined.sort(() => Math.random() - 0.5);
+      if (shuffleO) combined = combined.map(shuffleQuestionOptions);
+      combined.forEach((q, i) => { q.qNum = allQuestions.length + i + 1; q.subjectId = sid; });
+      allQuestions.push(...combined);
     }
   } catch(e) { console.error(e); }
 
@@ -267,8 +313,8 @@ function updateSubjectTabs() {
     const el     = tab.querySelector('.subj-tab-count');
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
-          }/* ================================================================
-   RENDER QUESTION — with section instruction
+                             }/* ================================================================
+   RENDER QUESTION — difficulty tag removed
    ================================================================ */
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
@@ -276,7 +322,7 @@ function renderQuestion() {
 
   document.getElementById('qLabel').textContent = `Q ${currentQIndex + 1} / ${allQuestions.length}`;
 
-  /* Tags */
+  /* Tags — NO difficulty tag */
   const tagsEl = document.getElementById('qTags');
   if (tagsEl) {
     tagsEl.innerHTML = '';
@@ -286,9 +332,8 @@ function renderQuestion() {
         : q.topic;
       tagsEl.innerHTML += `<span class="q-tag topic">${shownTopic}</span>`;
     }
-    if (q.year)       tagsEl.innerHTML += `<span class="q-tag year">📅 ${q.year}</span>`;
-    if (q.difficulty) tagsEl.innerHTML += `<span class="q-tag difficulty-${(q.difficulty||'').toLowerCase()}">${q.difficulty}</span>`;
-    if (q.examType)   tagsEl.innerHTML += `<span class="q-tag">${q.examType.toUpperCase()}</span>`;
+    if (q.year)     tagsEl.innerHTML += `<span class="q-tag year">📅 ${q.year}</span>`;
+    if (q.examType) tagsEl.innerHTML += `<span class="q-tag">${q.examType.toUpperCase()}</span>`;
   }
 
   /* Section instruction (above question) */
@@ -333,7 +378,7 @@ function renderQuestion() {
     }
   }
 
-  /* Passage (only real passages) */
+  /* Passage */
   const passCard = document.getElementById('passageBox');
   if (passCard) {
     if (q.passage && q.passage.trim()) {
