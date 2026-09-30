@@ -1,6 +1,7 @@
 /* ============================================================
    UTMESchools v2 — select-subjects.js
    JAMB + Post UTME (tabbed) · dynamic years & schools
+   FIX: Session Settings now shows on JAMB tab
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
@@ -44,6 +45,7 @@ let postutmeSubjectsCache = {};
 /* ---- Shared state ---- */
 let currentMode   = 'practice';
 let currentTab    = 'jamb';
+let sheetMode     = 'jamb';
 
 /* ================================================================
    INIT
@@ -76,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
       currentMode = btn.dataset.mode;
       const timerRow = document.getElementById('timerRow');
       if (timerRow) timerRow.style.display = currentMode === 'study' ? 'none' : 'flex';
+      renderStartBar();
     });
   });
 
@@ -129,6 +132,7 @@ function renderSelectedBar() {
 
 /* ================================================================
    JAMB — CONFIG CARDS (with dynamic years)
+   FIX: optSect.style.display = 'block' added so Session Settings shows
    ================================================================ */
 async function renderConfigCards() {
   const wrap    = document.getElementById('configWrap');
@@ -143,6 +147,7 @@ async function renderConfigCards() {
   }
 
   wrap.classList.add('show');
+  if (optSect) optSect.style.display = 'block';   /* ← THE FIX */
   cards.innerHTML = '';
 
   for (const id of selectedIds) {
@@ -231,8 +236,8 @@ async function fetchYearsForJamb(subjectId) {
     console.error('Year fetch error:', e);
     return [];
   }
-       }/* ================================================================
-   SHARED SHEET — opens different content based on tab
+   }/* ================================================================
+   SHARED SHEET — dispatcher
    ================================================================ */
 function openSheet() {
   const sheetOverlay = document.getElementById('sheetOverlay');
@@ -240,8 +245,10 @@ function openSheet() {
   const searchEl = document.getElementById('sheetSearch');
 
   if (currentTab === 'jamb') {
+    sheetMode = 'jamb';
     titleEl.textContent = 'Choose Subjects to Practise';
     searchEl.placeholder = '🔍 Search subjects...';
+    document.getElementById('sheetSelectAllBtn').style.display = 'block';
     pendingIds = [...selectedIds];
     searchEl.value = '';
     renderJambSheetItems('');
@@ -256,20 +263,19 @@ function closeSheet() {
 }
 
 function onSheetSearch(val) {
-  if (currentTab === 'jamb')               renderJambSheetItems(val);
+  if (sheetMode === 'jamb')                renderJambSheetItems(val);
   else if (sheetMode === 'schools')        renderSchoolSheetItems(val);
   else if (sheetMode === 'postutme-subs')  renderPostutmeSubjectsSheetItems(val);
 }
 
 function onSheetDone() {
-  if (currentTab === 'jamb')               confirmJambSheet();
+  if (sheetMode === 'jamb')                confirmJambSheet();
   else if (sheetMode === 'schools')        confirmSchoolSheet();
   else if (sheetMode === 'postutme-subs')  confirmPostutmeSubjectsSheet();
 }
 
 function onSheetSelectAll() {
-  if (currentTab === 'jamb')               toggleSelectAllJamb();
-  else if (sheetMode === 'schools')        {} /* schools: no select all */
+  if (sheetMode === 'jamb')                toggleSelectAllJamb();
   else if (sheetMode === 'postutme-subs')  toggleSelectAllPostutmeSubjects();
 }
 
@@ -341,8 +347,6 @@ function toggleSelectAllJamb() {
 /* ================================================================
    POST UTME — SCHOOL PICKER
    ================================================================ */
-let sheetMode = 'jamb';
-
 async function openSchoolSheet() {
   sheetMode = 'schools';
   const sheetOverlay = document.getElementById('sheetOverlay');
@@ -357,7 +361,6 @@ async function openSchoolSheet() {
   sheetOverlay.classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  /* Fetch distinct school codes */
   if (!schoolsCache) {
     try {
       const res = await fetch(
@@ -735,4 +738,4 @@ function showToast(msg) {
   t.classList.add('show');
   clearTimeout(_tt);
   _tt = setTimeout(() => t.classList.remove('show'), 2500);
-                         }
+}
