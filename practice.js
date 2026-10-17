@@ -1,12 +1,11 @@
 /* ============================================================
-   UTMESchools v2 — practice.js
-   Includes AI Explanation Fallback
+   UTMESchools v2 — practice.js (Part 1)
+   English = 55 Regular + 5 Lekki Headmaster
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
 
-/* URL PARAMS */
 const urlP             = new URLSearchParams(window.location.search);
 const subjectIds       = (urlP.get('subjects') || 'english').split(',');
 const mode             = urlP.get('mode') || 'practice';
@@ -19,10 +18,7 @@ const filterLiterature = urlP.get('filter_literature') === '1';
 const topicsParam      = urlP.get('topics') || '';
 const subtopicsParam   = urlP.get('subtopics') || '';
 
-/* ACCESS — Paywall disabled */
-function getAccess() {
-  return { isPaid: true, plan: 'jamb', freeLimit: 9999 };
-}
+function getAccess() { return { isPaid: true, plan: 'jamb', freeLimit: 9999 }; }
 
 /* FETCH QUESTIONS */
 async function fetchQuestions(subjectId, year, count, topicParam) {
@@ -79,8 +75,8 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
       text:               q.text,
       options:            [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
       correct:            q.correct,
-      explanation:        q.explanation || '',           /* Original */
-      explanation_ai:     q.explanation_ai || '',        /* ✨ NEW AI EXPLANATION */
+      explanation:        q.explanation || '',
+      explanation_ai:     q.explanation_ai || '', /* AI fallback logic */
       svg_code:           q.svg_code || '',
       image_file:         q.image_file || '',
       passage:            q.passage || '',
@@ -89,38 +85,6 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
   } catch(e) { console.error('Fetch error:', e); return []; }
 }
 
-/* FETCH LEKKI HEADMASTER QUESTIONS */
-async function fetchLekkiQuestions(count) {
-  try {
-    const url = `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.lekki-headmaster&exam_type=eq.${examType}&select=*&limit=${count}`;
-    const res = await fetch(url, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
-    });
-    if (!res.ok) return [];
-    const questions = await res.json();
-    return questions.map(q => ({
-      id:                 String(q.id),
-      subjectId:          'english',
-      sourceSubject:      'lekki-headmaster',
-      examType:           q.exam_type,
-      year:               q.year,
-      topic:              'The Lekki Headmaster',
-      subtopic:           'Novel',
-      difficulty:         q.difficulty || 'Intermediate',
-      text:               q.text,
-      options:            [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
-      correct:            q.correct,
-      explanation:        q.explanation || '',
-      explanation_ai:     q.explanation_ai || '',
-      svg_code:           q.svg_code || '',
-      image_file:         q.image_file || '',
-      passage:            q.passage || '',
-      sectionInstruction: q.section_instruction || '',
-    }));
-  } catch(e) { return []; }
-}
-
-/* DEMO FALLBACK */
 function getDemoQuestions(subjectId) {
   return [{
     id: 'demo_1', subjectId, year: 2025,
@@ -128,13 +92,12 @@ function getDemoQuestions(subjectId) {
     text: 'This is a demo question. Questions are being loaded into the database.',
     options: ['Option A', 'Option B', 'Option C', 'Option D'],
     correct: 'A',
-    explanation: 'Real questions will appear here once the database is seeded.',
+    explanation: 'Real questions from the database will appear here.',
     explanation_ai: '',
     svg_code: '', image_file: '', passage: '', sectionInstruction: ''
   }];
 }
 
-/* STATE */
 let allQuestions    = [];
 let currentQIndex   = 0;
 let answers         = {};
@@ -143,7 +106,6 @@ let showExplanation = false;
 
 try { bookmarks = JSON.parse(localStorage.getItem('utme_bookmarks') || '{}'); } catch(e) {}
 
-/* TIMER */
 let totalSeconds  = (timerH * 3600) + (timerM * 60);
 let timerInterval = null;
 
@@ -172,7 +134,6 @@ function startTimer() {
   }, 1000);
 }
 
-/* SHUFFLE OPTIONS */
 function shuffleQuestionOptions(q) {
   if (!q.options || q.options.length < 2) return q;
   const letters = ['A','B','C','D','E'];
@@ -193,10 +154,9 @@ function shuffleQuestionOptions(q) {
   };
 }
 
-/* LOAD ALL QUESTIONS */
+/* LOAD QUESTIONS with 55 + 5 English logic */
 async function loadAllQuestions() {
   showLoadingState(true);
-
   try {
     for (const sid of subjectIds) {
       const year       = urlP.get('year_'   + sid) || 'Random';
@@ -204,27 +164,34 @@ async function loadAllQuestions() {
       const topicParam = urlP.get('topics_' + sid) || '';
 
       let qs = [];
-      let lekkiQs = [];
 
       if (sid === 'english') {
+        /* ⬅️ THE FIX: 55 Regular English + 5 Lekki Headmaster = 60 Total */
         const regularCount = Math.max(totalCount - 5, 0);
-        qs       = await fetchQuestions(sid, year, regularCount, topicParam);
-        lekkiQs  = await fetchLekkiQuestions(5);
+        
+        // 1. Fetch 55 standard English questions
+        let engQs = await fetchQuestions('english', year, regularCount, topicParam);
+        
+        // 2. Fetch 5 Lekki Headmaster questions (fallback to random year if specific year fails)
+        let lekkiQs = await fetchQuestions('lekki-headmaster', year, 5, '');
+        if (lekkiQs.length === 0) {
+          lekkiQs = await fetchQuestions('lekki-headmaster', 'Random', 5, '');
+        }
+        
+        qs = [...engQs, ...lekkiQs];
       } else {
         qs = await fetchQuestions(sid, year, totalCount, topicParam);
       }
 
-      if (qs.length === 0 && lekkiQs.length === 0) {
+      if (qs.length === 0) {
         qs = getDemoQuestions(sid);
-        showToast('Demo mode — no questions found for this subject');
+        showToast('Demo mode — no questions found');
       }
 
-      let combined = [...qs, ...lekkiQs];
-
-      if (shuffleQ) combined.sort(() => Math.random() - 0.5);
-      if (shuffleO) combined = combined.map(shuffleQuestionOptions);
-      combined.forEach((q, i) => { q.qNum = allQuestions.length + i + 1; q.subjectId = sid; });
-      allQuestions.push(...combined);
+      if (shuffleQ) qs.sort(() => Math.random() - 0.5);
+      if (shuffleO) qs = qs.map(shuffleQuestionOptions);
+      qs.forEach((q, i) => { q.qNum = allQuestions.length + i + 1; q.subjectId = sid; });
+      allQuestions.push(...qs);
     }
   } catch(e) { console.error(e); }
 
@@ -240,11 +207,9 @@ async function loadAllQuestions() {
   startTimer();
 }
 
-/* LOADING STATE */
 function showLoadingState(loading) {
   const qCard = document.getElementById('qCard');
   if (!qCard) return;
-
   if (loading) {
     qCard.innerHTML = `
       <div style="text-align:center;padding:40px 20px;">
@@ -262,7 +227,6 @@ function showLoadingState(loading) {
   }
 }
 
-/* SUBJECT TABS */
 function renderSubjectTabs() {
   const container = document.getElementById('subjTabs');
   if (!container) return;
@@ -293,7 +257,7 @@ function updateSubjectTabs() {
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
 }/* ================================================================
-   RENDER QUESTION — Uses AI Explanation Fallback
+   RENDER QUESTION — Displays AI Explanation if available
    ================================================================ */
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
@@ -382,7 +346,7 @@ function renderQuestion() {
       explanBox.classList.add('show');
       const explText = document.getElementById('explanationText');
       if (explText) {
-        /* ⬅️ THE FIX: Use AI explanation if available, fallback to original */
+        /* ⬅️ Display AI Explanation, fallback to original */
         const bestExplanation = q.explanation_ai || q.explanation || 'No explanation available.';
         explText.textContent = (typeof applyLiteratureReplacement === 'function')
           ? applyLiteratureReplacement(bestExplanation, examType)
