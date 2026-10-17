@@ -200,9 +200,9 @@ async function renderConfigCards() {
 async function fetchYearsForJamb(subjectId) {
   if (jambYearsCache[subjectId]) return jambYearsCache[subjectId];
   try {
-    /* THE FIX: order=year.desc&limit=50 ensures we get 2026 first */
+    /* THE FIX: limit=10000 ensures we get ALL years, including 2026 */
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&exam_type=eq.utme&select=year&order=year.desc&limit=50`,
+      `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&exam_type=eq.utme&select=year&order=year.desc&limit=10000`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
     const data = await res.json();
