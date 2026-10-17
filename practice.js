@@ -1,6 +1,6 @@
 /* ============================================================
    UTMESchools v2 — practice.js
-   No difficulty tag · Lekki Headmaster mixed into English
+   Includes AI Explanation Fallback
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
@@ -22,14 +22,6 @@ const subtopicsParam   = urlP.get('subtopics') || '';
 /* ACCESS — Paywall disabled */
 function getAccess() {
   return { isPaid: true, plan: 'jamb', freeLimit: 9999 };
-
-  /* ORIGINAL — uncomment before launch:
-  const isPaid  = localStorage.getItem('utme_is_paid') === 'true';
-  const plan    = localStorage.getItem('utme_plan') || 'jamb';
-  const expires = localStorage.getItem('utme_expires');
-  const isExpired = expires && new Date(expires) < new Date();
-  return { isPaid: isPaid && !isExpired, plan, freeLimit: 10 };
-  */
 }
 
 /* FETCH QUESTIONS */
@@ -87,7 +79,8 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
       text:               q.text,
       options:            [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
       correct:            q.correct,
-      explanation:        q.explanation || '',
+      explanation:        q.explanation || '',           /* Original */
+      explanation_ai:     q.explanation_ai || '',        /* ✨ NEW AI EXPLANATION */
       svg_code:           q.svg_code || '',
       image_file:         q.image_file || '',
       passage:            q.passage || '',
@@ -96,16 +89,12 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
   } catch(e) { console.error('Fetch error:', e); return []; }
 }
 
-/* FETCH LEKKI HEADMASTER QUESTIONS — used to mix into English */
+/* FETCH LEKKI HEADMASTER QUESTIONS */
 async function fetchLekkiQuestions(count) {
   try {
     const url = `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.lekki-headmaster&exam_type=eq.${examType}&select=*&limit=${count}`;
     const res = await fetch(url, {
-      headers: {
-        'apikey':        SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type':  'application/json'
-      }
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' }
     });
     if (!res.ok) return [];
     const questions = await res.json();
@@ -122,12 +111,13 @@ async function fetchLekkiQuestions(count) {
       options:            [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
       correct:            q.correct,
       explanation:        q.explanation || '',
+      explanation_ai:     q.explanation_ai || '',
       svg_code:           q.svg_code || '',
       image_file:         q.image_file || '',
       passage:            q.passage || '',
       sectionInstruction: q.section_instruction || '',
     }));
-  } catch(e) { console.error('Lekki fetch error:', e); return []; }
+  } catch(e) { return []; }
 }
 
 /* DEMO FALLBACK */
@@ -138,7 +128,8 @@ function getDemoQuestions(subjectId) {
     text: 'This is a demo question. Questions are being loaded into the database.',
     options: ['Option A', 'Option B', 'Option C', 'Option D'],
     correct: 'A',
-    explanation: 'Real questions from SdashAPI will appear here once the database is seeded.',
+    explanation: 'Real questions will appear here once the database is seeded.',
+    explanation_ai: '',
     svg_code: '', image_file: '', passage: '', sectionInstruction: ''
   }];
 }
@@ -202,7 +193,7 @@ function shuffleQuestionOptions(q) {
   };
 }
 
-/* LOAD ALL QUESTIONS — with Lekki Headmaster mixed into English */
+/* LOAD ALL QUESTIONS */
 async function loadAllQuestions() {
   showLoadingState(true);
 
@@ -216,7 +207,6 @@ async function loadAllQuestions() {
       let lekkiQs = [];
 
       if (sid === 'english') {
-        /* English: fetch (total - 5) regular + 5 Lekki Headmaster = total */
         const regularCount = Math.max(totalCount - 5, 0);
         qs       = await fetchQuestions(sid, year, regularCount, topicParam);
         lekkiQs  = await fetchLekkiQuestions(5);
@@ -229,7 +219,6 @@ async function loadAllQuestions() {
         showToast('Demo mode — no questions found for this subject');
       }
 
-      /* Combine: regular + lekki (for English) */
       let combined = [...qs, ...lekkiQs];
 
       if (shuffleQ) combined.sort(() => Math.random() - 0.5);
@@ -245,20 +234,10 @@ async function loadAllQuestions() {
     document.getElementById('submitBtn').style.display = 'none';
   }
 
-  const access = getAccess();
-  if (!access.isPaid) showFreeNotice(access.freeLimit);
-
   showLoadingState(false);
   renderSubjectTabs();
   renderQuestion();
   startTimer();
-}
-
-function showFreeNotice(limit) {
-  const banner = document.createElement('div');
-  banner.style.cssText = 'background:#FFF4DC;border-bottom:1px solid #F0D58C;padding:10px 14px;font-size:13px;color:#A6760A;text-align:center;';
-  banner.innerHTML = `You are on free mode (${limit} questions per subject). <a href="auth.html" style="color:var(--navy);font-weight:700;">Get full access →</a>`;
-  document.body.insertBefore(banner, document.body.firstChild);
 }
 
 /* LOADING STATE */
@@ -313,8 +292,8 @@ function updateSubjectTabs() {
     const el     = tab.querySelector('.subj-tab-count');
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
-                             }/* ================================================================
-   RENDER QUESTION — difficulty tag removed
+}/* ================================================================
+   RENDER QUESTION — Uses AI Explanation Fallback
    ================================================================ */
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
@@ -322,30 +301,25 @@ function renderQuestion() {
 
   document.getElementById('qLabel').textContent = `Q ${currentQIndex + 1} / ${allQuestions.length}`;
 
-  /* Tags — NO difficulty tag */
   const tagsEl = document.getElementById('qTags');
   if (tagsEl) {
     tagsEl.innerHTML = '';
     if (q.topic) {
       const shownTopic = (typeof applyLiteratureReplacement === 'function')
-        ? applyLiteratureReplacement(q.topic, examType)
-        : q.topic;
+        ? applyLiteratureReplacement(q.topic, examType) : q.topic;
       tagsEl.innerHTML += `<span class="q-tag topic">${shownTopic}</span>`;
     }
-    if (q.year)     tagsEl.innerHTML += `<span class="q-tag year">📅 ${q.year}</span>`;
-    if (q.examType) tagsEl.innerHTML += `<span class="q-tag">${q.examType.toUpperCase()}</span>`;
+    if (q.year)       tagsEl.innerHTML += `<span class="q-tag year">📅 ${q.year}</span>`;
+    if (q.examType)   tagsEl.innerHTML += `<span class="q-tag">${q.examType.toUpperCase()}</span>`;
   }
 
-  /* Section instruction (above question) */
   let instrEl = document.getElementById('qInstruction');
   if (!instrEl) {
     instrEl = document.createElement('div');
     instrEl.id = 'qInstruction';
     instrEl.style.cssText = 'font-size:12.5px;color:#5C6B82;line-height:1.5;margin-bottom:10px;padding:8px 12px;background:#F4F6FA;border-left:3px solid #8A94A6;border-radius:6px;display:none;';
     const qTextEl = document.getElementById('qText');
-    if (qTextEl && qTextEl.parentNode) {
-      qTextEl.parentNode.insertBefore(instrEl, qTextEl);
-    }
+    if (qTextEl && qTextEl.parentNode) qTextEl.parentNode.insertBefore(instrEl, qTextEl);
   }
   if (q.sectionInstruction && q.sectionInstruction.trim()) {
     instrEl.textContent = q.sectionInstruction;
@@ -355,15 +329,12 @@ function renderQuestion() {
     instrEl.style.display = 'none';
   }
 
-  /* Question text */
   const qTextEl = document.getElementById('qText');
   if (qTextEl) {
     qTextEl.textContent = (typeof applyLiteratureReplacement === 'function')
-      ? applyLiteratureReplacement(q.text, examType)
-      : q.text;
+      ? applyLiteratureReplacement(q.text, examType) : q.text;
   }
 
-  /* Image / SVG */
   const imgEl = document.getElementById('qImage');
   if (imgEl) {
     if (q.svg_code) {
@@ -378,15 +349,13 @@ function renderQuestion() {
     }
   }
 
-  /* Passage */
   const passCard = document.getElementById('passageBox');
   if (passCard) {
     if (q.passage && q.passage.trim()) {
       const passTextEl = document.getElementById('passageText');
       if (passTextEl) {
         passTextEl.textContent = (typeof applyLiteratureReplacement === 'function')
-          ? applyLiteratureReplacement(q.passage, examType)
-          : q.passage;
+          ? applyLiteratureReplacement(q.passage, examType) : q.passage;
       }
       passCard.classList.add('show');
     } else {
@@ -401,7 +370,6 @@ function renderQuestion() {
   const bkBtn = document.getElementById('bookmarkBtn');
   if (bkBtn) bkBtn.style.color = bookmarks[q.id] ? 'var(--gold)' : '';
 
-  /* Study mode */
   const studyWrap = document.getElementById('showAnswerWrap');
   const explanBox = document.getElementById('explanationBox');
 
@@ -409,13 +377,16 @@ function renderQuestion() {
     studyWrap.classList.add('show');
     const saBtn = document.getElementById('showAnswerBtn');
     if (saBtn) saBtn.textContent = showExplanation ? '🙈 Hide Answer' : '👁️ Show Answer';
+    
     if (showExplanation && explanBox) {
       explanBox.classList.add('show');
       const explText = document.getElementById('explanationText');
       if (explText) {
+        /* ⬅️ THE FIX: Use AI explanation if available, fallback to original */
+        const bestExplanation = q.explanation_ai || q.explanation || 'No explanation available.';
         explText.textContent = (typeof applyLiteratureReplacement === 'function')
-          ? applyLiteratureReplacement(q.explanation || 'No explanation available.', examType)
-          : (q.explanation || 'No explanation available.');
+          ? applyLiteratureReplacement(bestExplanation, examType)
+          : bestExplanation;
       }
     } else if (explanBox) {
       explanBox.classList.remove('show');
@@ -431,7 +402,6 @@ function renderQuestion() {
   updateSubjectTabs();
 }
 
-/* RENDER OPTIONS */
 function renderOptions(q) {
   const list    = document.getElementById('optionsList');
   const letters = ['A','B','C','D','E'];
@@ -454,8 +424,7 @@ function renderOptions(q) {
     }
 
     const optText = (typeof applyLiteratureReplacement === 'function')
-      ? applyLiteratureReplacement(opt, examType)
-      : opt;
+      ? applyLiteratureReplacement(opt, examType) : opt;
 
     row.innerHTML = `
       <div class="option-letter-box">${letter}</div>
@@ -472,7 +441,6 @@ function selectAnswer(q, letter) {
   renderQuestion();
 }
 
-/* NAVIGATION */
 function goToQuestion(index) {
   if (index < 0 || index >= allQuestions.length) return;
   showExplanation = false;
@@ -481,7 +449,6 @@ function goToQuestion(index) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* BOOKMARK */
 function toggleBookmark() {
   const q = allQuestions[currentQIndex];
   if (!q) return;
@@ -502,7 +469,6 @@ function toggleBookmark() {
   if (bkBtn) bkBtn.style.color = bookmarks[q.id] ? 'var(--gold)' : '';
 }
 
-/* GRID */
 function openGrid() {
   const grid = document.getElementById('gridNums');
   grid.innerHTML = '';
@@ -519,7 +485,6 @@ function openGrid() {
 }
 function closeGrid() { document.getElementById('gridOverlay').classList.remove('open'); }
 
-/* SUBMIT */
 function openSubmitDialog() {
   const answered = Object.keys(answers).length;
   const total    = allQuestions.length;
@@ -575,7 +540,6 @@ function buildResult(saveToHistory) {
 function submitExam()  { buildResult(mode === 'practice'); }
 function finishStudy() { buildResult(false); }
 
-/* CALCULATOR */
 let calcDisplay = '0', calcExpr = '', calcJustEvaled = false;
 function openCalc()  { document.getElementById('calcOverlay').classList.add('open'); }
 function closeCalc() { document.getElementById('calcOverlay').classList.remove('open'); }
@@ -606,7 +570,6 @@ function calcPress(val) {
   updateCalcDisplay();
 }
 
-/* TOAST */
 let toastTimer;
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -616,7 +579,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-/* TEXT TO SPEECH */
 function speakQuestion() {
   const q = allQuestions[currentQIndex];
   if (!q || !window.speechSynthesis) { showToast('Text-to-speech not supported'); return; }
@@ -626,7 +588,6 @@ function speakQuestion() {
   speechSynthesis.speak(utt);
 }
 
-/* KEYBOARD */
 document.addEventListener('keydown', e => {
   const calcOv = document.getElementById('calcOverlay');
   if (calcOv && calcOv.classList.contains('open')) return;
@@ -640,7 +601,6 @@ document.addEventListener('keydown', e => {
   if (e.key === '4') selectAnswer(q, 'D');
 });
 
-/* DOMContentLoaded */
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('backBtn').addEventListener('click', () => {
     if (confirm('Leave? Your progress will be lost.')) {
