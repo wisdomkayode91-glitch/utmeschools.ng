@@ -249,7 +249,7 @@ function updateSubjectTabs() {
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
 }/* ================================================================
-   RENDER QUESTION — Displays AI Explanation (with Bold Formatting)
+   RENDER QUESTION — Displays AI Explanation (with HTML formatting)
    ================================================================ */
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
@@ -341,7 +341,7 @@ function renderQuestion() {
         /* AI FALLBACK & HTML RENDERING */
         let finalHtml = '';
         if (q.explanation_ai) {
-          /* AI explanation comes pre-formatted with <strong> and <span> tags */
+          /* AI explanation comes pre-formatted with HTML tags */
           finalHtml = q.explanation_ai;
         } else if (q.explanation) {
           /* Old explanation: convert newlines to <br> so it renders properly */
