@@ -1,6 +1,6 @@
 /* ============================================================
    UTMESchools v2 — practice.js (Part 1)
-   English = 55 Regular + 5 Lekki Headmaster
+   Includes AI Explanation Fallback and 55+5 English Logic
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
@@ -20,7 +20,6 @@ const subtopicsParam   = urlP.get('subtopics') || '';
 
 function getAccess() { return { isPaid: true, plan: 'jamb', freeLimit: 9999 }; }
 
-/* FETCH QUESTIONS */
 async function fetchQuestions(subjectId, year, count, topicParam) {
   try {
     const access = getAccess();
@@ -76,7 +75,7 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
       options:            [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
       correct:            q.correct,
       explanation:        q.explanation || '',
-      explanation_ai:     q.explanation_ai || '', /* AI fallback logic */
+      explanation_ai:     q.explanation_ai || '', /* AI FALLBACK */
       svg_code:           q.svg_code || '',
       image_file:         q.image_file || '',
       passage:            q.passage || '',
@@ -154,7 +153,6 @@ function shuffleQuestionOptions(q) {
   };
 }
 
-/* LOAD QUESTIONS with 55 + 5 English logic */
 async function loadAllQuestions() {
   showLoadingState(true);
   try {
@@ -166,18 +164,13 @@ async function loadAllQuestions() {
       let qs = [];
 
       if (sid === 'english') {
-        /* ⬅️ THE FIX: 55 Regular English + 5 Lekki Headmaster = 60 Total */
+        /* 55 Regular English + 5 Lekki Headmaster = 60 */
         const regularCount = Math.max(totalCount - 5, 0);
-        
-        // 1. Fetch 55 standard English questions
         let engQs = await fetchQuestions('english', year, regularCount, topicParam);
-        
-        // 2. Fetch 5 Lekki Headmaster questions (fallback to random year if specific year fails)
         let lekkiQs = await fetchQuestions('lekki-headmaster', year, 5, '');
         if (lekkiQs.length === 0) {
           lekkiQs = await fetchQuestions('lekki-headmaster', 'Random', 5, '');
         }
-        
         qs = [...engQs, ...lekkiQs];
       } else {
         qs = await fetchQuestions(sid, year, totalCount, topicParam);
@@ -257,7 +250,7 @@ function updateSubjectTabs() {
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
 }/* ================================================================
-   RENDER QUESTION — Displays AI Explanation if available
+   RENDER QUESTION — Displays AI Explanation
    ================================================================ */
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
@@ -346,7 +339,7 @@ function renderQuestion() {
       explanBox.classList.add('show');
       const explText = document.getElementById('explanationText');
       if (explText) {
-        /* ⬅️ Display AI Explanation, fallback to original */
+        /* AI FALLBACK: Use q.explanation_ai if it exists */
         const bestExplanation = q.explanation_ai || q.explanation || 'No explanation available.';
         explText.textContent = (typeof applyLiteratureReplacement === 'function')
           ? applyLiteratureReplacement(bestExplanation, examType)
