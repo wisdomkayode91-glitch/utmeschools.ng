@@ -249,7 +249,7 @@ function updateSubjectTabs() {
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
 }/* ================================================================
-   RENDER QUESTION — Displays AI Explanation if available
+   RENDER QUESTION — Displays AI Explanation (with Bold Formatting)
    ================================================================ */
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
@@ -338,11 +338,23 @@ function renderQuestion() {
       explanBox.classList.add('show');
       const explText = document.getElementById('explanationText');
       if (explText) {
-        /* AI FALLBACK: Use q.explanation_ai if it exists */
-        const bestExplanation = q.explanation_ai || q.explanation || 'No explanation available.';
-        explText.textContent = (typeof applyLiteratureReplacement === 'function')
-          ? applyLiteratureReplacement(bestExplanation, examType)
-          : bestExplanation;
+        /* AI FALLBACK & HTML RENDERING */
+        let finalHtml = '';
+        if (q.explanation_ai) {
+          /* AI explanation comes pre-formatted with <strong> and <span> tags */
+          finalHtml = q.explanation_ai;
+        } else if (q.explanation) {
+          /* Old explanation: convert newlines to <br> so it renders properly */
+          finalHtml = q.explanation.replace(/\n/g, '<br>');
+        } else {
+          finalHtml = 'No explanation available.';
+        }
+
+        const processedHtml = (typeof applyLiteratureReplacement === 'function')
+          ? applyLiteratureReplacement(finalHtml, examType)
+          : finalHtml;
+
+        explText.innerHTML = processedHtml; 
       }
     } else if (explanBox) {
       explanBox.classList.remove('show');
