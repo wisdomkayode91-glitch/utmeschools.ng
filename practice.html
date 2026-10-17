@@ -341,11 +341,31 @@ body { background: #F4F6FA; }
   font-weight: 800;
   color: #0B2545;
 }
+
+/* ---- EXPLANATION TEXT FORMATTING (THE FIX) ---- */
 .explanation-text {
   font-size: 13.5px;
   line-height: 1.65;
   color: #2C3E50;
-  white-space: pre-wrap; /* THIS FIXES THE LINE BREAKS */
+  white-space: normal; /* Allows HTML tags to render */
+}
+
+/* Very Bold for the headers */
+.explanation-text strong, 
+.explanation-text b {
+  font-weight: 800;
+  color: #0B2545;
+  display: block;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  font-size: 14.5px;
+}
+
+/* A little bold for the content */
+.explanation-text span {
+  font-weight: 500; 
+  display: block;
+  margin-bottom: 4px;
 }
 
 /* ---- STUDY MODE SHOW ANSWER ---- */
@@ -597,8 +617,7 @@ body { background: #F4F6FA; }
 .free-banner h3 { font-family: var(--font-display); font-size: 16px; font-weight: 800; margin-bottom: 6px; }
 .free-banner p  { font-size: 13px; opacity: 0.8; margin-bottom: 14px; line-height: 1.5; }
 </style>
-</head>
-<body>
+</head><body>
 
 <!-- TOOLBAR -->
 <div class="toolbar">
