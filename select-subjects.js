@@ -1,13 +1,11 @@
 /* ============================================================
    UTMESchools v2 — select-subjects.js
-   JAMB + Post UTME (tabbed) · dynamic years & schools
-   FIX: Session Settings now shows on JAMB tab
+   Part 1 of 2
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
 
-/* ---- JAMB subjects (16) ---- */
 const JAMB_SUBJECTS = [
   { id:'english',            name:'English Language',      icon:'🔤', max:60 },
   { id:'mathematics',        name:'Mathematics',           icon:'📐', max:40 },
@@ -27,13 +25,13 @@ const JAMB_SUBJECTS = [
   { id:'yoruba',             name:'Yoruba',                icon:'🌺', max:40 },
 ];
 
-/* ---- JAMB state ---- */
 let selectedIds   = ['english'];
 let pendingIds    = ['english'];
+let currentMode   = 'practice';
+let currentExam   = 'utme';
 let jambConfig    = { english: { year: 'Random', count: 40 } };
 let jambYearsCache = {};
 
-/* ---- Post UTME state ---- */
 let selectedSchool    = null;
 let pendingSchool     = null;
 let postutmeSubjects  = [];
@@ -42,20 +40,13 @@ let postutmeConfig    = { count: 40 };
 let schoolsCache      = null;
 let postutmeSubjectsCache = {};
 
-/* ---- Shared state ---- */
-let currentMode   = 'practice';
 let currentTab    = 'jamb';
 let sheetMode     = 'jamb';
 
-/* ================================================================
-   INIT
-   ================================================================ */
 document.addEventListener('DOMContentLoaded', () => {
-  /* JAMB selected bar → opens subject sheet */
   const jambBar = document.querySelector('#panelJamb .selected-bar');
   if (jambBar) jambBar.addEventListener('click', openSheet);
 
-  /* Sheet buttons (shared) */
   document.getElementById('sheetCancelBtn').addEventListener('click', closeSheet);
   document.getElementById('sheetDoneBtn').addEventListener('click', onSheetDone);
   document.getElementById('sheetSelectAllBtn').addEventListener('click', onSheetSelectAll);
@@ -70,7 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* Mode buttons */
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
@@ -82,10 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  /* Start button */
   document.getElementById('startBtn').addEventListener('click', startSession);
 
-  /* Calculator */
   document.getElementById('calcOpenBtn').addEventListener('click', openCalc);
   document.getElementById('calcCloseBtn').addEventListener('click', closeCalc);
   document.getElementById('calcOverlay').addEventListener('click', e => {
@@ -100,9 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
   renderStartBar();
 });
 
-/* ================================================================
-   TAB SWITCHING
-   ================================================================ */
 function switchTab(tab) {
   currentTab = tab;
   document.getElementById('tabJamb').classList.toggle('active', tab === 'jamb');
@@ -113,9 +98,6 @@ function switchTab(tab) {
   renderStartBar();
 }
 
-/* ================================================================
-   JAMB — SELECTED BAR
-   ================================================================ */
 function renderSelectedBar() {
   const pillsEl = document.getElementById('selectedPills');
   if (!pillsEl) return;
@@ -130,10 +112,6 @@ function renderSelectedBar() {
   }
 }
 
-/* ================================================================
-   JAMB — CONFIG CARDS (with dynamic years)
-   FIX: optSect.style.display = 'block' added so Session Settings shows
-   ================================================================ */
 async function renderConfigCards() {
   const wrap    = document.getElementById('configWrap');
   const cards   = document.getElementById('configCards');
@@ -147,7 +125,7 @@ async function renderConfigCards() {
   }
 
   wrap.classList.add('show');
-  if (optSect) optSect.style.display = 'block';   /* ← THE FIX */
+  if (optSect) optSect.style.display = 'block';
   cards.innerHTML = '';
 
   for (const id of selectedIds) {
@@ -157,7 +135,6 @@ async function renderConfigCards() {
     const cfg = jambConfig[id] || { year: 'Random', count: 40 };
     jambConfig[id] = cfg;
 
-    /* Loading card */
     const card = document.createElement('div');
     card.className = 'config-card';
     card.innerHTML = `
@@ -169,7 +146,6 @@ async function renderConfigCards() {
       <div class="config-row" style="justify-content:center;color:#8A94A6;font-size:12px;padding:12px 0;">Loading years...</div>`;
     cards.appendChild(card);
 
-    /* Fetch actual years from DB */
     const years = await fetchYearsForJamb(id);
 
     let yearOptions = '<option value="Random">🔀 Random (all years)</option>';
@@ -224,8 +200,9 @@ async function renderConfigCards() {
 async function fetchYearsForJamb(subjectId) {
   if (jambYearsCache[subjectId]) return jambYearsCache[subjectId];
   try {
+    /* THE FIX: order=year.desc&limit=50 ensures we get 2026 first */
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&exam_type=eq.utme&select=year`,
+      `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&exam_type=eq.utme&select=year&order=year.desc&limit=50`,
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
     );
     const data = await res.json();
@@ -236,9 +213,11 @@ async function fetchYearsForJamb(subjectId) {
     console.error('Year fetch error:', e);
     return [];
   }
-   }/* ================================================================
-   SHARED SHEET — dispatcher
-   ================================================================ */
+}/* ============================================================
+   UTMESchools v2 — select-subjects.js
+   Part 2 of 2
+   ============================================================ */
+
 function openSheet() {
   const sheetOverlay = document.getElementById('sheetOverlay');
   const titleEl = document.getElementById('sheetTitle');
@@ -279,9 +258,6 @@ function onSheetSelectAll() {
   else if (sheetMode === 'postutme-subs')  toggleSelectAllPostutmeSubjects();
 }
 
-/* ================================================================
-   JAMB SHEET
-   ================================================================ */
 function renderJambSheetItems(filter) {
   const body = document.getElementById('sheetBody');
   if (!body) return;
@@ -344,9 +320,6 @@ function toggleSelectAllJamb() {
   renderJambSheetItems(q);
 }
 
-/* ================================================================
-   POST UTME — SCHOOL PICKER
-   ================================================================ */
 async function openSchoolSheet() {
   sheetMode = 'schools';
   const sheetOverlay = document.getElementById('sheetOverlay');
@@ -431,9 +404,6 @@ function confirmSchoolSheet() {
   renderStartBar();
 }
 
-/* ================================================================
-   POST UTME — SUBJECT PICKER (within chosen school)
-   ================================================================ */
 async function openPostutmeSubjectsSheet() {
   if (!selectedSchool) { showToast('Pick a school first'); return; }
 
@@ -533,9 +503,6 @@ function confirmPostutmeSubjectsSheet() {
   renderStartBar();
 }
 
-/* ================================================================
-   POST UTME — BARS & CONFIG
-   ================================================================ */
 function renderSchoolBar() {
   const pillsEl = document.getElementById('schoolPills');
   if (!pillsEl) return;
@@ -602,9 +569,6 @@ function renderPostutmeConfig() {
   }
 }
 
-/* ================================================================
-   START BAR
-   ================================================================ */
 function renderStartBar() {
   const infoTop  = document.getElementById('startInfoTop');
   const infoSub  = document.getElementById('startInfoSub');
@@ -638,9 +602,6 @@ function renderStartBar() {
   }
 }
 
-/* ================================================================
-   START SESSION
-   ================================================================ */
 function startSession() {
   const h = document.getElementById('timerH')?.value || '2';
   const m = document.getElementById('timerM')?.value || '0';
@@ -674,9 +635,6 @@ function startSession() {
   window.location.href = 'practice.html?' + params.toString();
 }
 
-/* ================================================================
-   MODE
-   ================================================================ */
 function setMode(mode, btn) {
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -686,9 +644,6 @@ function setMode(mode, btn) {
   renderStartBar();
 }
 
-/* ================================================================
-   CALCULATOR
-   ================================================================ */
 let calcDisplay = '0', calcExpr = '', calcEvaled = false;
 function openCalc()  { document.getElementById('calcOverlay').classList.add('open'); }
 function closeCalc() { document.getElementById('calcOverlay').classList.remove('open'); }
@@ -722,9 +677,6 @@ function calcPress(val) {
   updateCalcDisplay();
 }
 
-/* ================================================================
-   TOAST
-   ================================================================ */
 let _tt;
 function showToast(msg) {
   let t = document.getElementById('toast');
