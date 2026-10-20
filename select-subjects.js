@@ -1,6 +1,14 @@
+
+
 /* ============================================================
    UTMESchools v2 — select-subjects.js
-   Part 1 of 2
+
+   New in this version: every JAMB subject card has a "Topics" row.
+   Tap it to choose whole topics or individual subtopics. The choice is
+   sent to the practice page as stable IDs:
+     tid_<subject>=topicId,topicId     (whole topics)
+     sid_<subject>=subtopicId,...      (individual subtopics)
+   The approved topic list comes from topic-catalogue.js.
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
@@ -29,7 +37,7 @@ let selectedIds   = ['english'];
 let pendingIds    = ['english'];
 let currentMode   = 'practice';
 let currentExam   = 'utme';
-let jambConfig    = { english: { year: 'Random', count: 40 } };
+let jambConfig    = { english: { year: 'Random', count: 40, subs: [] } };
 let jambYearsCache = {};
 
 let selectedSchool    = null;
@@ -42,6 +50,14 @@ let postutmeSubjectsCache = {};
 
 let currentTab    = 'jamb';
 let sheetMode     = 'jamb';
+
+/* ---- topic picker state ---- */
+let topicCountsCache  = {};      /* subjectId -> { ok, topic:{id:n}, sub:{id:n}, error } */
+let topicSheetSubject = null;
+let topicSheetToken   = 0;
+let topicCounts       = null;
+let pendingSubs       = new Set();
+let expandedTopics    = new Set();
 
 document.addEventListener('DOMContentLoaded', () => {
   const jambBar = document.querySelector('#panelJamb .selected-bar');
@@ -112,6 +128,84 @@ function renderSelectedBar() {
   }
 }
 
+/* ============================================================
+   TOPIC LIST HELPERS
+   ============================================================ */
+function catalogueFor(subjectId) {
+  return (window.TopicCatalogue && window.TopicCatalogue.subjects && window.TopicCatalogue.subjects[subjectId]) || null;
+}
+
+function topicSummary(subjectId) {
+  const cfg  = jambConfig[subjectId];
+  const subs = (cfg && cfg.subs) || [];
+  const cat  = catalogueFor(subjectId);
+  if (!cat || !subs.length) return 'All topics ›';
+  const sel = new Set(subs);
+  let fullTopics = 0, partialSubs = 0;
+  cat.topics.forEach(t => {
+    const n = t.subs.filter(s => sel.has(s.id)).length;
+    if (n === t.subs.length) fullTopics++; else partialSubs += n;
+  });
+  const parts = [];
+  if (fullTopics)  parts.push(fullTopics  + ' topic'    + (fullTopics  > 1 ? 's' : ''));
+  if (partialSubs) parts.push(partialSubs + ' subtopic' + (partialSubs > 1 ? 's' : ''));
+  return (parts.join(' · ') || 'All topics') + ' ›';
+}
+
+function hasTopicSelection(subjectId) {
+  const cfg = jambConfig[subjectId];
+  return !!(cfg && cfg.subs && cfg.subs.length && catalogueFor(subjectId));
+}
+
+/* chosen subtopics -> { tids:[whole topics], sids:[individual subtopics] } */
+function selectionParams(subjectId) {
+  const cat  = catalogueFor(subjectId);
+  const subs = new Set((jambConfig[subjectId] && jambConfig[subjectId].subs) || []);
+  if (!cat || !subs.size) return null;
+  const tids = [], sids = [];
+  cat.topics.forEach(t => {
+    const n = t.subs.filter(s => subs.has(s.id)).length;
+    if (n === t.subs.length) tids.push(t.id);
+    else t.subs.forEach(s => { if (subs.has(s.id)) sids.push(s.id); });
+  });
+  return { tids, sids };
+}
+
+function refreshTopicButton(subjectId) {
+  const btn = document.querySelector(`[data-topics="${subjectId}"]`);
+  if (!btn) return;
+  btn.textContent = topicSummary(subjectId);
+  btn.classList.toggle('active', hasTopicSelection(subjectId));
+}
+
+/* how many classified questions exist per topic / subtopic */
+async function fetchTopicCounts(subjectId) {
+  if (topicCountsCache[subjectId]) return topicCountsCache[subjectId];
+  const out = { ok: false, topic: {}, sub: {}, error: '' };
+  try {
+    const PAGE = 1000;
+    for (let offset = 0; ; offset += PAGE) {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&exam_type=eq.utme&topic_id=not.is.null&select=topic_id,subtopic_id&order=id.asc&limit=${PAGE}&offset=${offset}`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+      );
+      if (!res.ok) { out.error = String(res.status); return out; }
+      const rows = await res.json();
+      rows.forEach(q => {
+        out.topic[q.topic_id] = (out.topic[q.topic_id] || 0) + 1;
+        if (q.subtopic_id) out.sub[q.subtopic_id] = (out.sub[q.subtopic_id] || 0) + 1;
+      });
+      if (rows.length < PAGE) break;
+    }
+    out.ok = true;
+    topicCountsCache[subjectId] = out;      /* only successful results are cached */
+  } catch (e) { out.error = 'network'; }
+  return out;
+}
+
+/* ============================================================
+   SUBJECT CONFIG CARDS
+   ============================================================ */
 async function renderConfigCards() {
   const wrap    = document.getElementById('configWrap');
   const cards   = document.getElementById('configCards');
@@ -132,7 +226,8 @@ async function renderConfigCards() {
     const s = JAMB_SUBJECTS.find(x => x.id === id);
     if (!s) continue;
 
-    const cfg = jambConfig[id] || { year: 'Random', count: 40 };
+    const cfg = jambConfig[id] || { year: 'Random', count: 40, subs: [] };
+    if (!cfg.subs) cfg.subs = [];
     jambConfig[id] = cfg;
 
     const card = document.createElement('div');
@@ -166,6 +261,12 @@ async function renderConfigCards() {
       ? `${years[years.length-1]}–${years[0]}`
       : 'no data yet';
 
+    const topicRow = catalogueFor(id) ? `
+      <div class="config-row">
+        <span class="config-row-label">🧩 Topics</span>
+        <button class="topic-btn ${hasTopicSelection(id) ? 'active' : ''}" data-topics="${id}">${topicSummary(id)}</button>
+      </div>` : '';
+
     card.innerHTML = `
       <div class="config-card-head">
         <div class="config-card-icon" style="background:#EEF4FF;">${s.icon}</div>
@@ -179,7 +280,7 @@ async function renderConfigCards() {
       <div class="config-row">
         <span class="config-row-label">🔢 Questions</span>
         <select class="config-select" data-field="count" data-subject="${id}">${countSel}</select>
-      </div>`;
+      </div>${topicRow}`;
 
     card.querySelector('[data-field="year"]').addEventListener('change', e => {
       jambConfig[id].year = e.target.value;
@@ -187,6 +288,8 @@ async function renderConfigCards() {
     card.querySelector('[data-field="count"]').addEventListener('change', e => {
       jambConfig[id].count = parseInt(e.target.value);
     });
+    const topicBtn = card.querySelector('[data-topics]');
+    if (topicBtn) topicBtn.addEventListener('click', () => openTopicSheet(id));
     card.querySelector('[data-remove]').addEventListener('click', () => {
       selectedIds = selectedIds.filter(x => x !== id);
       delete jambConfig[id];
@@ -213,11 +316,11 @@ async function fetchYearsForJamb(subjectId) {
     console.error('Year fetch error:', e);
     return [];
   }
-}/* ============================================================
-   UTMESchools v2 — select-subjects.js
-   Part 2 of 2
-   ============================================================ */
+}
 
+/* ============================================================
+   SHEET (subjects / topics / schools / post-utme subjects)
+   ============================================================ */
 function openSheet() {
   const sheetOverlay = document.getElementById('sheetOverlay');
   const titleEl = document.getElementById('sheetTitle');
@@ -228,6 +331,7 @@ function openSheet() {
     titleEl.textContent = 'Choose Subjects to Practise';
     searchEl.placeholder = '🔍 Search subjects...';
     document.getElementById('sheetSelectAllBtn').style.display = 'block';
+    document.getElementById('sheetSelectAllBtn').textContent = 'Select All';
     pendingIds = [...selectedIds];
     searchEl.value = '';
     renderJambSheetItems('');
@@ -239,22 +343,26 @@ function openSheet() {
 function closeSheet() {
   document.getElementById('sheetOverlay').classList.remove('open');
   document.body.style.overflow = '';
+  topicSheetToken++;
 }
 
 function onSheetSearch(val) {
   if (sheetMode === 'jamb')                renderJambSheetItems(val);
+  else if (sheetMode === 'topics')         renderTopicSheetItems(val);
   else if (sheetMode === 'schools')        renderSchoolSheetItems(val);
   else if (sheetMode === 'postutme-subs')  renderPostutmeSubjectsSheetItems(val);
 }
 
 function onSheetDone() {
   if (sheetMode === 'jamb')                confirmJambSheet();
+  else if (sheetMode === 'topics')         confirmTopicSheet();
   else if (sheetMode === 'schools')        confirmSchoolSheet();
   else if (sheetMode === 'postutme-subs')  confirmPostutmeSubjectsSheet();
 }
 
 function onSheetSelectAll() {
   if (sheetMode === 'jamb')                toggleSelectAllJamb();
+  else if (sheetMode === 'topics')         toggleSelectAllTopics();
   else if (sheetMode === 'postutme-subs')  toggleSelectAllPostutmeSubjects();
 }
 
@@ -297,7 +405,7 @@ function confirmJambSheet() {
   selectedIds.forEach(id => {
     if (!jambConfig[id]) {
       const s = JAMB_SUBJECTS.find(x => x.id === id);
-      jambConfig[id] = { year: 'Random', count: Math.min(40, s?.max || 40) };
+      jambConfig[id] = { year: 'Random', count: Math.min(40, s?.max || 40), subs: [] };
     }
   });
   closeSheet();
@@ -318,8 +426,159 @@ function toggleSelectAllJamb() {
     document.getElementById('sheetSelectAllBtn').textContent = 'Deselect All';
   }
   renderJambSheetItems(q);
+}/* ============================================================
+   TOPIC / SUBTOPIC SHEET
+   ============================================================ */
+function mk(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
 }
 
+async function openTopicSheet(subjectId) {
+  const cat = catalogueFor(subjectId);
+  if (!cat) { showToast('Topics are not available for this subject yet'); return; }
+
+  sheetMode = 'topics';
+  topicSheetSubject = subjectId;
+  const token = ++topicSheetToken;
+
+  const s = JAMB_SUBJECTS.find(x => x.id === subjectId);
+  document.getElementById('sheetTitle').textContent = 'Topics — ' + (s ? s.name : subjectId);
+  const searchEl = document.getElementById('sheetSearch');
+  searchEl.placeholder = '🔍 Search topics...';
+  searchEl.value = '';
+  const allBtn = document.getElementById('sheetSelectAllBtn');
+  allBtn.style.display = 'block';
+  allBtn.textContent = 'Select All';
+
+  pendingSubs    = new Set((jambConfig[subjectId] && jambConfig[subjectId].subs) || []);
+  expandedTopics = new Set();
+  topicCounts    = null;
+
+  const body = document.getElementById('sheetBody');
+  body.innerHTML = '';
+  body.appendChild(mk('div', 'sheet-item loading', 'Loading topics...'));
+  document.getElementById('sheetOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+
+  const counts = await fetchTopicCounts(subjectId);
+  if (token !== topicSheetToken || sheetMode !== 'topics') return;   /* closed while loading */
+  topicCounts = counts;
+  renderTopicSheetItems('');
+}
+
+function renderTopicSheetItems(filter) {
+  const body = document.getElementById('sheetBody');
+  if (!body) return;
+  const cat = catalogueFor(topicSheetSubject);
+  const prevScroll = body.scrollTop;
+  body.innerHTML = '';
+
+  if (!cat) { body.appendChild(mk('div', 'sheet-item loading', 'No topics for this subject')); return; }
+  if (!topicCounts || !topicCounts.ok) {
+    body.appendChild(mk('div', 'sheet-item loading',
+      topicCounts && topicCounts.error === '400'
+        ? 'Topic practice is not ready yet.'
+        : 'Could not load topics. Check your connection and try again.'));
+    return;
+  }
+
+  const total = Object.keys(topicCounts.topic).reduce((a, k) => a + topicCounts.topic[k], 0);
+  if (!total) {
+    body.appendChild(mk('div', 'sheet-note',
+      'No questions have been sorted by topic yet. Topics will unlock here as the questions are updated.'));
+  }
+
+  const q = (filter || '').toLowerCase();
+
+  cat.topics.forEach(t => {
+    const tCount     = topicCounts.topic[t.id] || 0;
+    const topicMatch = !q || t.name.toLowerCase().includes(q);
+    const subList    = t.subs.filter(s => topicMatch || s.name.toLowerCase().includes(q));
+    if (!topicMatch && !subList.length) return;
+
+    const nSel    = t.subs.filter(s => pendingSubs.has(s.id)).length;
+    const full    = nSel === t.subs.length;
+    const partial = nSel > 0 && !full;
+    const open    = expandedTopics.has(t.id) || (!!q && !topicMatch);
+
+    const row   = mk('div', 'sheet-item' + (full ? ' checked' : '') + (tCount === 0 ? ' disabled' : ''));
+    const arrow = mk('div', 'sheet-arrow', open ? '▼' : '▶');
+    row.appendChild(arrow);
+    row.appendChild(mk('div', 'sheet-item-name', t.name));
+    row.appendChild(mk('div', 'sheet-count', String(tCount)));
+    row.appendChild(mk('div', 'sheet-check' + (partial ? ' partial' : ''), full ? '✓' : (partial ? '–' : '')));
+
+    arrow.addEventListener('click', e => {
+      if (e && e.stopPropagation) e.stopPropagation();
+      if (expandedTopics.has(t.id)) expandedTopics.delete(t.id); else expandedTopics.add(t.id);
+      renderTopicSheetItems(filter);
+    });
+    row.addEventListener('click', () => {
+      if (tCount === 0 && !full && !partial) return;          /* nothing to practise here yet */
+      if (full) t.subs.forEach(s => pendingSubs.delete(s.id));
+      else      t.subs.forEach(s => pendingSubs.add(s.id));
+      renderTopicSheetItems(filter);
+    });
+    body.appendChild(row);
+
+    if (open) {
+      subList.forEach(s => {
+        const sc = topicCounts.sub[s.id] || 0;
+        const on = pendingSubs.has(s.id);
+        const r  = mk('div', 'sheet-item sub' + (on ? ' checked' : '') + (sc === 0 ? ' disabled' : ''));
+        r.appendChild(mk('div', 'sheet-item-name', s.name));
+        r.appendChild(mk('div', 'sheet-count', String(sc)));
+        r.appendChild(mk('div', 'sheet-check', on ? '✓' : ''));
+        r.addEventListener('click', () => {
+          if (sc === 0 && !on) return;
+          if (on) pendingSubs.delete(s.id); else pendingSubs.add(s.id);
+          renderTopicSheetItems(filter);
+        });
+        body.appendChild(r);
+      });
+    }
+  });
+
+  body.scrollTop = prevScroll;
+}
+
+function toggleSelectAllTopics() {
+  const cat = catalogueFor(topicSheetSubject);
+  if (!cat || !topicCounts || !topicCounts.ok) return;
+  const usable = cat.topics.filter(t => (topicCounts.topic[t.id] || 0) > 0);
+  const allSel = usable.length > 0 && usable.every(t => t.subs.every(s => pendingSubs.has(s.id)));
+  const btn = document.getElementById('sheetSelectAllBtn');
+  if (allSel) {
+    pendingSubs.clear();
+    btn.textContent = 'Select All';
+  } else {
+    usable.forEach(t => t.subs.forEach(s => pendingSubs.add(s.id)));
+    btn.textContent = 'Deselect All';
+  }
+  renderTopicSheetItems(document.getElementById('sheetSearch')?.value || '');
+}
+
+function confirmTopicSheet() {
+  const id  = topicSheetSubject;
+  const cat = catalogueFor(id);
+  if (!cat || !jambConfig[id]) { closeSheet(); return; }
+
+  /* choosing every topic that has questions is the same as "All topics" */
+  const usable  = topicCounts && topicCounts.ok ? cat.topics.filter(t => (topicCounts.topic[t.id] || 0) > 0) : [];
+  const allFull = usable.length > 0 && usable.every(t => t.subs.every(s => pendingSubs.has(s.id)));
+  jambConfig[id].subs = (pendingSubs.size === 0 || allFull) ? [] : [...pendingSubs];
+
+  closeSheet();
+  refreshTopicButton(id);
+  renderStartBar();
+}
+
+/* ============================================================
+   POST UTME (unchanged)
+   ============================================================ */
 async function openSchoolSheet() {
   sheetMode = 'schools';
   const sheetOverlay = document.getElementById('sheetOverlay');
@@ -581,8 +840,9 @@ function renderStartBar() {
       infoSub.textContent = 'Select subjects to begin';
       startBtn.disabled = true;
     } else {
+      const topicsOn = selectedIds.some(hasTopicSelection);
       infoTop.textContent = `${selectedIds.length} subject${selectedIds.length > 1 ? 's' : ''} selected`;
-      infoSub.textContent = `${currentMode} mode · tap Start when ready`;
+      infoSub.textContent = `${currentMode} mode${topicsOn ? ' · topics chosen' : ''} · tap Start when ready`;
       startBtn.disabled = false;
     }
   } else {
@@ -621,6 +881,11 @@ function startSession() {
       const cfg = jambConfig[id] || {};
       params.set('year_'  + id, cfg.year  || 'Random');
       params.set('count_' + id, cfg.count || 40);
+      const sel = selectionParams(id);
+      if (sel) {
+        if (sel.tids.length) params.set('tid_' + id, sel.tids.join(','));
+        if (sel.sids.length) params.set('sid_' + id, sel.sids.join(','));
+      }
     });
   } else {
     if (!selectedSchool) { showToast('Pick a school first'); return; }
@@ -688,6 +953,6 @@ function showToast(msg) {
   }
   t.textContent = msg;
   t.classList.add('show');
-  clearTimeout(_tt);
-  _tt = setTimeout(() => t.classList.remove('show'), 2500);
+clearTimeout(_tt);
+_tt =setTimeout(()=>t.class.remove
 }
