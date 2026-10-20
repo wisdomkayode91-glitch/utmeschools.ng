@@ -1,5 +1,3 @@
-
-
 /* ============================================================
    UTMESchools v2 — select-subjects.js
 
@@ -426,7 +424,9 @@ function toggleSelectAllJamb() {
     document.getElementById('sheetSelectAllBtn').textContent = 'Deselect All';
   }
   renderJambSheetItems(q);
-}/* ============================================================
+}
+
+/* ============================================================
    TOPIC / SUBTOPIC SHEET
    ============================================================ */
 function mk(tag, cls, text) {
@@ -953,6 +953,6 @@ function showToast(msg) {
   }
   t.textContent = msg;
   t.classList.add('show');
-clearTimeout(_tt);
-_tt =setTimeout(()=>t.class.remove
+  clearTimeout(_tt);
+  _tt = setTimeout(() => t.classList.remove('show'), 2500);
 }
