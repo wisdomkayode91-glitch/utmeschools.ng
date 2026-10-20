@@ -1,9 +1,24 @@
 /* ============================================================
-   UTMESchools v2 — practice.js (Part 1)
+   UTMESchools v2 — practice.js
+   Changes in this version:
+   • Explanations are drawn by ExplanationRenderer (explanation-renderer.js)
+     in the clean layout: Correct Answer, Topic/Subtopic, Explanation,
+     Related Knowledge (tap to expand), JAMB Tip.
+   • Topic / subtopic practice filters by stable IDs on the server
+     (URL params  tid_<subject>  and  sid_<subject>).
+   • Question selection is now truly random: the app first asks for the
+     list of matching IDs, picks the random ones, then loads only those.
+     (Before, it loaded the first N rows and shuffled them, so the same
+     questions kept coming back.)
    ============================================================ */
 
 const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
+const SB_HEADERS = {
+  'apikey':        SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type':  'application/json'
+};
 
 const urlP             = new URLSearchParams(window.location.search);
 const subjectIds       = (urlP.get('subjects') || 'english').split(',');
@@ -19,42 +34,106 @@ const subtopicsParam   = urlP.get('subtopics') || '';
 
 function getAccess() { return { isPaid: true, plan: 'jamb', freeLimit: 9999 }; }
 
-async function fetchQuestions(subjectId, year, count, topicParam) {
+/* ---------- small helpers ---------- */
+function shuffleArray(a) {
+  const b = a.slice();
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  return b;
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+/* Read every matching row, page by page (the API returns at most 1000 per request). */
+async function pagedGet(url) {
+  const PAGE = 1000;
+  const out = [];
+  for (let offset = 0; ; offset += PAGE) {
+    const res = await fetch(`${url}&limit=${PAGE}&offset=${offset}`, { headers: SB_HEADERS });
+    if (!res.ok) { console.error('Supabase fetch error:', res.status); return null; }
+    const rows = await res.json();
+    out.push(...rows);
+    if (rows.length < PAGE) break;
+  }
+  return out;
+}
+
+/* ---------- topic / subtopic selection coming from the setup page ---------- */
+function idList(param) {
+  return (urlP.get(param) || '').split(',').map(x => x.trim()).filter(x => /^[a-z0-9_]+$/.test(x));
+}
+function topicIdFilter(subjectId) {
+  const t = idList('tid_' + subjectId);
+  const s = idList('sid_' + subjectId);
+  if (t.length && s.length) return `&or=(topic_id.in.(${t.join(',')}),subtopic_id.in.(${s.join(',')}))`;
+  if (t.length) return `&topic_id=in.(${t.join(',')})`;
+  if (s.length) return `&subtopic_id=in.(${s.join(',')})`;
+  return '';
+}
+function hasTopicFilter(subjectId) { return topicIdFilter(subjectId) !== ''; }
+
+function mapQuestion(q) {
+  return {
+    id:                 String(q.id),
+    subjectId:          q.subject_id,
+    examType:           q.exam_type,
+    year:               q.year,
+    topic:              q.topic || '',
+    subtopic:           q.subtopic || '',
+    topic_id:           q.topic_id || '',
+    subtopic_id:        q.subtopic_id || '',
+    difficulty:         q.difficulty || 'Intermediate',
+    text:               q.text,
+    options:            [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
+    correct:            q.correct,
+    explanation:        q.explanation || '',
+    explanation_ai:     q.explanation_ai || '',
+    svg_code:           q.svg_code || '',
+    image_file:         q.image_file || '',
+    passage:            q.passage || '',
+    sectionInstruction: q.section_instruction || '',
+  };
+}
+
+async function fetchQuestions(subjectId, year, count, topicParam, useTopicIds) {
   try {
     const access = getAccess();
     const limit  = access.isPaid ? count : access.freeLimit;
 
-    let url = `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${subjectId}&exam_type=eq.${examType}&select=*&limit=${limit}`;
-    if (year && year !== 'Random') url += `&year=eq.${year}`;
+    /* 1) light request: just the IDs that match every filter */
+    let base = `${SUPABASE_URL}/rest/v1/questions?subject_id=eq.${encodeURIComponent(subjectId)}&exam_type=eq.${encodeURIComponent(examType)}`;
+    if (year && year !== 'Random') base += `&year=eq.${encodeURIComponent(year)}`;
+    if (useTopicIds) base += topicIdFilter(subjectId);
 
-    const res = await fetch(url, {
-      headers: {
-        'apikey':        SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type':  'application/json'
-      }
-    });
+    const needText = !!(topicsParam || subtopicsParam || topicParam || filterLiterature);
+    const cols = needText ? ('id,topic,subtopic' + (filterLiterature ? ',passage' : '')) : 'id';
 
-    if (!res.ok) { console.error('Supabase fetch error:', res.status); return []; }
+    let pool = await pagedGet(`${base}&select=${cols}&order=id.asc`);
+    if (pool === null) return [];
 
-    let questions = await res.json();
-
+    /* older text-based filters (Post UTME subjects, literature) */
     if (topicsParam) {
       const allowed = topicsParam.split('||');
-      questions = questions.filter(q => allowed.includes(q.topic));
+      pool = pool.filter(q => allowed.includes(q.topic));
     }
     if (subtopicsParam) {
       const allowed = subtopicsParam.split('||');
-      questions = questions.filter(q => allowed.includes(q.subtopic));
+      pool = pool.filter(q => allowed.includes(q.subtopic));
     }
     if (topicParam) {
       const allowed = topicParam.split('||');
-      questions = questions.filter(q =>
+      pool = pool.filter(q =>
         allowed.some(t => q.topic === t || (q.topic + ' : ' + q.subtopic) === t)
       );
     }
     if (filterLiterature && typeof LITERATURE_CONFIG !== 'undefined') {
-      questions = questions.filter(q => {
+      pool = pool.filter(q => {
         const text = ((q.topic || '') + ' ' + (q.subtopic || '') + ' ' + (q.passage || '')).toLowerCase();
         return LITERATURE_CONFIG.replaceWith.some(slug => text.includes(slug.replace(/-/g, ' ')))
             || text.includes('lekki')
@@ -62,25 +141,22 @@ async function fetchQuestions(subjectId, year, count, topicParam) {
       });
     }
 
-    return questions.map(q => ({
-      id:                 String(q.id),
-      subjectId:          q.subject_id,
-      examType:           q.exam_type,
-      year:               q.year,
-      topic:              q.topic || '',
-      subtopic:           q.subtopic || '',
-      difficulty:         q.difficulty || 'Intermediate',
-      text:               q.text,
-      options:            [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean),
-      correct:            q.correct,
-      explanation:        q.explanation || '',
-      explanation_ai:     q.explanation_ai || '', /* MAPPED FOR AI FALLBACK */
-      svg_code:           q.svg_code || '',
-      image_file:         q.image_file || '',
-      passage:            q.passage || '',
-      sectionInstruction: q.section_instruction || '',
-    }));
-  } catch(e) { console.error('Fetch error:', e); return []; }
+    /* 2) pick the questions (random when shuffle is on) */
+    const chosen = shuffleQ ? shuffleArray(pool) : pool;
+    const ids = chosen.slice(0, limit).map(r => r.id);
+    if (!ids.length) return [];
+
+    /* 3) load only the chosen questions in full */
+    const rows = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const part = ids.slice(i, i + 100);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/questions?id=in.(${part.join(',')})&select=*`, { headers: SB_HEADERS });
+      if (!res.ok) { console.error('Supabase fetch error:', res.status); return []; }
+      rows.push(...(await res.json()));
+    }
+    const byId = new Map(rows.map(r => [String(r.id), r]));
+    return ids.map(id => byId.get(String(id))).filter(Boolean).map(mapQuestion);
+  } catch (e) { console.error('Fetch error:', e); return []; }
 }
 
 function getDemoQuestions(subjectId) {
@@ -163,24 +239,30 @@ async function loadAllQuestions() {
       let qs = [];
 
       if (sid === 'english') {
-        /* 55 Regular English + 5 Lekki Headmaster = 60 */
-        const regularCount = Math.max(totalCount - 5, 0);
-        let engQs = await fetchQuestions('english', year, regularCount, topicParam);
-        let lekkiQs = await fetchQuestions('lekki-headmaster', year, 5, '');
-        if (lekkiQs.length === 0) {
-          lekkiQs = await fetchQuestions('lekki-headmaster', 'Random', 5, '');
+        if (hasTopicFilter('english')) {
+          /* a topic was chosen: only that topic, no Lekki Headmaster extras */
+          qs = await fetchQuestions('english', year, totalCount, topicParam, true);
+        } else {
+          /* 55 Regular English + 5 Lekki Headmaster = 60 */
+          const regularCount = Math.max(totalCount - 5, 0);
+          let engQs = await fetchQuestions('english', year, regularCount, topicParam, true);
+          let lekkiQs = await fetchQuestions('lekki-headmaster', year, 5, '', false);
+          if (lekkiQs.length === 0) {
+            lekkiQs = await fetchQuestions('lekki-headmaster', 'Random', 5, '', false);
+          }
+          qs = [...engQs, ...lekkiQs];
         }
-        qs = [...engQs, ...lekkiQs];
       } else {
-        qs = await fetchQuestions(sid, year, totalCount, topicParam);
+        qs = await fetchQuestions(sid, year, totalCount, topicParam, true);
       }
 
       if (qs.length === 0) {
+        if (hasTopicFilter(sid)) showToast('No questions found for the chosen topics yet');
+        else showToast('Demo mode — no questions found');
         qs = getDemoQuestions(sid);
-        showToast('Demo mode — no questions found');
       }
 
-      if (shuffleQ) qs.sort(() => Math.random() - 0.5);
+      if (shuffleQ) qs = shuffleArray(qs);
       if (shuffleO) qs = qs.map(shuffleQuestionOptions);
       qs.forEach((q, i) => { q.qNum = allQuestions.length + i + 1; q.subjectId = sid; });
       allQuestions.push(...qs);
@@ -248,9 +330,25 @@ function updateSubjectTabs() {
     const el     = tab.querySelector('.subj-tab-count');
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
-}/* ================================================================
-   RENDER QUESTION — Displays AI Explanation (with HTML formatting)
+}
+
+/* ================================================================
+   RENDER QUESTION
    ================================================================ */
+function explanationHtml(q) {
+  let html;
+  if (typeof ExplanationRenderer !== 'undefined') {
+    html = ExplanationRenderer.render(q);
+  } else {
+    /* safety net if explanation-renderer.js failed to load */
+    const plain = (q.explanation_ai && q.explanation_ai.trim().charAt(0) !== '{') ? q.explanation_ai : (q.explanation || '');
+    html = plain ? escHtml(plain).replace(/\n/g, '<br>') : 'No explanation available.';
+  }
+  return (typeof applyLiteratureReplacement === 'function')
+    ? applyLiteratureReplacement(html, examType)
+    : html;
+}
+
 function renderQuestion() {
   const q = allQuestions[currentQIndex];
   if (!q) return;
@@ -263,7 +361,7 @@ function renderQuestion() {
     if (q.topic) {
       const shownTopic = (typeof applyLiteratureReplacement === 'function')
         ? applyLiteratureReplacement(q.topic, examType) : q.topic;
-      tagsEl.innerHTML += `<span class="q-tag topic">${shownTopic}</span>`;
+      tagsEl.innerHTML += `<span class="q-tag topic">${escHtml(shownTopic)}</span>`;
     }
     if (q.year)       tagsEl.innerHTML += `<span class="q-tag year">📅 ${q.year}</span>`;
     if (q.examType)   tagsEl.innerHTML += `<span class="q-tag">${q.examType.toUpperCase()}</span>`;
@@ -333,29 +431,11 @@ function renderQuestion() {
     studyWrap.classList.add('show');
     const saBtn = document.getElementById('showAnswerBtn');
     if (saBtn) saBtn.textContent = showExplanation ? '🙈 Hide Answer' : '👁️ Show Answer';
-    
+
     if (showExplanation && explanBox) {
       explanBox.classList.add('show');
       const explText = document.getElementById('explanationText');
-      if (explText) {
-        /* AI FALLBACK & HTML RENDERING */
-        let finalHtml = '';
-        if (q.explanation_ai) {
-          /* AI explanation comes pre-formatted with HTML tags */
-          finalHtml = q.explanation_ai;
-        } else if (q.explanation) {
-          /* Old explanation: convert newlines to <br> so it renders properly */
-          finalHtml = q.explanation.replace(/\n/g, '<br>');
-        } else {
-          finalHtml = 'No explanation available.';
-        }
-
-        const processedHtml = (typeof applyLiteratureReplacement === 'function')
-          ? applyLiteratureReplacement(finalHtml, examType)
-          : finalHtml;
-
-        explText.innerHTML = processedHtml; 
-      }
+      if (explText) explText.innerHTML = explanationHtml(q);
     } else if (explanBox) {
       explanBox.classList.remove('show');
     }
@@ -369,7 +449,6 @@ function renderQuestion() {
 
   updateSubjectTabs();
 }
-
 function renderOptions(q) {
   const list    = document.getElementById('optionsList');
   const letters = ['A','B','C','D','E'];
@@ -427,7 +506,8 @@ function toggleBookmark() {
     bookmarks[q.id] = {
       id: q.id, subjectId: q.subjectId, year: q.year,
       text: q.text, options: q.options, correct: q.correct,
-      explanation: q.explanation, topic: q.topic,
+      explanation: q.explanation, explanation_ai: q.explanation_ai,
+      topic: q.topic, subtopic: q.subtopic,
       savedAt: new Date().toISOString()
     };
     showToast('Question bookmarked ⭐');
@@ -478,7 +558,8 @@ function buildResult(saveToHistory) {
         options: q.options, correct: q.correct,
         userAnswer: userAns, topic: q.topic,
         subtopic: q.subtopic, year: q.year,
-        explanation: q.explanation, difficulty: q.difficulty,
+        explanation: q.explanation, explanation_ai: q.explanation_ai,
+        difficulty: q.difficulty,
       };
     });
     subjectResults[sid] = { total: subjQs.length, attempted, correct, questions: questionDetails };
