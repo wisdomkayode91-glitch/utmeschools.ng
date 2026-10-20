@@ -16,8 +16,8 @@
    so existing questions look good immediately, and regenerated
    ones look perfect.
 
-   practice.html only needs two extra lines (see the bottom of this
-   file). practice.js does not need to be edited.
+   practice.js calls ExplanationRenderer.render(q) directly; the same
+   call can be used by the result page and the bookmarks page.
    ============================================================ */
 
 const ExplanationRenderer = (function () {
@@ -216,40 +216,7 @@ const ExplanationRenderer = (function () {
     return '<div class="ex-wrap">' + out.join('') + '</div>';
   }
 
-  /* ---------- practice page hook (no edit to practice.js) ---------- */
-  function enhance() {
-    if (typeof mode === 'undefined' || mode !== 'study' || typeof showExplanation === 'undefined' || !showExplanation) return;
-    const q = (typeof allQuestions !== 'undefined') ? allQuestions[currentQIndex] : null;
-    const el = document.getElementById('explanationText');
-    if (!q || !el) return;
-    let html = render(q);
-    if (typeof applyLiteratureReplacement === 'function') html = applyLiteratureReplacement(html, examType);
-    el.innerHTML = html;
-  }
-
-  function install() {
-    if (typeof window.renderQuestion !== 'function' || window.__exRendererInstalled) return;
-    window.__exRendererInstalled = true;
-    const base = window.renderQuestion;
-    window.renderQuestion = function () {
-      const r = base.apply(this, arguments);
-      try { enhance(); } catch (e) { console.error('Explanation renderer:', e); }
-      return r;
-    };
-  }
-  if (typeof window !== 'undefined' && typeof document !== 'undefined') install();
-
   return { render: render, getData: getData };
 })();
 
 if (typeof window !== 'undefined') window.ExplanationRenderer = ExplanationRenderer;
-
-/* ------------------------------------------------------------
-   HOW TO ADD IT TO practice.html (2 lines):
-
-   1) Inside <head>, right before </head>:
-        <link rel="stylesheet" href="explanation.css">
-
-   2) Right after the line  <script src="practice.js"></script> :
-        <script src="explanation-renderer.js"></script>
-   ------------------------------------------------------------ */
