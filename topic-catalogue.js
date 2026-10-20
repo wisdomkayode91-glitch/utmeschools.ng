@@ -244,4 +244,116 @@ const CATALOGUE = {
   ['Public Sector Accounting', ['Comparison of cash and accrual basis of accounting','Sources of government revenue','Capital and recurrent expenditure','Consolidated revenue fund','Statement of assets and liabilities','Responsibilities and powers of the Accountant General, Auditor General, Minister of Finance and Treasurer of local government','Instruments of financial regulation']],
   ['Joint Venture Accounts', ['Meaning and features of joint venture','Entries in co-venturers\' books','Memorandum joint venture account']],
   ['Information Technology in Accounting', ['Accounting packages','Spreadsheets and databases in accounting','Controls, benefits and risks of IT in accounting']]
-]},
+]},  'crk': { prefix: 'crk', topics: [
+    ['The Sovereignty of God', ['God as Creator and Controller of the universe (Gen. 1–2; Amos 9:5–6; Isa. 45:5–12; Ps. 19:1–6)']],
+    ['The Covenant', ['The flood and God\'s covenant with Noah (Gen. 6–9)','God\'s covenant with Abraham (Gen. 11:31–32; 12:1–9; 17; 21:1–13; 25:19–26)','God\'s covenant with Israel (Exod. 19–20; 24:1–11; Deut. 28:1–19)','The New Covenant (Jer. 31:31–34; Ezek. 36:25–28)']],
+    ['Leadership Qualities', ['Joseph (Gen. 37; 41; 45)','Moses (Exod. 1–5; 12; Num. 13–14)','Joshua (Num. 13; 27:15–23; Josh. 1; 6–7; 24)','Deborah (Judg. 4)','Gideon (Judg. 6)','Samson (Judg. 13; 16)']],
+    ['Divine Providence, Guidance and Protection', ['Guidance and protection (Gen. 24; 28; 46; Exod. 13–14)','Provision (Gen. 21; 22; Exod. 16–17; Num. 20; 1 Kgs. 17)']],
+    ['Parental Responsibility', ['Eli and Samuel (1 Sam. 2–4; 8)','David (2 Sam. 13; 15; 18–19)','Asa (1 Kgs. 15; 22; Deut. 6:4–9; Prov. 22:6)']],
+    ['Obedience and Disobedience', ['Obedience and rewards — Abraham (Gen. 22)','Obedience and rewards — Hebrew midwives (Exod. 1)','Obedience and rewards — David (1 Sam. 30)','Disobedience and consequences — Adam (Gen. 2–3)','Disobedience and consequences — Manna (Exod. 16)','Disobedience and consequences — Golden Calf (Exod. 32)','Disobedience and consequences — Moses (Num. 20; Deut. 34)','Disobedience and consequences — Saul (1 Sam. 10; 15; 31)']],
+    ['A Man after God\'s Own Heart', ['Early life of David (1 Sam. 16–24; 2 Sam. 2–3)','Submission to God\'s will (1 Sam. 26; 2 Sam. 12)','Repentance and forgiveness (2 Sam. 11–12; Ps. 51)']],
+    ['Decision-Making', ['Reliance on a medium (1 Sam. 28)','Wisdom of Solomon (1 Kgs. 3–5; 8)','Unwise policies of Solomon and Rehoboam (1 Kgs. 9; 11–12)']],
+    ['Greed and Its Effects', ['Ahab (1 Kgs. 21–22; 2 Kgs. 9)','Gehazi (2 Kgs. 5; Josh. 7)']],
+    ['Supremacy of God', ['Mount Carmel encounter (1 Kgs. 16–19)']],
+    ['Religious Reforms in Judah', ['Cleansing of the Temple (2 Kgs. 22)','Renewal of the Covenant (2 Kgs. 23)']],
+    ['Concern for Judah', ['Fall of Jerusalem (2 Kgs. 24–25)','Condition during exile (Neh. 1; Ezra 1)','Response to rebuilding (Neh. 2; 4; Ezra 3; 5–7)']],
+    ['Faith, Courage and Protection', ['Daniel and the three Hebrews (Dan. 1; 3; 6)']],
+    ['God\'s Message to Nineveh', ['Jonah\'s mission (Jonah 1–4)']],
+    ['Social Justice, True Religion and Divine Love', ['Social justice (Amos 2–8; James 1:19–27)','Divine love (Hosea 1–6; 14)']],
+    ['Holiness and Divine Call', ['Call of Isaiah (Isa. 6)','Call of Ezekiel (Ezek. 2–3)','Call of Jeremiah (Jer. 1)']],
+    ['Punishment and Hope', ['Punishment and restoration (Jer. 3; 32; Ezek. 18; 37; Isa. 61)']],
+    ['Birth and Early Life of Jesus', ['John the Baptist (Luke 1; 3; Mark 1; John 1)','Birth and boyhood of Jesus (Matt. 1–2; Luke 1–2)']],
+    ['Baptism and Temptation of Jesus', ['Baptism (Matt. 3; Mark 1; Luke 3)','Temptation (Matt. 4; Luke 4)']],
+    ['Teachings of Jesus', ['Sermon on the Mount (Matt. 5–7)','Parables (Luke 15; etc.)','Miracles']],
+    ['Passion, Death and Resurrection', ['Passion (Matt. 26–27; Mark 14–15; Luke 22–23; John 18–19)','Death and resurrection (Matt. 27–28; Mark 15–16; Luke 23–24; John 19–21)']],
+    ['The Early Church', ['Pentecost (Acts 2)','Fellowship (Acts 2:42–47; 4:32–37)']],
+    ['Missionary Journeys', ['Paul\'s missionary journeys (Acts 13–28)']],
+    ['Justification by Faith', ['Romans 3–5; Galatians 2–3']],
+    ['Life in the Spirit', ['Romans 8; Galatians 5']],
+    ['Christian Living', ['Romans 12–15; Ephesians 4–6; Colossians 3']],
+    ['Church Order', ['1 Corinthians 11–14; 1 Timothy 3; Titus 1']],
+    ['Love', ['1 Corinthians 13; 1 John 4']],
+    ['Giving', ['2 Corinthians 8–9']],
+    ['Resurrection', ['1 Corinthians 15']],
+    ['Final Judgement', ['2 Thessalonians 1; Revelation 20']]
+  ]},
+  'computer-studies': { prefix: 'cmp', topics: [
+    ['Evolution of Computing', ['History of computing (early aids, mechanical, electromechanical, electronic devices, generations)','Classification of computing devices (by size, purpose, data handling)']],
+    ['Fundamentals of Computing', ['Overview of computing systems (hardware, software, peopleware, CPU, memory, peripherals)','Data and information (data representation, information quality)']],
+    ['Computer Hardware', ['Input devices','Output devices','Storage devices','Processing devices']],
+    ['Computer Software', ['System software (operating systems, utilities)','Application software','Programming languages and translators']],
+    ['Basic Computer Operations', ['Booting and shutting down','File operations','Keyboard shortcuts']],
+    ['Computer Application Packages', ['Word processing (features, file types, operations)','Spreadsheet (formulas, functions, charts)','Database (records, fields, queries)','Graphics (design tools, file formats)','Presentation (slides, animations)','Web design (web-page creation)']],
+    ['Managing Computer Files', ['Concept of computer files (names, extensions, organisation, folders, storage)','Handling computer files (creation, copying, moving, searching, deletion, recovery, backup)']],
+    ['Computer Maintenance and Safety', ['Booting and shutting down procedures','Computer maintenance (preventive and corrective)','Computer room management (environment, ergonomics, safety)']],
+    ['Information and Communication Technology', ['Communication systems','Application areas of ICT','Internet services','Electronic mail','Networking (types, topologies, devices)','World Wide Web','Cables and connectors']],
+    ['Developing Problem-Solving Skills', ['Programming languages (levels, paradigms)','High-level languages','Algorithms and flowcharts','Programming language structure','Program development (testing, debugging, documentation)','System Development Life Cycle (SDLC)']],
+    ['Artificial Intelligence and Robotics', ['Definition of AI','Branches of AI (machine learning, expert systems, NLP, vision)','Applications of AI','Fundamentals of robotics (components, sensing, control, applications)']],
+    ['Computer Ethics and Human Issues', ['Ethical issues (privacy, ownership, access, misuse)','Computer security (threats, controls, malware)','Cyber risks and protection','Potentials for higher studies in computer-related areas']]
+  ]},
+  'arabic-studies': { prefix: 'ara', topics: [
+    ['Comprehension', ['Passage comprehension (70 words, 5 questions)','Vocabulary, synonyms and antonyms','Main ideas, details and inference']],
+    ['Translation', ['English to Arabic','Arabic to English','Idiomatic expressions']],
+    ['Grammar — Pronouns and Nouns', ['Demonstrative, relative, conditional and interrogative pronouns','Gender (masculine and feminine)','Characteristics of nouns','Dual forms','Plurals (sound masculine, sound feminine, broken)','Construct phrase (Idafa)','Separable and inseparable pronouns','Appendants (adjective, conjunction, permutative, emphasis)','Prepositions']],
+    ['Grammar — Verbs', ['Transitive and intransitive verbs','Perfect verb','Imperfect verb and moods','Imperative verb','Trilateral and derived verbs','Active and passive voice']],
+    ['Grammar — Sentence Structure', ['Nominal sentences (subject and predicate)','Verbal sentences','Conditional sentence','Exception','Modifiers and adverbs']],
+    ['Grammar — Morphology and Numbers', ['Verb forms and conjugation','Derived nouns','Verbal noun','Numerals 1–1000','Nouns in the accusative']],
+    ['Composition', ['Guided composition','Free composition','Letters, narration, description, argument']],
+    ['Arabic Literature', ['Pre-Islamic literature','Islamic literature','Umayyad literature','Abbasid literature','Modern Arabic literature','West African Arabic literature']]
+  ]},
+  'fine-art': { prefix: 'art', topics: [
+    ['Classification of Art', ['Visual arts (fine and applied)','Performing arts (music, dance, drama)','Literary arts (poetry, prose, recitals)']],
+    ['Elements and Principles of Design', ['Elements (line, colour, shape, form, texture, tone/value, space)','Principles (balance, rhythm, proportion, harmony, contrast, repetition, dominance, variety)']],
+    ['Art Terms', ['Pigment, motif, greenware, armature, silhouette','Chiaroscuro, cire-perdue, terracotta']],
+    ['Historical Dimensions of Art', ['Prehistoric, Greek and Roman art','Medieval art','Renaissance artists (Giotto, Michelangelo, Leonardo, Raphael)','19th–20th century movements (Impressionism, Realism, Futurism, Cubism, Bauhaus, Pop Art, Abstract Expressionism, Fauvism)']],
+    ['Traditional African Art', ['Egypt, Ashanti, Dogon, Mossi, Fon','Senufo, Bambara, Mende, Kissi, Bamileke, Bakumba']],
+    ['Traditional Nigerian Art', ['Nok, Igbo-Ukwu, Ife, Benin','Esie, Igala, Jukun, Akwanshi, Mbari']],
+    ['Nigerian Crafts', ['Pottery, woodwork, weaving, carving','Leather, metal, beads, body decoration, mats and cane']],
+    ['Contemporary Nigerian Art', ['Art schools/groups (Zaria, Nsukka, Osogbo)','Artists, educators, museums, galleries, institutions, festivals']],
+    ['Artistic Skills, Techniques and Processes', ['Drawing, painting, graphics','Textile design, perspective, sculpture, ceramics','Crafts and computer graphics']],
+    ['Tools, Materials and Equipment', ['2D and 3D tools','Media and equipment','Operation, maintenance and improvisation']],
+    ['Art Appreciation and Functions', ['Natural and man-made aesthetic phenomena','Religious, social, cultural, political, therapeutic, economic and media roles of art']],
+    ['Art Entrepreneurship and Careers', ['Ceramics, curation, textiles, industrial design','Sculpture, photography, cartoons, illustration']]
+  ]},
+  'yoruba': { prefix: 'yor', topics: [
+    ['Comprehension (Ìgbàye)', ['Prose passages','Verse passages','Central issues, assumptions and conclusions']],
+    ['Essay Writing (Àpilèkọ)', ['Types of essay','Techniques for each essay type']],
+    ['Sound System (Èdè — Ìró)', ['Consonants and vowels','Tones and tone change','Syllable structure','Sound processes (co-vowel occurrence, elision, deletion)']],
+    ['Grammar (Gírámà)', ['Morphology and word formation','Loan-word integration','Word classes (nouns, verbs, adjectives, adverbs, pronouns, conjunctions, prepositions)','Phrases and clauses (types and functions)','Sentences (types, structures, functions)']],
+    ['Current Orthography (Ìkọ̀wé)', ['Letters, diacritical marks and punctuation','Acceptable written form']],
+    ['Translation (Ìtumọ̀)', ['Interpretation of sentences and ideas']],
+    ['Oral Literature (Lítírésọ̀ Alohùn)', ['Folktales (alo, aro, imo)','Proverbs (owe) and idioms','Riddles','Praise poetry (oriki)','Incantations (ofo)','Simple Ifa poetry','Songs and traditional drama']],
+    ['Written Literature (Lítírésọ̀ Àpilèkọ)', ['Prose (prescribed text: Aje ile etc.)','Poetry (prescribed text)','Drama (prescribed text)','Theme, plot, characters, narrative techniques, figurative expressions']],
+    ['Traditional Practices (Àṣà Ìbílẹ̀)', ['Belief in Olódùmarè, àkùdàyà, emèrè, àjẹ́, àwọn irúnmọlẹ̀','Taboos and festivals']],
+    ['Social Structure (Ètò Àwùjọ)', ['Kingship and chieftaincy','Age grades','Family and marriage','Birth, naming, death and burial']],
+    ['Yoruba Numerals, Games, Health, Professions and Foods', ['Counting systems','Traditional games','Traditional medicine and hygiene','Occupations (farming, weaving, carving)','Traditional cuisine']]
+  ]}
+};
+
+/* ---- build codes + IDs from the catalogue ---- */
+function slug(s) { return String(s).toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''); }
+const CAT = (function () {
+  const out = {};
+  Object.keys(CATALOGUE).forEach(subject => {
+    const c = CATALOGUE[subject];
+    const used = {};
+    out[subject] = { topics: c.topics.map((t, ti) => {
+      let tid = c.prefix + '_' + slug(t[0]);
+      if (used[tid]) tid += '_' + (ti + 1);
+      used[tid] = 1;
+      const usedSub = {};
+      const subs = t[1].map((s, si) => {
+        let sid = tid + '_' + slug(s);
+        if (usedSub[sid]) sid += '_' + (si + 1);
+        usedSub[sid] = 1;
+        return { code: (ti + 1) + '.' + (si + 1), id: sid, name: s };
+      });
+      return { code: String(ti + 1), id: tid, name: t[0], subs: subs };
+    })};
+  });
+  return out;
+})();
+
+
+  return { version: CATALOGUE_VERSION, subjects: CAT };
+})();
