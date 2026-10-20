@@ -155,3 +155,8 @@
 .explanation-text .ex-tip p:last-child { margin-bottom: 0; }
 
 .explanation-text .ex-empty { color: #8A94A6; font-size: 13.5px; }
+
+/* ---- safety: nothing may ever stretch the page sideways ---- */
+.explanation-box { overflow: hidden; }
+.explanation-text { overflow-wrap: anywhere; word-break: normal; min-width: 0; }
+.explanation-text * { max-width: 100%; }
