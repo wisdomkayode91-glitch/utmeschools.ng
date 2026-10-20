@@ -448,8 +448,7 @@ function renderQuestion() {
   document.getElementById('totalCount').textContent    = allQuestions.length;
 
   updateSubjectTabs();
-}
-function renderOptions(q) {
+}function renderOptions(q) {
   const list    = document.getElementById('optionsList');
   const letters = ['A','B','C','D','E'];
   const userAns = answers[q.id];
