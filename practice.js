@@ -34,6 +34,14 @@ const subtopicsParam   = urlP.get('subtopics') || '';
 
 function getAccess() { return { isPaid: true, plan: 'jamb', freeLimit: 9999 }; }
 
+/* SdashAPI questions (numeric sdash_id) are only allowed in these subjects.
+   Every other subject shows myquest questions only. */
+const SDASH_ALLOWED_SUBJECTS = ['english', 'lekki-headmaster'];
+function isSdashId(v) { return /^\d+$/.test(String(v == null ? '' : v).trim()); }
+function sourceAllowed(subjectId, sdashId) {
+  return !isSdashId(sdashId) || SDASH_ALLOWED_SUBJECTS.indexOf(subjectId) !== -1;
+}
+
 /* ---------- small helpers ---------- */
 function shuffleArray(a) {
   const b = a.slice();
@@ -112,10 +120,13 @@ async function fetchQuestions(subjectId, year, count, topicParam, useTopicIds) {
     if (useTopicIds) base += topicIdFilter(subjectId);
 
     const needText = !!(topicsParam || subtopicsParam || topicParam || filterLiterature);
-    const cols = needText ? ('id,topic,subtopic' + (filterLiterature ? ',passage' : '')) : 'id';
+    const cols = needText ? ('id,sdash_id,topic,subtopic' + (filterLiterature ? ',passage' : '')) : 'id,sdash_id';
 
     let pool = await pagedGet(`${base}&select=${cols}&order=id.asc`);
     if (pool === null) return [];
+
+    /* source rule (JAMB only) */
+    if (examType === 'utme') pool = pool.filter(r => sourceAllowed(subjectId, r.sdash_id));
 
     /* older text-based filters (Post UTME subjects, literature) */
     if (topicsParam) {
@@ -331,7 +342,6 @@ function updateSubjectTabs() {
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
 }
-
 /* ================================================================
    RENDER QUESTION
    ================================================================ */
@@ -448,7 +458,9 @@ function renderQuestion() {
   document.getElementById('totalCount').textContent    = allQuestions.length;
 
   updateSubjectTabs();
-}function renderOptions(q) {
+}
+
+function renderOptions(q) {
   const list    = document.getElementById('optionsList');
   const letters = ['A','B','C','D','E'];
   const userAns = answers[q.id];
