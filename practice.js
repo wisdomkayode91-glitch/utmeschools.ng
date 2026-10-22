@@ -20,6 +20,9 @@ const SB_HEADERS = {
   'Content-Type':  'application/json'
 };
 
+/* build stamp: the health check page compares this with the version it expects */
+const APP_BUILD = '2026-10-22.1';
+
 const urlP             = new URLSearchParams(window.location.search);
 const subjectIds       = (urlP.get('subjects') || 'english').split(',');
 const mode             = urlP.get('mode') || 'practice';
@@ -241,6 +244,7 @@ function shuffleQuestionOptions(q) {
 
 async function loadAllQuestions() {
   showLoadingState(true);
+  ensureRenderer();
   try {
     for (const sid of subjectIds) {
       const year       = urlP.get('year_'   + sid) || 'Random';
@@ -342,21 +346,106 @@ function updateSubjectTabs() {
     if (el) el.textContent = `${ans}/${subjQs.length}`;
   });
 }
+
 /* ================================================================
    RENDER QUESTION
    ================================================================ */
+/* ---------- explanation display: never silent, never hides the AI explanation ---------- */
+let rendererState = (typeof ExplanationRenderer !== 'undefined') ? 'ok' : 'idle';   /* idle | loading | ok | failed */
+
+function ensureRenderer() {
+  if (rendererState !== 'idle') return;
+  rendererState = 'loading';
+  try {
+    if (!document.querySelector('link[href*="explanation.css"]')) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = 'explanation.css?v=' + APP_BUILD;
+      document.head.appendChild(l);
+    }
+    const sc = document.createElement('script');
+    sc.src = 'explanation-renderer.js?v=' + APP_BUILD;
+    sc.onload  = () => { rendererState = (typeof ExplanationRenderer !== 'undefined') ? 'ok' : 'failed'; (window.renderQuestion || renderQuestion)(); };
+    sc.onerror = () => { rendererState = 'failed'; (window.renderQuestion || renderQuestion)(); };
+    document.head.appendChild(sc);
+  } catch (e) { rendererState = 'failed'; }
+}
+
+/* emergency renderer (only used if explanation-renderer.js cannot be loaded at all) */
+function miniRender(q) {
+  let o = q.explanation_ai;
+  try { if (typeof o === 'string' && o.trim().charAt(0) === '{') o = JSON.parse(o); } catch (e) { o = null; }
+  if (!o || typeof o !== 'object' || typeof o.explanation !== 'string') {
+    const plain = (typeof q.explanation_ai === 'string' && q.explanation_ai.trim() && q.explanation_ai.trim().charAt(0) !== '{') ? q.explanation_ai : (q.explanation || '');
+    return plain ? '<div>' + escHtml(plain).replace(/\n/g, '<br>') + '</div>' : 'No explanation available.';
+  }
+  const letters = ['A','B','C','D','E'];
+  const i = letters.indexOf(String(q.correct || '').toUpperCase());
+  let h = '<div style="background:#E8F8F1;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-weight:800;color:#0B2545">Correct Answer: ' +
+          escHtml(q.correct) + (q.options && q.options[i] ? ' — ' + escHtml(q.options[i]) : '') + '</div>';
+  h += '<p style="margin:0 0 10px">' + escHtml(o.explanation).replace(/\n/g, '<br>') + '</p>';
+  if (o.others) h += '<p style="margin:0 0 10px"><b>Why the others don\'t work:</b> ' + escHtml(o.others) + '</p>';
+  (Array.isArray(o.related) ? o.related : []).forEach(g => {
+    h += '<details style="margin:8px 0"><summary style="font-weight:800;cursor:pointer">Related Knowledge — ' + escHtml(g && g.heading) + '</summary><ul style="padding-left:20px;margin:6px 0">' +
+         (Array.isArray(g && g.points) ? g.points : []).map(x => '<li>' + escHtml(x) + '</li>').join('') + '</ul></details>';
+  });
+  if (o.tip) h += '<p style="background:#FFF4DC;border-radius:10px;padding:10px 12px"><b>🎯 JAMB Tip:</b> ' + escHtml(o.tip) + '</p>';
+  return h;
+}
+
 function explanationHtml(q) {
   let html;
   if (typeof ExplanationRenderer !== 'undefined') {
+    rendererState = 'ok';
     html = ExplanationRenderer.render(q);
   } else {
-    /* safety net if explanation-renderer.js failed to load */
-    const plain = (q.explanation_ai && q.explanation_ai.trim().charAt(0) !== '{') ? q.explanation_ai : (q.explanation || '');
-    html = plain ? escHtml(plain).replace(/\n/g, '<br>') : 'No explanation available.';
+    ensureRenderer();
+    const warn = rendererState === 'failed'
+      ? '<div style="background:#FDECEA;color:#C0392B;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;line-height:1.5"><b>⚠️ Setup problem:</b> explanation-renderer.js could not be loaded, so this is a simplified view. Make sure that file is in the same folder as practice.html and is named exactly <b>explanation-renderer.js</b>. Open app-check.html to see what is wrong.</div>'
+      : '';
+    html = warn + miniRender(q);
   }
   return (typeof applyLiteratureReplacement === 'function')
     ? applyLiteratureReplacement(html, examType)
     : html;
+}
+
+/* ---------- debug panel: open practice.html with &debug=1 added to the address ---------- */
+async function utmeClearCache() {
+  try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
+  try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch (e) {}
+  const u = new URL(window.location.href);
+  u.searchParams.set('_', String(Date.now()));
+  window.location.href = u.toString();
+}
+function debugPanel(q) {
+  if (urlP.get('debug') !== '1') return;
+  try {
+    let p = document.getElementById('utmeDebug');
+    if (!p) {
+      p = document.createElement('div');
+      p.id = 'utmeDebug';
+      p.style.cssText = 'position:fixed;left:8px;right:8px;bottom:84px;z-index:900;background:#0B2545;color:#fff;font:11px/1.55 monospace;padding:10px;border-radius:10px;max-height:42vh;overflow:auto;opacity:.96';
+      document.body.appendChild(p);
+    }
+    const raw = q.explanation_ai;
+    const kind = !raw ? 'EMPTY — no AI explanation is saved for this question'
+      : (typeof raw === 'object' ? 'JSON object'
+      : (String(raw).trim().charAt(0) === '{' ? 'JSON text (' + String(raw).length + ' chars)' : 'plain text (' + String(raw).length + ' chars)'));
+    let cssLoaded = false;
+    try { cssLoaded = Array.prototype.some.call(document.styleSheets || [], s => /explanation\.css/.test(s.href || '')); } catch (e) {}
+    const rb = (typeof ExplanationRenderer !== 'undefined' && ExplanationRenderer.build) ? ExplanationRenderer.build : '—';
+    p.innerHTML =
+      '<b>DEBUG</b><br>' +
+      'practice.js build: ' + APP_BUILD + '<br>' +
+      'renderer: ' + (typeof ExplanationRenderer !== 'undefined' ? 'LOADED (build ' + rb + ')' : 'NOT LOADED (' + rendererState + ')') + '<br>' +
+      'explanation.css: ' + (cssLoaded ? 'loaded' : 'NOT loaded') + '<br>' +
+      'question id: ' + escHtml(q.id) + ' · ' + escHtml(q.subjectId) + ' · ' + escHtml(q.year) + '<br>' +
+      'mode: ' + mode + (mode !== 'study' ? '  ← explanations only show in STUDY mode' : '') + '<br>' +
+      'AI explanation: ' + kind + '<br>' +
+      'topic_id: ' + escHtml(q.topic_id || '—') + ' · subtopic_id: ' + escHtml(q.subtopic_id || '—') + '<br>' +
+      '<button onclick="utmeClearCache()" style="margin-top:6px;padding:6px 10px;border:none;border-radius:6px;background:#FFD23F;color:#0B2545;font-weight:700">Clear cache &amp; reload</button>';
+  } catch (e) { /* debug must never break the page */ }
 }
 
 function renderQuestion() {
@@ -457,6 +546,7 @@ function renderQuestion() {
   document.getElementById('answeredCount').textContent = Object.keys(answers).length;
   document.getElementById('totalCount').textContent    = allQuestions.length;
 
+  debugPanel(q);
   updateSubjectTabs();
 }
 
