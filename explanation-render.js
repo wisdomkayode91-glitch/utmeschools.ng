@@ -20,6 +20,8 @@
    call can be used by the result page and the bookmarks page.
    ============================================================ */
 
+const RENDERER_BUILD = '2026-10-22.1';
+
 const ExplanationRenderer = (function () {
   'use strict';
 
@@ -144,7 +146,12 @@ const ExplanationRenderer = (function () {
 
   /* ---------- pick the right parser ---------- */
   function getData(q) {
-    const raw = String(q.explanation_ai || '').trim();
+    /* the column may hand us a ready-made object (jsonb) or text */
+    if (q.explanation_ai && typeof q.explanation_ai === 'object') {
+      const d0 = fromStructured(q.explanation_ai, q);
+      if (d0) return d0;
+    }
+    const raw = String(q.explanation_ai && typeof q.explanation_ai !== 'object' ? q.explanation_ai : '').trim();
     if (raw) {
       if (raw.charAt(0) === '{') {
         try { const d = fromStructured(JSON.parse(raw), q); if (d) return d; } catch (e) { /* fall through */ }
@@ -216,7 +223,7 @@ const ExplanationRenderer = (function () {
     return '<div class="ex-wrap">' + out.join('') + '</div>';
   }
 
-  return { render: render, getData: getData };
+  return { render: render, getData: getData, build: RENDERER_BUILD };
 })();
 
 if (typeof window !== 'undefined') window.ExplanationRenderer = ExplanationRenderer;
