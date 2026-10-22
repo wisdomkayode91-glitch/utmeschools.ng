@@ -418,6 +418,7 @@ body { background: #F4F6FA; }
   transition: background 0.15s;
 }
 .submit-btn:active { background: #E2531F; }
+
 /* ---- GRID OVERLAY ---- */
 .grid-overlay {
   position: fixed; inset: 0; z-index: 600;
@@ -598,7 +599,7 @@ body { background: #F4F6FA; }
 .free-banner p  { font-size: 13px; opacity: 0.8; margin-bottom: 14px; line-height: 1.5; }
 </style>
 <!-- the clean explanation layout (must come AFTER the style block above) -->
-<link rel="stylesheet" href="explanation.css">
+<link rel="stylesheet" href="explanation.css?v=2026-10-22.1">
 </head>
 <body>
 
@@ -755,8 +756,8 @@ body { background: #F4F6FA; }
 <div class="toast" id="toast"></div>
 <script src="shared.js"></script>
 <script src="literature-config.js"></script>
-<script src="explanation-renderer.js"></script>
-<script src="practice.js"></script>
+<script src="explanation-renderer.js?v=2026-10-22.1"></script>
+<script src="practice.js?v=2026-10-22.1"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const mode = new URLSearchParams(window.location.search).get('mode') || 'practice';
@@ -806,4 +807,3 @@ if (typeof renderQuestion === 'function') {
 </script>
 </body>
 </html>
-
