@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UTMESchools — App Health Check</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #0B2545; color: #fff; min-height: 100vh; padding: 16px; --font-display: Arial; --font-body: Arial; --font-mono: monospace; }
+.wrap { max-width: 760px; margin: 0 auto; }
+h1 { font-size: 20px; color: #FFD23F; margin-bottom: 4px; }
+.sub { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 14px; line-height: 1.5; }
+button { padding: 13px 16px; border-radius: 8px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 8px; width: 100%; }
+button:disabled { opacity: 0.4; }
+.b-run { background: #0FA968; color: #fff; }
+.b-gray { background: rgba(255,255,255,0.12); color: #fff; }
+.b-gold { background: #FFD23F; color: #0B2545; }
+#verdict { border-radius: 12px; padding: 14px; margin: 6px 0 12px; font-size: 14px; line-height: 1.5; display: none; }
+#verdict.good { background: #E3F7EE; color: #0A5A37; }
+#verdict.bad  { background: #FDECEA; color: #8E2A1F; }
+#verdict.warn { background: #FFF4DC; color: #8A5A00; }
+.row { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 11px 12px; margin-bottom: 8px; display: flex; gap: 10px; }
+.row .ic { font-size: 16px; line-height: 1.3; }
+.row .t { font-size: 13px; font-weight: 700; }
+.row .d { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px; line-height: 1.5; word-break: break-word; }
+.row.bad { border-left: 4px solid #FF5A4D; } .row.warn { border-left: 4px solid #FFD23F; } .row.ok { border-left: 4px solid #0FA968; } .row.info { border-left: 4px solid #5C8DFF; }
+.card { background: rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin: 12px 0; }
+.card h3 { font-size: 12px; color: #FFD23F; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+/* the same box the app uses for explanations */
+.explanation-box { background: #FFFBEC; border: 1.5px solid #F0D58C; border-radius: 14px; padding: 16px; display: block; color: #2C3E50; }
+.explanation-text { font-size: 14px; line-height: 1.6; color: #2C3E50; white-space: normal; }
+.explanation-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-weight: 800; color: #0B2545; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🩺 App Health Check</h1>
+  <div class="sub">Put this file in the <b>same folder as practice.html</b> on your website, open it there on your phone, and tap Run. It tests your <b>live</b> site: the files, the versions, the cache, the database and a real saved explanation.</div>
+
+  <button class="b-run" id="runBtn" onclick="runChecks()">▶ Run the check</button>
+  <div id="verdict"></div>
+  <div id="results"></div>
+
+  <div class="card" id="previewCard" style="display:none;">
+    <h3>👁️ A real saved explanation, drawn by your live renderer</h3>
+    <div class="explanation-box"><div class="explanation-header">💡 Explanation</div><div class="explanation-text" id="previewBox"></div></div>
+  </div>
+
+  <button class="b-gold" onclick="clearCache()">🧹 Clear this phone's cache for the app, then reload</button>
+  <button class="b-gray" onclick="copyReport()">📋 Copy the report (to send me)</button>
+</div>
+
+<script>
+/* ============================================================
+   UTMESchools — App Health Check
+   Tests the LIVE site (not your downloads) and tells you exactly
+   what is wrong and how to fix it.
+   ============================================================ */
+const BUILD = '2026-10-22.1';          /* the version of practice.js / explanation-renderer.js this check expects */
+const SUPABASE_URL = 'https://hxrfakdqnuzdigbbvszp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cmZha2RxbnV6ZGlnYmJ2c3pwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MjY0MzgsImV4cCI6MjEwNTAwMjQzOH0.-xz5Y08e_RQ-C6OHKnSfeoVPSV7kAqzeZcL62MO0tOY';
+const FILES = ['practice.html', 'practice.js', 'explanation-renderer.js', 'explanation.css', 'topic-catalogue.js', 'select-subjects.html', 'select-subjects.js'];
+const WANTED_SUBJECTS = ['english','mathematics','physics','chemistry','biology','economics','government','commerce','accounting','crk','computer-studies','arabic-studies','fine-art','yoruba','english-literature','lekki-headmaster'];
+
+const $ = id => document.getElementById(id);
+let report = [];
+const ICONS = { ok: '✅', bad: '❌', warn: '⚠️', info: 'ℹ️' };
+let problems = 0, warnings = 0;
+
+function add(status, title, detail) {
+  if (status === 'bad') problems++;
+  if (status === 'warn') warnings++;
+  report.push(ICONS[status] + ' ' + title + (detail ? ' — ' + detail : ''));
+  const r = document.createElement('div');
+  r.className = 'row ' + status;
+  const ic = document.createElement('div'); ic.className = 'ic'; ic.textContent = ICONS[status];
+  const body = document.createElement('div');
+  const t = document.createElement('div'); t.className = 't'; t.textContent = title;
+  body.appendChild(t);
+  if (detail) { const d = document.createElement('div'); d.className = 'd'; d.textContent = detail; body.appendChild(d); }
+  r.appendChild(ic); r.appendChild(body);
+  $('results').appendChild(r);
+}
+
+async function getFile(name, noStore) {
+  const url = name + (noStore ? '?nocache=' + Date.now() : '');
+  try {
+    const r = await fetch(url, noStore ? { cache: 'no-store' } : {});
+    return { ok: r.ok, status: r.status, text: r.ok ? await r.text() : '' };
+  } catch (e) { return { ok: false, status: 0, text: '', err: e.message }; }
+}
+function loadScript(src) {
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = () => resolve(true); s.onerror = () => resolve(false);
+    document.head.appendChild(s);
+  });
+}
+function fileHint(name) {
+  return 'Not found. The file must be named exactly "' + name + '" and be in the same folder as practice.html. Phones often rename downloads (for example ' + name.replace(/(\.[a-z]+)$/, '(1)$1') + ') — rename it on GitHub if so.';
+}
+
+async function runChecks() {
+  $('runBtn').disabled = true;
+  $('results').innerHTML = ''; $('verdict').style.display = 'none'; $('previewCard').style.display = 'none';
+  report = []; problems = 0; warnings = 0;
+  const files = {};
+  try {
+    if (location.protocol === 'file:') {
+      add('bad', 'This page was opened from a file on the phone', 'Open it from your website address instead (the same folder as practice.html), so it can test the live site.');
+      finish(); return;
+    }
+
+    /* 1. do the files exist on the live site? */
+    for (const name of FILES) {
+      const f = await getFile(name, true);
+      files[name] = f;
+      if (f.ok) add('ok', name + ' is on your site', Math.round(f.text.length / 1024 * 10) / 10 + ' KB');
+      else add('bad', name + ' is NOT on your site' + (f.status ? ' (error ' + f.status + ')' : ''), f.status === 404 || !f.status ? fileHint(name) : 'The server answered with error ' + f.status + '.');
+    }
+
+    /* 2. does practice.html load the right files? */
+    const ph = files['practice.html'];
+    if (ph && ph.ok) {
+      ['explanation-renderer.js', 'explanation.css', 'practice.js'].forEach(n => {
+        if (ph.text.indexOf(n) === -1) add('bad', 'practice.html does not load ' + n, 'This is the OLD practice.html. Upload the new practice.html.');
+      });
+      if (/explanation-renderer\.js/.test(ph.text) && /explanation\.css/.test(ph.text)) add('ok', 'practice.html loads the renderer and the explanation styles');
+    }
+
+    /* 3. versions */
+    const pj = files['practice.js'];
+    if (pj && pj.ok) {
+      const m = pj.text.match(/APP_BUILD\s*=\s*'([^']+)'/);
+      if (!m) add('bad', 'practice.js is an OLD version', 'It has no version stamp, so it still hides AI explanations when something goes wrong. Upload the new practice.js.');
+      else if (m[1] !== BUILD) add('warn', 'practice.js version is ' + m[1], 'Expected ' + BUILD + '. Upload the newest practice.js.');
+      else add('ok', 'practice.js is the newest version (' + m[1] + ')');
+    }
+    const rj = files['explanation-renderer.js'];
+    if (rj && rj.ok) {
+      const m = rj.text.match(/RENDERER_BUILD\s*=\s*'([^']+)'/);
+      if (!m) add('bad', 'explanation-renderer.js is an OLD version', 'Upload the newest explanation-renderer.js.');
+      else if (m[1] !== BUILD) add('warn', 'explanation-renderer.js version is ' + m[1], 'Expected ' + BUILD + '.');
+      else add('ok', 'explanation-renderer.js is the newest version (' + m[1] + ')');
+    }
+
+    /* 4. is this phone holding old copies? */
+    for (const name of ['practice.html', 'practice.js', 'explanation-renderer.js', 'explanation.css']) {
+      if (!files[name] || !files[name].ok) continue;
+      const cached = await getFile(name, false);
+      if (cached.ok && cached.text !== files[name].text) add('warn', 'This phone has an OLD saved copy of ' + name, 'Tap "Clear this phone\'s cache" below, then open the app again.');
+    }
+    try {
+      const regs = navigator.serviceWorker ? await navigator.serviceWorker.getRegistrations() : [];
+      if (regs.length) add('warn', regs.length + ' service worker(s) installed on this site', 'A service worker can keep serving old files. Tap "Clear this phone\'s cache" below.');
+      else add('ok', 'No service worker is holding old files');
+    } catch (e) { /* not supported: fine */ }
+
+    /* 5. the topic list the app uses */
+    const tc = files['topic-catalogue.js'];
+    if (tc && tc.ok) {
+      try {
+        const w = {};
+        const cat = new Function('window', tc.text + '\n;return (typeof TopicCatalogue !== "undefined") ? TopicCatalogue : window.TopicCatalogue;')(w);
+        const subj = (cat && cat.subjects) || {};
+        let nt = 0, ns = 0;
+        Object.keys(subj).forEach(s => (subj[s].topics || []).forEach(t => { nt++; ns += (t.subs || []).length; }));
+        const miss = WANTED_SUBJECTS.filter(s => !subj[s]);
+        if (!nt) add('bad', 'topic-catalogue.js has no topics', 'The file could not be read as a topic list.');
+        else add(miss.length ? 'warn' : 'ok', 'Topic list: ' + Object.keys(subj).length + ' subjects · ' + nt + ' topics · ' + ns + ' subtopics', miss.length ? 'No topics for: ' + miss.join(', ') : '');
+      } catch (e) { add('bad', 'topic-catalogue.js has an error', e.message); }
+    }
+
+    /* 6. the database */
+    const H = { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
+    async function count(filter) {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/questions?select=id&' + filter + '&limit=1', { headers: Object.assign({ 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' }, H) });
+      if (!r.ok) return { ok: false, status: r.status };
+      const cr = r.headers.get('content-range') || '';
+      return { ok: true, n: parseInt(cr.split('/')[1], 10) || 0 };
+    }
+    try {
+      const cols = await fetch(SUPABASE_URL + '/rest/v1/questions?select=id,explanation_ai,topic_id,subtopic_id&limit=1', { headers: H });
+      if (!cols.ok) add('bad', 'The database is missing the topic columns', 'Run the SQL that adds topic_id and subtopic_id (Supabase → SQL Editor).');
+      else {
+        add('ok', 'The database has the explanation and topic columns');
+        const total = await count('exam_type=eq.utme');
+        const withAi = await count('explanation_ai=not.is.null');
+        const withTopic = await count('topic_id=not.is.null');
+        if (total.ok) add('info', total.n + ' JAMB questions in the database');
+        if (withAi.ok) {
+          if (withAi.n === 0) add('warn', 'No question has a new-style AI explanation yet', 'That is why you still see the original explanations. Run the generator.');
+          else add('ok', withAi.n + ' question(s) already have an AI explanation');
+        }
+        if (withTopic.ok) add('info', withTopic.n + ' question(s) are sorted by topic');
+      }
+    } catch (e) { add('bad', 'Could not reach the database', e.message); }
+
+    /* 7. a real saved explanation, drawn by the LIVE renderer */
+    try {
+      const r = await fetch(SUPABASE_URL + '/rest/v1/questions?explanation_ai=not.is.null&select=*&order=id.desc&limit=3', { headers: H });
+      const rows = r.ok ? await r.json() : [];
+      if (!rows.length) add('info', 'No saved AI explanation to preview yet');
+      else {
+        rows.forEach(q => {
+          let kind = 'plain text';
+          const raw = q.explanation_ai;
+          let o = raw;
+          if (typeof raw === 'string' && raw.trim().charAt(0) === '{') { try { o = JSON.parse(raw); } catch (e) { o = null; kind = 'BROKEN JSON'; } }
+          if (o && typeof o === 'object' && typeof o.explanation === 'string') kind = 'new format · ' + (o.related ? o.related.length : 0) + ' related group(s) · tip ' + (o.tip ? 'yes' : 'no');
+          add(kind === 'BROKEN JSON' ? 'bad' : 'ok', 'Question ' + q.id + ' (' + q.subject_id + ' ' + q.year + '): ' + kind);
+        });
+        document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: 'explanation.css?nocache=' + Date.now() }));
+        const loaded = await loadScript('explanation-renderer.js?nocache=' + Date.now());
+        if (!loaded || typeof ExplanationRenderer === 'undefined') add('bad', 'The live renderer could not be loaded', 'This is exactly why AI explanations would not show. ' + fileHint('explanation-renderer.js'));
+        else {
+          const q = rows[0];
+          const mapped = { correct: q.correct, options: [q.option_a, q.option_b, q.option_c, q.option_d, q.option_e].filter(Boolean), topic: q.topic || '', subtopic: q.subtopic || '', explanation: q.explanation || '', explanation_ai: q.explanation_ai };
+          $('previewBox').innerHTML = ExplanationRenderer.render(mapped);
+          $('previewCard').style.display = 'block';
+          add('ok', 'The live renderer drew a saved explanation', 'Scroll down to see it. If it looks right here, the app will show the same.');
+        }
+      }
+    } catch (e) { add('warn', 'Could not preview a saved explanation', e.message); }
+
+    add('info', 'Reminder: explanations only appear in STUDY mode', 'On the setup page choose Mode → Study, then tap "Show Answer" on a question. Practice and Mock modes do not show explanations during the session.');
+  } catch (e) {
+    add('bad', 'The check itself stopped', e.message);
+  }
+  finish();
+}
+
+function finish() {
+  const v = $('verdict');
+  v.style.display = 'block';
+  if (problems) { v.className = 'bad'; v.innerHTML = '<b>❌ ' + problems + ' problem(s) found.</b> Fix the red items first (top to bottom), then run the check again.'; }
+  else if (warnings) { v.className = 'warn'; v.innerHTML = '<b>⚠️ Almost there.</b> Read the yellow items.'; }
+  else { v.className = 'good'; v.innerHTML = '<b>✅ Everything is set up correctly.</b>'; }
+  $('runBtn').disabled = false;
+}
+
+async function clearCache() {
+  try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
+  try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch (e) {}
+  const u = new URL(location.href); u.searchParams.set('_', String(Date.now())); location.href = u.toString();
+}
+async function copyReport() {
+  const text = 'UTMESchools health check · ' + new Date().toISOString() + '\n' + report.join('\n');
+  try { await navigator.clipboard.writeText(text); alert('Report copied. Paste it in the chat.'); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); alert('Report copied. Paste it in the chat.'); } catch (e2) { alert(text); } ta.remove(); }
+}
+</script>
+</body>
+</html>
