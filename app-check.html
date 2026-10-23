@@ -15,6 +15,8 @@ button:disabled { opacity: 0.4; }
 .b-run { background: #0FA968; color: #fff; }
 .b-gray { background: rgba(255,255,255,0.12); color: #fff; }
 .b-gold { background: #FFD23F; color: #0B2545; }
+input[type="text"] { width: 100%; padding: 11px 12px; border-radius: 8px; border: none; background: rgba(255,255,255,0.14); color: #fff; font-size: 14px; }
+.hint { font-size: 11.5px; color: rgba(255,255,255,0.55); margin-top: 6px; line-height: 1.5; }
 #verdict { border-radius: 12px; padding: 14px; margin: 6px 0 12px; font-size: 14px; line-height: 1.5; display: none; }
 #verdict.good { background: #E3F7EE; color: #0A5A37; }
 #verdict.bad  { background: #FDECEA; color: #8E2A1F; }
@@ -35,7 +37,13 @@ button:disabled { opacity: 0.4; }
 <body>
 <div class="wrap">
   <h1>🩺 App Health Check</h1>
-  <div class="sub">Put this file in the <b>same folder as practice.html</b> on your website, open it there on your phone, and tap Run. It tests your <b>live</b> site: the files, the versions, the cache, the database and a real saved explanation.</div>
+  <div class="sub">Tests your <b>live</b> app: the files, the versions, the database and a real saved explanation. You can open this page straight from your phone's Files app — just paste your app's web address below.</div>
+
+  <div class="card" style="margin-top:0">
+    <h3>Your app's web address</h3>
+    <input type="text" id="siteAddr" placeholder="https://yourname.github.io/" autocomplete="off" autocapitalize="off">
+    <div class="hint">Open your app in Chrome, tap the address bar, copy the address and paste it here (anything after the folder is fine — it is tidied automatically). If you opened THIS page from your website, leave it empty.</div>
+  </div>
 
   <button class="b-run" id="runBtn" onclick="runChecks()">▶ Run the check</button>
   <div id="verdict"></div>
@@ -63,7 +71,22 @@ const FILES = ['practice.html', 'practice.js', 'explanation-renderer.js', 'expla
 const WANTED_SUBJECTS = ['english','mathematics','physics','chemistry','biology','economics','government','commerce','accounting','crk','computer-studies','arabic-studies','fine-art','yoruba','english-literature','lekki-headmaster'];
 
 const $ = id => document.getElementById(id);
+let BASE = '';            /* '' = this page is on the site itself; otherwise the address typed above */
 let report = [];
+
+function normalizeBase(v) {
+  v = String(v || '').trim();
+  if (!v) return '';
+  if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+  let u; try { u = new URL(v); } catch (e) { return null; }
+  let path = u.pathname;
+  const last = path.split('/').pop();
+  if (last.indexOf('.') !== -1) path = path.slice(0, path.length - last.length);   /* drop "practice.html" */
+  if (path.charAt(path.length - 1) !== '/') path += '/';
+  return u.origin + path;
+}
+function U(name) { return BASE ? new URL(name, BASE).href : name; }
+function crossSite() { try { return !!BASE && new URL(BASE).origin !== location.origin; } catch (e) { return !!BASE; } }
 const ICONS = { ok: '✅', bad: '❌', warn: '⚠️', info: 'ℹ️' };
 let problems = 0, warnings = 0;
 
@@ -83,7 +106,7 @@ function add(status, title, detail) {
 }
 
 async function getFile(name, noStore) {
-  const url = name + (noStore ? '?nocache=' + Date.now() : '');
+  const url = U(name + (noStore ? '?nocache=' + Date.now() : ''));
   try {
     const r = await fetch(url, noStore ? { cache: 'no-store' } : {});
     return { ok: r.ok, status: r.status, text: r.ok ? await r.text() : '' };
@@ -106,10 +129,16 @@ async function runChecks() {
   report = []; problems = 0; warnings = 0;
   const files = {};
   try {
-    if (location.protocol === 'file:') {
-      add('bad', 'This page was opened from a file on the phone', 'Open it from your website address instead (the same folder as practice.html), so it can test the live site.');
+    const typed = $('siteAddr').value;
+    const nb = normalizeBase(typed);
+    if (nb === null) { add('bad', 'That web address does not look right', 'Example: https://yourname.github.io/'); finish(); return; }
+    if (!nb && location.protocol === 'file:') {
+      add('bad', 'Type your app\'s web address first', 'This page is open from a file on your phone, so it needs to know where your live app is. Paste the address in the box at the top, then tap Run again.');
       finish(); return;
     }
+    BASE = nb;
+    try { localStorage.setItem('appcheck_site', typed); } catch (e) {}
+    add('info', 'Testing: ' + (BASE || location.origin + '/'), crossSite() ? 'This page is not on your site, so it reads your live files over the internet (what a visitor would get).' : '');
 
     /* 1. do the files exist on the live site? */
     for (const name of FILES) {
@@ -145,16 +174,20 @@ async function runChecks() {
     }
 
     /* 4. is this phone holding old copies? */
-    for (const name of ['practice.html', 'practice.js', 'explanation-renderer.js', 'explanation.css']) {
-      if (!files[name] || !files[name].ok) continue;
-      const cached = await getFile(name, false);
-      if (cached.ok && cached.text !== files[name].text) add('warn', 'This phone has an OLD saved copy of ' + name, 'Tap "Clear this phone\'s cache" below, then open the app again.');
+    if (crossSite()) {
+      add('info', 'If everything here is green but your app still behaves the old way', 'Chrome on your phone is keeping old copies of your app. In Chrome: menu ⋮ → Settings → Privacy and security → Delete browsing data → tick "Cached images and files" → Delete. Then open your app again.');
+    } else {
+      for (const name of ['practice.html', 'practice.js', 'explanation-renderer.js', 'explanation.css']) {
+        if (!files[name] || !files[name].ok) continue;
+        const cached = await getFile(name, false);
+        if (cached.ok && cached.text !== files[name].text) add('warn', 'This phone has an OLD saved copy of ' + name, 'Tap "Clear this phone\'s cache" below, then open the app again.');
+      }
+      try {
+        const regs = navigator.serviceWorker ? await navigator.serviceWorker.getRegistrations() : [];
+        if (regs.length) add('warn', regs.length + ' service worker(s) installed on this site', 'A service worker can keep serving old files. Tap "Clear this phone\'s cache" below.');
+        else add('ok', 'No service worker is holding old files');
+      } catch (e) { /* not supported: fine */ }
     }
-    try {
-      const regs = navigator.serviceWorker ? await navigator.serviceWorker.getRegistrations() : [];
-      if (regs.length) add('warn', regs.length + ' service worker(s) installed on this site', 'A service worker can keep serving old files. Tap "Clear this phone\'s cache" below.');
-      else add('ok', 'No service worker is holding old files');
-    } catch (e) { /* not supported: fine */ }
 
     /* 5. the topic list the app uses */
     const tc = files['topic-catalogue.js'];
@@ -210,8 +243,8 @@ async function runChecks() {
           if (o && typeof o === 'object' && typeof o.explanation === 'string') kind = 'new format · ' + (o.related ? o.related.length : 0) + ' related group(s) · tip ' + (o.tip ? 'yes' : 'no');
           add(kind === 'BROKEN JSON' ? 'bad' : 'ok', 'Question ' + q.id + ' (' + q.subject_id + ' ' + q.year + '): ' + kind);
         });
-        document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: 'explanation.css?nocache=' + Date.now() }));
-        const loaded = await loadScript('explanation-renderer.js?nocache=' + Date.now());
+        document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: U('explanation.css?nocache=' + Date.now()) }));
+        const loaded = await loadScript(U('explanation-renderer.js?nocache=' + Date.now()));
         if (!loaded || typeof ExplanationRenderer === 'undefined') add('bad', 'The live renderer could not be loaded', 'This is exactly why AI explanations would not show. ' + fileHint('explanation-renderer.js'));
         else {
           const q = rows[0];
@@ -240,6 +273,10 @@ function finish() {
 }
 
 async function clearCache() {
+  if (crossSite() || (!BASE && location.protocol === 'file:')) {
+    alert('This page is not on your website, so it cannot clear your app\'s saved copies.\n\nIn Chrome: menu ⋮ → Settings → Privacy and security → Delete browsing data → tick "Cached images and files" → Delete.\n\nOr open your app from the address with  ?_=1  added at the end.');
+    return;
+  }
   try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
   try { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); } catch (e) {}
   const u = new URL(location.href); u.searchParams.set('_', String(Date.now())); location.href = u.toString();
@@ -249,6 +286,10 @@ async function copyReport() {
   try { await navigator.clipboard.writeText(text); alert('Report copied. Paste it in the chat.'); }
   catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); alert('Report copied. Paste it in the chat.'); } catch (e2) { alert(text); } ta.remove(); }
 }
+
+window.addEventListener('load', () => {
+  try { const v = localStorage.getItem('appcheck_site'); if (v) $('siteAddr').value = v; } catch (e) {}
+});
 </script>
 </body>
 </html>
