@@ -872,6 +872,7 @@ function startSession() {
     mode:     currentMode,
     h, m, shuffleQ, shuffleO
   });
+  if (document.getElementById('debugToggle')?.classList.contains('on')) params.set('debug', '1');
 
   if (currentTab === 'jamb') {
     if (selectedIds.length === 0) { showToast('Pick at least one subject'); return; }
